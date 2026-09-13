@@ -63,6 +63,7 @@ node --version   # verifica Node.js
 npm --version    # verifica npm
 ```
 
+
 ### Instalación de dependencias
 
 ```bash
