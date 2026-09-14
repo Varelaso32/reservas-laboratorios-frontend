@@ -8,5 +8,5 @@ import { RouterOutlet } from '@angular/router';
   styleUrl: './app.component.scss'
 })
 export class AppComponent {
-  title = 'reservas-laboratorios-frontend';
+  title = 'Reserva ECCI';
 }
