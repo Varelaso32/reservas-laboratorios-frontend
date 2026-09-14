@@ -1,0 +1,179 @@
+<div class="aplicacion">
+
+  <aside class="sidebar">
+
+    <div class="logo">
+      <div class="logo-icon">R</div>
+
+      <div>
+        <strong>ReservaECCI</strong>
+        <small>Sistema de Reservas</small>
+      </div>
+    </div>
+
+    <nav class="menu">
+
+      <a>
+        <i class="pi pi-th-large"></i>
+        <span>Dashboard</span>
+      </a>
+
+      <a>
+        <i class="pi pi-calendar"></i>
+        <span>Calendario</span>
+      </a>
+
+      <a class="activo">
+        <i class="pi pi-building"></i>
+        <span>Espacios</span>
+      </a>
+
+      <a>
+        <i class="pi pi-cog"></i>
+        <span>Configuración</span>
+      </a>
+
+      <div class="separador"></div>
+
+      <a>
+        <i class="pi pi-shield"></i>
+        <span>Panel Admin</span>
+      </a>
+
+    </nav>
+
+    <div class="usuario">
+
+      <div class="avatar">
+        JR
+      </div>
+
+      <div>
+        <strong>Juan Rodríguez</strong>
+        <small>Operador · Recepción</small>
+      </div>
+
+    </div>
+
+  </aside>
+
+
+  <main class="contenido">
+
+    <header class="topbar">
+
+      <div class="buscador">
+        <i class="pi pi-search"></i>
+
+        <input
+          type="text"
+          placeholder="Buscar espacios, reservas..."
+        />
+      </div>
+
+      <div class="perfil">
+        JR
+      </div>
+
+    </header>
+
+
+    <section class="pagina">
+
+      <div class="encabezado">
+
+        <div>
+          <h1>Espacios</h1>
+          <p>{{ espacios.length }} espacios registrados</p>
+        </div>
+
+      </div>
+
+
+      <div class="grid-espacios">
+
+        @for (espacio of espacios; track espacio.nombre) {
+
+          <article class="tarjeta">
+
+            <div class="tarjeta-header">
+
+              <div class="nombre">
+
+                <span class="punto"></span>
+
+                <strong>
+                  {{ espacio.nombre }}
+                </strong>
+
+              </div>
+
+              <span
+                class="estado"
+                [class.disponible]="espacio.estado === 'Disponible'"
+                [class.ocupado]="espacio.estado === 'Ocupado'"
+                [class.reservado]="espacio.estado === 'Reservado'"
+              >
+                {{ espacio.estado }}
+              </span>
+
+            </div>
+
+
+            <div class="informacion">
+
+              <p>
+                <i class="pi pi-map-marker"></i>
+                Piso {{ espacio.piso }}
+              </p>
+
+              <p>
+                <i class="pi pi-users"></i>
+                {{ espacio.capacidad }} personas
+              </p>
+
+            </div>
+
+
+            <div class="equipamiento">
+
+              @for (equipo of espacio.equipos; track equipo) {
+
+                <span>
+                  {{ equipo }}
+                </span>
+
+              }
+
+            </div>
+
+
+            <button
+              [disabled]="espacio.estado !== 'Disponible'"
+            >
+
+              @if (espacio.estado === 'Disponible') {
+                Reservar ahora
+              }
+
+              @if (espacio.estado === 'Ocupado') {
+                Ocupado
+              }
+
+              @if (espacio.estado === 'Reservado') {
+                Reservado
+              }
+
+            </button>
+
+          </article>
+
+        }
+
+      </div>
+
+    </section>
+
+  </main>
+
+</div>
