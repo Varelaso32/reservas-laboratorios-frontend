@@ -1,0 +1,245 @@
+<div class="overlay">
+
+  <div class="modal">
+
+    <div class="modal-header">
+
+      <div>
+        <h2>Reservar espacio</h2>
+
+        <p class="espacio-seleccionado">
+          <span class="punto"></span>
+          {{ espacioNombre }} · Piso {{ piso }}
+        </p>
+      </div>
+
+      <button
+        type="button"
+        class="cerrar"
+        (click)="cerrarModal()"
+      >
+        ×
+      </button>
+
+    </div>
+
+    <form [formGroup]="formReserva">
+
+      <div class="modal-body">
+
+        <!-- SOLICITANTE -->
+        <div class="campo">
+          <label>SOLICITANTE</label>
+
+          <input
+            type="text"
+            placeholder="Ej. Prof. María González"
+            formControlName="solicitante"
+          />
+
+          @if (
+            formReserva.controls.solicitante.invalid &&
+            formReserva.controls.solicitante.touched
+          ) {
+            <small class="error">
+              El solicitante es obligatorio.
+            </small>
+          }
+        </div>
+
+
+        <!-- FECHA / INICIO / FIN -->
+        <div class="fila-tres">
+
+          <div class="campo">
+            <label>FECHA</label>
+
+            <input
+              type="date"
+              formControlName="fecha"
+            />
+
+            @if (
+              formReserva.controls.fecha.invalid &&
+              formReserva.controls.fecha.touched
+            ) {
+              <small class="error">
+                La fecha es obligatoria.
+              </small>
+            }
+          </div>
+
+
+          <div class="campo">
+            <label>INICIO</label>
+
+            <input
+              type="time"
+              formControlName="horaInicio"
+            />
+
+            @if (
+              formReserva.controls.horaInicio.invalid &&
+              formReserva.controls.horaInicio.touched
+            ) {
+              <small class="error">
+                La hora de inicio es obligatoria.
+              </small>
+            }
+          </div>
+
+
+          <div class="campo">
+            <label>FIN</label>
+
+            <input
+              type="time"
+              formControlName="horaFin"
+            />
+
+            @if (
+              formReserva.controls.horaFin.invalid &&
+              formReserva.controls.horaFin.touched
+            ) {
+              <small class="error">
+                La hora de fin es obligatoria.
+              </small>
+            }
+          </div>
+
+        </div>
+
+
+        <!-- ASISTENTES -->
+        <div class="campo">
+          <label>CANTIDAD DE ASISTENTES</label>
+
+          <input
+            type="number"
+            min="1"
+            placeholder="Ej. 20"
+            formControlName="asistentes"
+          />
+
+          @if (
+            formReserva.controls.asistentes.invalid &&
+            formReserva.controls.asistentes.touched
+          ) {
+            <small class="error">
+              Debe ingresar al menos 1 asistente.
+            </small>
+          }
+        </div>
+
+
+        <!-- TIPO DE ACTIVIDAD -->
+        <div class="campo">
+
+          <label>TIPO DE ACTIVIDAD</label>
+
+          <div class="actividades">
+
+            <button
+              type="button"
+              [class.activo]="tipoActividad === 'Clase'"
+              (click)="seleccionarActividad('Clase')"
+            >
+              Clase
+            </button>
+
+            <button
+              type="button"
+              [class.activo]="tipoActividad === 'Reunión'"
+              (click)="seleccionarActividad('Reunión')"
+            >
+              Reunión
+            </button>
+
+            <button
+              type="button"
+              [class.activo]="tipoActividad === 'Tesis'"
+              (click)="seleccionarActividad('Tesis')"
+            >
+              Tesis
+            </button>
+
+            <button
+              type="button"
+              [class.activo]="tipoActividad === 'Evento'"
+              (click)="seleccionarActividad('Evento')"
+            >
+              Evento
+            </button>
+
+            <button
+              type="button"
+              [class.activo]="tipoActividad === 'Práctica'"
+              (click)="seleccionarActividad('Práctica')"
+            >
+              Práctica
+            </button>
+
+            <button
+              type="button"
+              [class.activo]="tipoActividad === 'Examen'"
+              (click)="seleccionarActividad('Examen')"
+            >
+              Examen
+            </button>
+
+          </div>
+
+        </div>
+
+
+        <!-- PROPÓSITO -->
+        <div class="campo">
+
+          <label>PROPÓSITO</label>
+
+          <textarea
+            rows="3"
+            placeholder="Describe brevemente el motivo de la reserva"
+            formControlName="proposito"
+          ></textarea>
+
+          @if (
+            formReserva.controls.proposito.invalid &&
+            formReserva.controls.proposito.touched
+          ) {
+            <small class="error">
+              El propósito es obligatorio.
+            </small>
+          }
+
+        </div>
+
+      </div>
+
+
+      <!-- BOTONES -->
+      <div class="modal-footer">
+
+        <button
+          type="button"
+          class="cancelar"
+          (click)="cerrarModal()"
+        >
+          Cancelar
+        </button>
+
+        <button
+          type="button"
+          class="confirmar"
+          (click)="confirmarReserva()"
+        >
+          Confirmar reserva
+        </button>
+
+      </div>
+
+    </form>
+
+  </div>
+
+</div>

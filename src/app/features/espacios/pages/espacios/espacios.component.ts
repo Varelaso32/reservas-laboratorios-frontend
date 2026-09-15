@@ -1,4 +1,5 @@
 import { Component } from '@angular/core';
+import { SolicitudReservaComponent } from '../../../reservas/pages/solicitud-reserva/solicitud-reserva.component';
 
 interface Espacio {
   nombre: string;
@@ -10,11 +11,26 @@ interface Espacio {
 
 @Component({
   selector: 'app-espacios',
-  imports: [],
+  imports: [SolicitudReservaComponent],
   templateUrl: './espacios.component.html',
   styleUrl: './espacios.component.scss'
 })
 export class EspaciosComponent {
+
+modalReservaAbierto = false;
+
+espacioSeleccionado: Espacio | null = null;
+
+abrirReserva(espacio: Espacio) {
+  this.espacioSeleccionado = espacio;
+  this.modalReservaAbierto = true;
+}
+
+cerrarReserva() {
+  this.modalReservaAbierto = false;
+  this.espacioSeleccionado = null;
+}
+
 
   espacios: Espacio[] = [
     {

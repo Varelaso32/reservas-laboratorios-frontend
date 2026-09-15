@@ -148,9 +148,10 @@
             </div>
 
 
-            <button
-              [disabled]="espacio.estado !== 'Disponible'"
-            >
+          <button
+  [disabled]="espacio.estado !== 'Disponible'"
+  (click)="abrirReserva(espacio)"
+>
 
               @if (espacio.estado === 'Disponible') {
                 Reservar ahora
@@ -177,3 +178,17 @@
   </main>
 
 </div>
+
+@if (modalReservaAbierto && espacioSeleccionado) {
+
+  <app-solicitud-reserva
+
+    [espacioNombre]="espacioSeleccionado.nombre"
+
+    [piso]="espacioSeleccionado.piso"
+
+    (cerrar)="cerrarReserva()"
+
+  />
+
+}

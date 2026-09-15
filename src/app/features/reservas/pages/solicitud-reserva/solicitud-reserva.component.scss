@@ -1,0 +1,209 @@
+* {
+  box-sizing: border-box;
+}
+
+.overlay {
+  position: fixed;
+
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+
+  background: rgba(0, 0, 0, 0.38);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  z-index: 1000;
+}
+
+.modal {
+  width: 100%;
+  max-width: 580px;
+
+  background: white;
+
+  border-radius: 18px;
+
+  box-shadow:
+    0 20px 50px rgba(0, 0, 0, 0.18);
+
+  overflow: hidden;
+}
+
+.modal-header {
+  padding: 26px 30px 22px;
+
+  border-bottom: 1px solid #ececef;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+
+  h2 {
+    margin: 0;
+    font-size: 21px;
+    color: #15161a;
+  }
+}
+
+.espacio-seleccionado {
+  margin: 8px 0 0;
+
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  font-size: 14px;
+  color: #666873;
+}
+
+.punto {
+  width: 9px;
+  height: 9px;
+
+  border-radius: 50%;
+
+  background: #5b8def;
+}
+
+.cerrar {
+  border: none;
+  background: transparent;
+
+  font-size: 28px;
+  line-height: 1;
+
+  color: #94969e;
+
+  cursor: pointer;
+}
+
+.modal-body {
+  padding: 28px 30px;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 20px;
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  label {
+    font-size: 12px;
+    font-weight: 700;
+
+    color: #666873;
+
+    letter-spacing: 0.4px;
+  }
+
+  input,
+  textarea {
+    width: 100%;
+
+    padding: 12px 14px;
+
+    border: 1px solid #d9d9df;
+    border-radius: 8px;
+
+    outline: none;
+
+    font-size: 14px;
+
+    background: white;
+  }
+
+  input:focus,
+  textarea:focus {
+    border-color: #111218;
+  }
+
+  textarea {
+    resize: vertical;
+  }
+}
+
+.fila-tres {
+  display: grid;
+
+  grid-template-columns: 1fr 1fr 1fr;
+
+  gap: 14px;
+}
+
+.actividades {
+  display: flex;
+  flex-wrap: wrap;
+
+  gap: 8px;
+
+  button {
+    padding: 8px 16px;
+
+    border: 1px solid #dadbe0;
+    border-radius: 18px;
+
+    background: white;
+
+    color: #64666f;
+
+    cursor: pointer;
+  }
+
+  button.activo {
+    background: #0b0b11;
+
+    border-color: #0b0b11;
+
+    color: white;
+  }
+}
+
+.modal-footer {
+  padding: 0 30px 26px;
+
+  display: grid;
+
+  grid-template-columns: 1fr 1.8fr;
+
+  gap: 12px;
+}
+
+.modal-footer button {
+  padding: 13px;
+
+  border-radius: 8px;
+
+  font-size: 14px;
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+.cancelar {
+  border: none;
+
+  background: #f2f2f4;
+
+  color: #666873;
+}
+
+.confirmar {
+  border: none;
+
+  background: #0b0b11;
+
+  color: white;
+}
+
+.error {
+  color: #d94343;
+  font-size: 11px;
+}
