@@ -1,5 +1,6 @@
 import type { Routes } from '@angular/router';
 import { EspaciosComponent } from './features/espacios/pages/espacios/espacios.component';
+import { SolicitudReservaComponent } from './features/reservas/pages/solicitud-reserva/solicitud-reserva.component';
 
 export const routes: Routes = [
   {
@@ -10,5 +11,9 @@ export const routes: Routes = [
   {
     path: 'espacios',
     component: EspaciosComponent
+  },
+  {
+    path: 'solicitud-reserva',
+    component: SolicitudReservaComponent
   }
 ];
