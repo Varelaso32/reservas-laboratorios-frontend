@@ -57,6 +57,7 @@
             <input
               type="date"
               formControlName="fecha"
+              (change)="validarDisponibilidad()"
             />
 
             @if (
@@ -76,6 +77,7 @@
             <input
               type="time"
               formControlName="horaInicio"
+              (change)="validarDisponibilidad()"
             />
 
             @if (
@@ -95,6 +97,7 @@
             <input
               type="time"
               formControlName="horaFin"
+              (change)="validarDisponibilidad()"
             />
 
             @if (
@@ -109,6 +112,15 @@
 
         </div>
 
+        @if (mensajeDisponibilidad) {
+  <div
+    class="disponibilidad"
+    [class.disponible]="disponible"
+    [class.no-disponible]="!disponible"
+  >
+    {{ mensajeDisponibilidad }}
+  </div>
+}
 
         <!-- ASISTENTES -->
         <div class="campo">

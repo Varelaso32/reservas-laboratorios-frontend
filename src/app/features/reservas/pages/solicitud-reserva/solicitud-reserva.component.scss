@@ -207,3 +207,20 @@
   color: #d94343;
   font-size: 11px;
 }
+
+.disponibilidad {
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.disponible {
+  background: #eef8f0;
+  color: #27833d;
+}
+
+.no-disponible {
+  background: #fff0f0;
+  color: #c83c3c;
+}
