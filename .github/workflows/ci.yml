@@ -1,0 +1,68 @@
+name: CI Frontend
+
+on:
+  push:
+    branches: [ main, develop, qa ]
+  pull_request:
+    branches: [ main, develop, qa ]
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4 [12]
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Instalar dependencias
+        run: npm ci [12]
+
+      - name: Compilar proyecto
+        run: npm run build [9]
+
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4 [12]
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Instalar dependencias
+        run: npm ci [12]
+
+      - name: Ejecutar Linter
+        run: npm run lint [9]
+
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4 [12]
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Instalar dependencias
+        run: npm ci [12]
+
+      - name: Configurar Chrome para Headless
+        uses: browser-actions/setup-chrome@v1 [11]
+
+      - name: Ejecutar Pruebas Unitarias
+        run: ng test --watch=false --browsers=ChromeHeadless [9]

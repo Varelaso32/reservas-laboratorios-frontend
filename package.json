@@ -36,11 +36,10 @@
     "@angular/compiler-cli": "^19.1.0",
     "@types/jasmine": "~5.1.0",
     "angular-eslint": "^19.8.1",
-<<<<<<< Updated upstream
+
     "eslint": "^9.39.5",
     "eslint-plugin-sonarjs": "^4.2.0",
-=======
->>>>>>> Stashed changes
+
     "jasmine-core": "~5.5.0",
     "karma": "~6.4.0",
     "karma-chrome-launcher": "~3.2.0",
