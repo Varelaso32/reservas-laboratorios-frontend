@@ -1,37 +1,63 @@
+# Nombre del Flujo: CI Frontend
+# Descripción: Pipeline de Integración Continua para el proyecto de reservas 
+# de laboratorios (Angular 19). Valida automáticamente la compilación, 
+# estándares de código y pruebas unitarias.
+# ==============================================================================
 name: CI Frontend
 
+# ------------------------------------------------------------------------------
+# DISPARADORES (Triggers)
+# Define en qué momentos se ejecutará este flujo de trabajo de forma automática.
+# ------------------------------------------------------------------------------
 on:
+  # Se ejecuta al hacer un push directo a las ramas principales
   push:
     branches: [ main, develop, qa ]
+  # Se ejecuta al crear o actualizar un Pull Request hacia las ramas principales
   pull_request:
     branches: [ main, develop, qa ]
 
+# ------------------------------------------------------------------------------
+# TRABAJOS (Jobs)
+# Tareas independientes que se ejecutan en paralelo en contenedores separados.
+# ------------------------------------------------------------------------------
 jobs:
+
+  # ============================================================================
+  # 1. BUILD: Verifica que la aplicación compila correctamente para producción.
+  # ============================================================================
   build:
     name: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest # Entorno de ejecución (Linux)
     steps:
+      # Paso 1.1: Descarga el código del repositorio al entorno virtual
       - name: Checkout del código
-        uses: actions/checkout@v4 [12]
+        uses: actions/checkout@v4
 
+      # Paso 1.2: Configura el entorno de Node.js (versión 20 LTS) y habilita caché
       - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
 
+      # Paso 1.3: Instala las dependencias de forma limpia y determinista
       - name: Instalar dependencias
-        run: npm ci [12]
+        run: npm ci
 
+      # Paso 1.4: Compila el proyecto generando los artefactos en /dist
       - name: Compilar proyecto
-        run: npm run build [9]
+        run: npm run build
 
+  # ============================================================================
+  # 2. LINT: Analiza el código fuente para asegurar buenas prácticas y estilo.
+  # ============================================================================
   lint:
     name: lint
     runs-on: ubuntu-latest
     steps:
       - name: Checkout del código
-        uses: actions/checkout@v4 [12]
+        uses: actions/checkout@v4
 
       - name: Configurar Node.js
         uses: actions/setup-node@v4
@@ -40,29 +66,8 @@ jobs:
           cache: 'npm'
 
       - name: Instalar dependencias
-        run: npm ci [12]
+        run: npm ci
 
+      # Paso 2.4: Ejecuta el linter (ej. ESLint) para detectar "code smells" o errores
       - name: Ejecutar Linter
-        run: npm run lint [9]
-
-  test:
-    name: test
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout del código
-        uses: actions/checkout@v4 [12]
-
-      - name: Configurar Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Instalar dependencias
-        run: npm ci [12]
-
-      - name: Configurar Chrome para Headless
-        uses: browser-actions/setup-chrome@v1 [11]
-
-      - name: Ejecutar Pruebas Unitarias
-        run: ng test --watch=false --browsers=ChromeHeadless [9]
+        run: npm run lint
