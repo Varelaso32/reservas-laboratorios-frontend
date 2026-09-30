@@ -1,13 +1,13 @@
 # Nombre del Flujo: CI Frontend
-# Descripción: Pipeline de Integración Continua para el proyecto de reservas 
-# de laboratorios (Angular 19). Valida automáticamente la compilación, 
-# estándares de código y pruebas unitarias.
+# Descripcion: Pipeline de Integracion Continua para el proyecto de reservas
+# de laboratorios (Angular 19). Valida automaticamente la compilacion,
+# estandares de codigo y pruebas unitarias.
 # ==============================================================================
 name: CI Frontend
 
 # ------------------------------------------------------------------------------
 # DISPARADORES (Triggers)
-# Define en qué momentos se ejecutará este flujo de trabajo de forma automática.
+# Define en que momentos se ejecutara este flujo de trabajo de forma automatica.
 # ------------------------------------------------------------------------------
 on:
   # Se ejecuta al hacer un push directo a las ramas principales
@@ -24,17 +24,17 @@ on:
 jobs:
 
   # ============================================================================
-  # 1. BUILD: Verifica que la aplicación compila correctamente para producción.
+  # 1. BUILD: Verifica que la aplicacion compila correctamente para produccion.
   # ============================================================================
   build:
     name: build
-    runs-on: ubuntu-latest # Entorno de ejecución (Linux)
+    runs-on: ubuntu-latest # Entorno de ejecucion (Linux)
     steps:
-      # Paso 1.1: Descarga el código del repositorio al entorno virtual
-      - name: Checkout del código
+      # Paso 1.1: Descarga el codigo del repositorio al entorno virtual
+      - name: Checkout del codigo
         uses: actions/checkout@v4
 
-      # Paso 1.2: Configura el entorno de Node.js (versión 20 LTS) y habilita caché
+      # Paso 1.2: Configura el entorno de Node.js (version 20 LTS) y habilita cache
       - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
@@ -50,13 +50,13 @@ jobs:
         run: npm run build
 
   # ============================================================================
-  # 2. LINT: Analiza el código fuente para asegurar buenas prácticas y estilo.
+  # 2. LINT: Analiza el codigo fuente para asegurar buenas practicas y estilo.  enpoint
   # ============================================================================
   lint:
     name: lint
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout del código
+      - name: Checkout del codigo
         uses: actions/checkout@v4
 
       - name: Configurar Node.js
@@ -79,7 +79,7 @@ jobs:
     name: test
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout del código
+      - name: Checkout del codigo
         uses: actions/checkout@v4
 
       - name: Configurar Node.js
@@ -92,11 +92,11 @@ jobs:
         run: npm ci
 
       # Paso 3.4: Instala y configura Google Chrome en el contenedor
-      # (Necesario para ejecutar pruebas de UI en servidores sin pantalla gráfica)
+      # (Necesario para ejecutar pruebas de UI en servidores sin pantalla grafica)
       - name: Configurar Chrome para Headless
         uses: browser-actions/setup-chrome@v1
 
       # Paso 3.5: Lanza Karma y ejecuta la suite de pruebas en modo Headless
-      # Se usa 'npx' para asegurar la ejecución del CLI local sin errores de entorno
+      # Se usa 'npx' para asegurar la ejecucion del CLI local sin errores de entorno
       - name: Ejecutar Pruebas Unitarias
         run: npx ng test --watch=false --browsers=ChromeHeadless
