@@ -71,3 +71,32 @@ jobs:
       # Paso 2.4: Ejecuta el linter (ej. ESLint) para detectar "code smells" o errores
       - name: Ejecutar Linter
         run: npm run lint
+
+    # ============================================================================
+  # 3. TEST: Ejecuta las pruebas unitarias del frontend.
+  # ============================================================================
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      # Paso 3.4: Instala y configura Google Chrome en el contenedor
+      # (Necesario para ejecutar pruebas de UI en servidores sin pantalla gráfica)
+      - name: Configurar Chrome para Headless
+        uses: browser-actions/setup-chrome@v1
+
+      # Paso 3.5: Lanza Karma y ejecuta la suite de pruebas en modo Headless
+      # Se usa 'npx' para asegurar la ejecución del CLI local sin errores de entorno
+      - name: Ejecutar Pruebas Unitarias
+        run: npx ng test --watch=false --browsers=ChromeHeadless
