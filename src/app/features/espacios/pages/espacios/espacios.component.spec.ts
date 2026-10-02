@@ -94,16 +94,19 @@ describe('EspaciosComponent', () => {
     const menuText = (fixture.nativeElement.querySelector('.menu') as HTMLElement).textContent ?? '';
     expect(menuText).not.toContain('Panel Admin');
     expect(menuText).not.toContain('Pendientes');
+    expect(fixture.nativeElement.querySelector('.accion-solicitudes')).toBeNull();
   });
 
-  it('shows Panel Admin and Pendientes to APROBADOR', () => {
+  it('shows a real Panel Admin link but no admin requests action to APROBADOR', () => {
     const authService = TestBed.inject(AuthService);
     authService.obtenerUsuarioActual()!.rol = 'APROBADOR';
     fixture.detectChanges();
 
     const menuText = (fixture.nativeElement.querySelector('.menu') as HTMLElement).textContent ?? '';
     expect(menuText).toContain('Panel Admin');
-    expect(menuText).toContain('Pendientes');
+    expect(menuText).not.toContain('Pendientes');
+    expect(fixture.nativeElement.querySelector('.menu a[routerLink="/admin/espacios"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.accion-solicitudes')).toBeNull();
   });
 
   it('shows Panel Admin but not Pendientes to ADMIN', () => {
@@ -114,6 +117,7 @@ describe('EspaciosComponent', () => {
     const menuText = (fixture.nativeElement.querySelector('.menu') as HTMLElement).textContent ?? '';
     expect(menuText).toContain('Panel Admin');
     expect(menuText).not.toContain('Pendientes');
+    expect(fixture.nativeElement.querySelector('.accion-solicitudes')).toBeNull();
   });
 
   it('shows only the role when cargo is null, without null or dangling separators', () => {
