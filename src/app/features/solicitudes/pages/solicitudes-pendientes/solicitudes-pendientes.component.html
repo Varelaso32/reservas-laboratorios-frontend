@@ -1,0 +1,112 @@
+<div class="pendientes-app">
+  <header class="topbar">
+    <a class="brand" routerLink="/espacios" aria-label="ReservaECCI, volver a espacios">
+      <span class="brand-icon" aria-hidden="true">R</span>
+      <span>
+        <strong>ReservaECCI</strong>
+        <small>Gestión de espacios</small>
+      </span>
+    </a>
+
+    <div class="header-actions">
+      <span class="user-avatar" aria-hidden="true">{{ inicialesUsuario }}</span>
+      <span class="user-name">{{ usuarioActual?.nombre }}</span>
+      <button
+        type="button"
+        class="logout"
+        aria-label="Cerrar sesión"
+        title="Cerrar sesión"
+        (click)="cerrarSesion()"
+      >
+        <i class="pi pi-sign-out" aria-hidden="true"></i>
+      </button>
+    </div>
+  </header>
+
+  <main class="page-content">
+    <a class="back-link" routerLink="/espacios">
+      <i class="pi pi-arrow-left" aria-hidden="true"></i>
+      Espacios
+    </a>
+
+    <section aria-labelledby="page-title">
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow">GESTIÓN DE ESPACIOS</p>
+          <h1 id="page-title">Solicitudes pendientes</h1>
+          <p class="subtitle">Solicitudes de los espacios que administras</p>
+        </div>
+        @if (!cargando && !errorCarga) {
+          <span class="result-count">{{ solicitudes.length }} pendientes</span>
+        }
+      </div>
+
+      @if (cargando) {
+        <div class="feedback" role="status">Cargando solicitudes pendientes...</div>
+      } @else if (errorCarga) {
+        <div class="feedback error-state" role="alert">
+          <p>{{ errorCarga }}</p>
+          <button type="button" (click)="cargarPendientes()">Reintentar</button>
+        </div>
+      } @else if (solicitudes.length === 0) {
+        <div class="feedback empty-state" role="status">
+          <i class="pi pi-inbox" aria-hidden="true"></i>
+          <p>No hay solicitudes pendientes.</p>
+        </div>
+      } @else {
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Solicitante</th>
+                <th scope="col">Espacio</th>
+                <th scope="col">Uso solicitado</th>
+                <th scope="col">Asistentes</th>
+                <th scope="col">Creada</th>
+                <th scope="col">Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (solicitud of solicitudes; track solicitud.id) {
+                <tr [class.fila-vencida]="solicitud.vencida">
+                  <td>
+                    <strong class="primary-cell">{{ solicitud.solicitante.nombre }}</strong>
+                    @if (solicitud.solicitante.cargo) {
+                      <small class="secondary-cell">{{ solicitud.solicitante.cargo }}</small>
+                    }
+                  </td>
+                  <td>
+                    <strong class="primary-cell">{{ solicitud.espacio.nombre }}</strong>
+                    <small class="secondary-cell">
+                      {{ solicitud.espacio.tipo }}
+                      @if (solicitud.espacio.ubicacion) {
+                        · {{ solicitud.espacio.ubicacion }}
+                      }
+                    </small>
+                  </td>
+                  <td>
+                    <strong class="primary-cell">{{ formatearFechaHora(solicitud.inicio) }}</strong>
+                    <small class="secondary-cell">Hasta {{ formatearFechaHora(solicitud.fin) }}</small>
+                  </td>
+                  <td>{{ solicitud.asistentes }}</td>
+                  <td>{{ formatearFechaHora(solicitud.creada_en) }}</td>
+                  <td>
+                    <div class="status-stack">
+                      <span class="status-pending">{{ solicitud.estado }}</span>
+                      @if (solicitud.vencida) {
+                        <span class="status-expired">
+                          <i class="pi pi-clock" aria-hidden="true"></i>
+                          Vencida
+                        </span>
+                      }
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+  </main>
+</div>
