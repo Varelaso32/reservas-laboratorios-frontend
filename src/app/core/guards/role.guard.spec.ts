@@ -9,6 +9,7 @@ import {
 
 import { routes } from '../../app.routes';
 import { AuthService } from '../services/auth.service';
+import { authGuard } from './auth.guard';
 import { roleGuard } from './role.guard';
 
 describe('roleGuard', () => {
@@ -61,7 +62,10 @@ describe('roleGuard', () => {
     expect(TestBed.inject(Router).serializeUrl(result as UrlTree)).toBe('/login');
   });
 
-  it('does not register a standalone pending-requests route', () => {
+  it('protects the admin spaces route for APROBADOR and ADMIN and omits the standalone route', () => {
+    const adminRoute = routes.find(item => item.path === 'admin/espacios');
+    expect(adminRoute?.canActivate).toEqual([authGuard, roleGuard]);
+    expect(adminRoute?.data?.['roles']).toEqual(['APROBADOR', 'ADMIN']);
     expect(routes.some(item => item.path === 'solicitudes-pendientes')).toBeFalse();
   });
 });

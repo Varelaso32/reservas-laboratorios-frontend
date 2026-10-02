@@ -9,31 +9,7 @@ import { AuthService } from '../../../../core/services/auth.service';
 import { authGuard } from '../../../../core/guards/auth.guard';
 import { API_BASE_URL } from '../../../../core/config/api.config';
 import { SolicitudReservaComponent } from '../../../reservas/pages/solicitud-reserva/solicitud-reserva.component';
-import { SolicitudPendiente } from '../../../../shared/models/solicitud.model';
 import { EspaciosComponent } from './espacios.component';
-
-const solicitudPendientePrueba: SolicitudPendiente = {
-  id: 51,
-  estado: 'PENDIENTE',
-  solicitante: {
-    id: 9,
-    nombre: 'Estudiante de Prueba',
-    email: 'estudiante@reservas.test',
-    cargo: 'ESTUDIANTE'
-  },
-  espacio: {
-    id: 42,
-    nombre: 'Laboratorio de Redes',
-    tipo: 'LABORATORIO',
-    capacidad: 25,
-    ubicacion: 'Bloque A, piso 2'
-  },
-  inicio: '2026-10-05T11:00:00-05:00',
-  fin: '2026-10-05T11:30:00-05:00',
-  asistentes: 10,
-  creada_en: '2026-10-02T08:00:00-05:00',
-  vencida: true
-};
 
 describe('EspaciosComponent', () => {
   let component: EspaciosComponent;
@@ -121,7 +97,7 @@ describe('EspaciosComponent', () => {
     expect(fixture.nativeElement.querySelector('.accion-solicitudes')).toBeNull();
   });
 
-  it('shows Panel Admin and the pending-request action to APROBADOR', () => {
+  it('shows a real Panel Admin link but no admin requests action to APROBADOR', () => {
     const authService = TestBed.inject(AuthService);
     authService.obtenerUsuarioActual()!.rol = 'APROBADOR';
     fixture.detectChanges();
@@ -129,7 +105,8 @@ describe('EspaciosComponent', () => {
     const menuText = (fixture.nativeElement.querySelector('.menu') as HTMLElement).textContent ?? '';
     expect(menuText).toContain('Panel Admin');
     expect(menuText).not.toContain('Pendientes');
-    expect(fixture.nativeElement.querySelector('.accion-solicitudes')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.menu a[routerLink="/admin/espacios"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.accion-solicitudes')).toBeNull();
   });
 
   it('shows Panel Admin but not Pendientes to ADMIN', () => {
@@ -141,104 +118,6 @@ describe('EspaciosComponent', () => {
     expect(menuText).toContain('Panel Admin');
     expect(menuText).not.toContain('Pendientes');
     expect(fixture.nativeElement.querySelector('.accion-solicitudes')).toBeNull();
-  });
-
-  it('loads one unfiltered pending list and counts only PENDIENTE by space, including expired requests', () => {
-    const authService = TestBed.inject(AuthService);
-    authService.obtenerUsuarioActual()!.rol = 'APROBADOR';
-    component.cargarConteosPendientes();
-
-    const request = httpTestingController.expectOne(`${API_BASE_URL}/solicitudes/pendientes`);
-    expect(request.request.method).toBe('GET');
-    expect(request.request.params.has('espacio_id')).toBeFalse();
-    request.flush([
-      solicitudPendientePrueba,
-      { ...solicitudPendientePrueba, id: 52, vencida: false },
-      { ...solicitudPendientePrueba, id: 53, estado: 'APROBADA' },
-      {
-        ...solicitudPendientePrueba,
-        id: 54,
-        espacio: { ...solicitudPendientePrueba.espacio, id: 77, nombre: 'Sala Norte' }
-      }
-    ]);
-    fixture.detectChanges();
-
-    expect(component.obtenerConteoPendientes(42)).toBe(2);
-    expect(component.obtenerConteoPendientes(77)).toBe(1);
-    expect(fixture.nativeElement.querySelector('.accion-solicitudes').textContent).toContain(
-      'Ver solicitudes · 2'
-    );
-  });
-
-  it('loads only the selected space in an in-place modal and renders real request fields', () => {
-    const authService = TestBed.inject(AuthService);
-    const router = TestBed.inject(Router);
-    authService.obtenerUsuarioActual()!.rol = 'APROBADOR';
-    fixture.detectChanges();
-    const routeBeforeClick = router.url;
-
-    (fixture.nativeElement.querySelector('.accion-solicitudes') as HTMLButtonElement).click();
-    fixture.detectChanges();
-
-    const request = httpTestingController.expectOne(
-      request => request.url === `${API_BASE_URL}/solicitudes/pendientes` &&
-        request.params.get('espacio_id') === '42'
-    );
-    expect(request.request.method).toBe('GET');
-    request.flush([
-      solicitudPendientePrueba,
-      {
-        ...solicitudPendientePrueba,
-        id: 55,
-        espacio: { ...solicitudPendientePrueba.espacio, id: 77, nombre: 'Sala Norte' }
-      }
-    ]);
-    fixture.detectChanges();
-
-    const modal = fixture.nativeElement.querySelector('.modal-solicitudes') as HTMLElement;
-    expect(component.modalSolicitudesAbierto).toBeTrue();
-    expect(router.url).toBe(routeBeforeClick);
-    expect(modal.textContent).toContain('Estudiante de Prueba');
-    expect(modal.textContent).toContain('estudiante@reservas.test');
-    expect(modal.textContent).toContain('Laboratorio de Redes');
-    expect(modal.textContent).toContain('Bloque A, piso 2');
-    expect(modal.textContent).toContain('10');
-    expect(modal.textContent).toContain('PENDIENTE');
-    expect(modal.textContent).toContain('Vencida');
-    expect(modal.textContent).not.toContain('Sala Norte');
-    expect(modal.textContent).not.toContain('LABORATORIO');
-    expect(modal.textContent).not.toContain('ESTUDIANTE');
-    expect(modal.querySelector('.estado-vencida')).toBeTruthy();
-    expect(modal.querySelectorAll('tbody tr').length).toBe(1);
-    expect(modal.textContent).not.toMatch(/aprobar|rechazar/i);
-  });
-
-  it('shows empty and error states in the modal and allows retry', () => {
-    const authService = TestBed.inject(AuthService);
-    authService.obtenerUsuarioActual()!.rol = 'APROBADOR';
-    fixture.detectChanges();
-    (fixture.nativeElement.querySelector('.accion-solicitudes') as HTMLButtonElement).click();
-    fixture.detectChanges();
-
-    httpTestingController.expectOne(
-      request => request.url === `${API_BASE_URL}/solicitudes/pendientes` &&
-        request.params.get('espacio_id') === '42'
-    ).flush([], { status: 403, statusText: 'Forbidden' });
-    fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('[role="alert"]')?.textContent)
-      .toContain('No tienes permiso para consultar estas solicitudes.');
-
-    (fixture.nativeElement.querySelector('.error-solicitudes button') as HTMLButtonElement).click();
-    const retry = httpTestingController.expectOne(
-      request => request.url === `${API_BASE_URL}/solicitudes/pendientes` &&
-        request.params.get('espacio_id') === '42'
-    );
-    retry.flush([]);
-    fixture.detectChanges();
-
-    expect(fixture.nativeElement.textContent).toContain(
-      'No hay solicitudes pendientes para este espacio.'
-    );
   });
 
   it('shows only the role when cargo is null, without null or dangling separators', () => {

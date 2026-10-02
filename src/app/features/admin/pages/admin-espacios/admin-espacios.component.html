@@ -1,0 +1,157 @@
+<div class="admin-app">
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-icon">R</div>
+      <div>
+        <strong>ReservaECCI</strong>
+        <small>Panel Admin</small>
+      </div>
+    </div>
+
+    <nav class="menu" aria-label="Panel Admin">
+      <span class="menu-item inactivo">
+        <i class="pi pi-th-large" aria-hidden="true"></i>
+        <span>Resumen</span>
+      </span>
+      <a class="menu-item activo" routerLink="/admin/espacios" aria-current="page">
+        <i class="pi pi-building" aria-hidden="true"></i>
+        <span>Espacios</span>
+      </a>
+      <span class="menu-item inactivo">
+        <i class="pi pi-users" aria-hidden="true"></i>
+        <span>Usuarios</span>
+      </span>
+      <span class="menu-item inactivo">
+        <i class="pi pi-chart-bar" aria-hidden="true"></i>
+        <span>Reportes</span>
+      </span>
+      <span class="menu-item inactivo">
+        <i class="pi pi-cog" aria-hidden="true"></i>
+        <span>Configuración</span>
+      </span>
+
+      <div class="separador"></div>
+
+      <a class="menu-item vista-operador" routerLink="/espacios">
+        <i class="pi pi-arrow-left" aria-hidden="true"></i>
+        <span>Vista Operador</span>
+      </a>
+    </nav>
+
+    @if (usuarioActual; as usuario) {
+      <div class="usuario">
+        <div class="avatar">{{ inicialesUsuario }}</div>
+        <div class="usuario-info">
+          <strong>{{ usuario.nombre }}</strong>
+          <small>{{ usuario.rol }}</small>
+        </div>
+        <button
+          type="button"
+          class="logout"
+          aria-label="Cerrar sesión"
+          title="Cerrar sesión"
+          (click)="cerrarSesion()"
+        >
+          <i class="pi pi-sign-out" aria-hidden="true"></i>
+        </button>
+      </div>
+    }
+  </aside>
+
+  <main class="contenido">
+    <header class="topbar">
+      <label class="buscador">
+        <i class="pi pi-search" aria-hidden="true"></i>
+        <input type="search" placeholder="Buscar espacios..." aria-label="Buscar espacios" />
+      </label>
+      <div class="perfil" aria-label="Usuario actual">{{ inicialesUsuario }}</div>
+    </header>
+
+    <section class="pagina">
+      <div class="encabezado">
+        <div>
+          <h1>Espacios</h1>
+          @if (cargandoEspacios) {
+            <p>Cargando espacios...</p>
+          } @else if (!errorEspacios) {
+            <p>{{ espacios.length }} espacios registrados</p>
+          }
+        </div>
+        <button type="button" class="nuevo-espacio" disabled>
+          <i class="pi pi-plus" aria-hidden="true"></i>
+          Nuevo espacio
+        </button>
+      </div>
+
+      <div class="tabla-contenedor">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">ESPACIO</th>
+              <th scope="col">UBICACIÓN</th>
+              <th scope="col">CAPACIDAD</th>
+              <th scope="col">RESERVAS HOY</th>
+              <th scope="col">SOLICITUDES</th>
+              <th scope="col">OCUPACIÓN</th>
+              <th scope="col">ESTADO</th>
+              <th scope="col">ACCIONES</th>
+            </tr>
+          </thead>
+          <tbody>
+            @if (cargandoEspacios) {
+              <tr><td class="estado-tabla" [attr.colspan]="columnas" role="status">Cargando espacios...</td></tr>
+            } @else if (errorEspacios) {
+              <tr>
+                <td class="estado-tabla error-carga" [attr.colspan]="columnas" role="alert">
+                  <span>{{ errorEspacios }}</span>
+                  <button type="button" (click)="cargarEspacios()">Reintentar</button>
+                </td>
+              </tr>
+            } @else if (espacios.length === 0) {
+              <tr><td class="estado-tabla" [attr.colspan]="columnas">No hay espacios registrados.</td></tr>
+            } @else {
+              @for (espacio of espacios; track espacio.id) {
+                <tr>
+                  <td class="nombre-espacio">{{ espacio.nombre }}</td>
+                  <td>{{ espacio.ubicacion ?? '—' }}</td>
+                  <td>{{ espacio.capacidad }} pers.</td>
+                  <td class="sin-dato">—</td>
+                  <td>
+                    @if (puedeConsultarSolicitudes) {
+                      <button
+                        type="button"
+                        class="ver-solicitudes"
+                        (click)="verSolicitudes(espacio)"
+                        [attr.aria-label]="'Ver solicitudes pendientes de ' + espacio.nombre"
+                        [title]="errorConteos ? 'No se pudo cargar el contador' : ''"
+                      >
+                        <i class="pi pi-eye" aria-hidden="true"></i>
+                        <span>Ver solicitudes · {{ cargandoConteos ? '…' : errorConteos ? '—' : obtenerConteoPendientes(espacio.id) }}</span>
+                      </button>
+                    } @else {
+                      <span class="sin-dato">—</span>
+                    }
+                  </td>
+                  <td class="sin-dato">—</td>
+                  <td class="sin-dato">—</td>
+                  <td class="sin-dato">—</td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
+
+@if (espacioSeleccionado) {
+  <app-solicitudes-espacio-modal
+    [espacio]="espacioSeleccionado"
+    [solicitudes]="solicitudes"
+    [cargando]="cargandoSolicitudes"
+    [error]="errorSolicitudes"
+    (cerrar)="cerrarSolicitudes()"
+    (reintentar)="verSolicitudes(espacioSeleccionado)"
+  />
+}

@@ -36,7 +36,7 @@
       <div class="separador"></div>
 
       @if (usuarioActual?.rol === 'APROBADOR' || usuarioActual?.rol === 'ADMIN') {
-        <a>
+        <a routerLink="/admin/espacios">
           <i class="pi pi-shield"></i>
           <span>Panel Admin</span>
         </a>
@@ -160,19 +160,6 @@
               Reservar ahora
             </button>
 
-            @if (puedeVerSolicitudesPendientes) {
-              <button
-                type="button"
-                class="accion-solicitudes"
-                (click)="abrirSolicitudes(espacio)"
-                [attr.aria-label]="'Ver solicitudes pendientes de ' + espacio.nombre"
-                [title]="errorConteosPendientes ? 'No se pudo cargar el contador' : ''"
-              >
-                <i class="pi pi-eye" aria-hidden="true"></i>
-                <span>Ver solicitudes · {{ cargandoConteosPendientes ? '...' : errorConteosPendientes ? '—' : obtenerConteoPendientes(espacio.id) }}</span>
-              </button>
-            }
-
           </article>
 
           }
@@ -195,13 +182,3 @@
 
 }
 
-@if (modalSolicitudesAbierto && espacioSolicitudesSeleccionado) {
-  <app-solicitudes-espacio-modal
-    [espacio]="espacioSolicitudesSeleccionado"
-    [solicitudes]="solicitudesDelEspacio"
-    [cargando]="cargandoSolicitudes"
-    [error]="errorSolicitudes"
-    (cerrar)="cerrarSolicitudes()"
-    (reintentar)="cargarSolicitudesDelEspacio()"
-  />
-}
