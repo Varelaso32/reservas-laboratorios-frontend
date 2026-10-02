@@ -1,0 +1,78 @@
+<div class="overlay">
+  <section
+    class="modal-solicitudes"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="titulo-solicitudes"
+  >
+    <header class="modal-solicitudes-header">
+      <div>
+        <h2 id="titulo-solicitudes">Solicitudes pendientes</h2>
+        <p>{{ espacio?.nombre }}</p>
+      </div>
+      <button
+        type="button"
+        class="cerrar-solicitudes"
+        aria-label="Cerrar solicitudes pendientes"
+        (click)="cerrarModal()"
+      >
+        <i class="pi pi-times" aria-hidden="true"></i>
+      </button>
+    </header>
+
+    @if (cargando) {
+      <p class="feedback-solicitudes" role="status">Cargando solicitudes pendientes...</p>
+    } @else if (error) {
+      <div class="feedback-solicitudes error-solicitudes" role="alert">
+        <p>{{ error }}</p>
+        <button type="button" (click)="reintentarCarga()">Reintentar</button>
+      </div>
+    } @else if (solicitudes.length === 0) {
+      <p class="feedback-solicitudes" role="status">No hay solicitudes pendientes para este espacio.</p>
+    } @else {
+      <div class="tabla-solicitudes">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Solicitante</th>
+              <th scope="col">Espacio</th>
+              <th scope="col">Inicio</th>
+              <th scope="col">Fin</th>
+              <th scope="col">Asistentes</th>
+              <th scope="col">Creada</th>
+              <th scope="col">Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (solicitud of solicitudes; track solicitud.id) {
+              <tr [class.fila-vencida]="solicitud.vencida">
+                <td>
+                  <strong>{{ solicitud.solicitante.nombre }}</strong>
+                  <small>{{ solicitud.solicitante.email }}</small>
+                </td>
+                <td>
+                  <strong>{{ solicitud.espacio.nombre }}</strong>
+                  @if (solicitud.espacio.ubicacion) {
+                    <small>{{ solicitud.espacio.ubicacion }}</small>
+                  }
+                </td>
+                <td>{{ formatearFechaHora(solicitud.inicio) }}</td>
+                <td>{{ formatearFechaHora(solicitud.fin) }}</td>
+                <td>{{ solicitud.asistentes }}</td>
+                <td>{{ formatearFechaHora(solicitud.creada_en) }}</td>
+                <td>
+                  <div class="estado-solicitud">
+                    <span class="estado-pendiente">{{ solicitud.estado }}</span>
+                    @if (solicitud.vencida) {
+                      <span class="estado-vencida">Vencida</span>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+</div>

@@ -28,13 +28,6 @@
         <span>Espacios</span>
       </a>
 
-      @if (usuarioActual?.rol === 'APROBADOR') {
-        <a routerLink="/solicitudes-pendientes">
-          <i class="pi pi-inbox"></i>
-          <span>Pendientes</span>
-        </a>
-      }
-
       <a>
         <i class="pi pi-cog"></i>
         <span>Configuración</span>
@@ -167,6 +160,19 @@
               Reservar ahora
             </button>
 
+            @if (puedeVerSolicitudesPendientes) {
+              <button
+                type="button"
+                class="accion-solicitudes"
+                (click)="abrirSolicitudes(espacio)"
+                [attr.aria-label]="'Ver solicitudes pendientes de ' + espacio.nombre"
+                [title]="errorConteosPendientes ? 'No se pudo cargar el contador' : ''"
+              >
+                <i class="pi pi-eye" aria-hidden="true"></i>
+                <span>Ver solicitudes · {{ cargandoConteosPendientes ? '...' : errorConteosPendientes ? '—' : obtenerConteoPendientes(espacio.id) }}</span>
+              </button>
+            }
+
           </article>
 
           }
@@ -187,4 +193,15 @@
     (cerrar)="cerrarReserva()"
   />
 
+}
+
+@if (modalSolicitudesAbierto && espacioSolicitudesSeleccionado) {
+  <app-solicitudes-espacio-modal
+    [espacio]="espacioSolicitudesSeleccionado"
+    [solicitudes]="solicitudesDelEspacio"
+    [cargando]="cargandoSolicitudes"
+    [error]="errorSolicitudes"
+    (cerrar)="cerrarSolicitudes()"
+    (reintentar)="cargarSolicitudesDelEspacio()"
+  />
 }
