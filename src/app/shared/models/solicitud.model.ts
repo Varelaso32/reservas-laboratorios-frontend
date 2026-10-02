@@ -1,4 +1,34 @@
+import { Cargo } from '../../core/models/auth.models';
+import { TipoEspacio } from './espacio.model';
+
 export type EstadoSolicitud = 'PENDIENTE' | 'APROBADA' | 'RECHAZADA' | 'CANCELADA';
+
+export interface SolicitanteResumen {
+  id: number;
+  nombre: string;
+  email: string;
+  cargo: Cargo | null;
+}
+
+export interface EspacioResumen {
+  id: number;
+  nombre: string;
+  tipo: TipoEspacio;
+  capacidad: number;
+  ubicacion: string | null;
+}
+
+export interface SolicitudPendiente {
+  id: number;
+  estado: EstadoSolicitud;
+  solicitante: SolicitanteResumen;
+  espacio: EspacioResumen;
+  inicio: string;
+  fin: string;
+  asistentes: number;
+  creada_en: string;
+  vencida: boolean;
+}
 
 export interface SolicitudCrear {
   espacio_id: number;

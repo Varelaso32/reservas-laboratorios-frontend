@@ -3,6 +3,8 @@ import { LoginComponent } from './features/auth/pages/login/login.component';
 import { authGuard } from './core/guards/auth.guard';
 import { EspaciosComponent } from './features/espacios/pages/espacios/espacios.component';
 import { SolicitudReservaComponent } from './features/reservas/pages/solicitud-reserva/solicitud-reserva.component';
+import { SolicitudesPendientesComponent } from './features/solicitudes/pages/solicitudes-pendientes/solicitudes-pendientes.component';
+import { roleGuard } from './core/guards/role.guard';
 
 export const routes: Routes = [
   {
@@ -22,5 +24,11 @@ export const routes: Routes = [
   {
     path: 'solicitud-reserva',
     component: SolicitudReservaComponent
+  },
+  {
+    path: 'solicitudes-pendientes',
+    component: SolicitudesPendientesComponent,
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['APROBADOR'] }
   }
 ];

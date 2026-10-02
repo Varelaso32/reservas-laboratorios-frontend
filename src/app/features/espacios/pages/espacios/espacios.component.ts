@@ -1,5 +1,5 @@
 import { Component, OnInit, inject } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { SolicitudReservaComponent } from '../../../reservas/pages/solicitud-reserva/solicitud-reserva.component';
 import { Espacio } from '../../../../shared/models/espacio.model';
 import { EspaciosService } from '../../../../core/services/espacios.service';
@@ -8,7 +8,7 @@ import { obtenerMensajeErrorApi } from '../../../../core/utils/api-error.util';
 
 @Component({
   selector: 'app-espacios',
-  imports: [SolicitudReservaComponent],
+  imports: [SolicitudReservaComponent, RouterLink],
   templateUrl: './espacios.component.html',
   styleUrl: './espacios.component.scss'
 })

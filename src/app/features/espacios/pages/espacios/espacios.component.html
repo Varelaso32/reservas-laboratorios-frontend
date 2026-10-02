@@ -28,6 +28,13 @@
         <span>Espacios</span>
       </a>
 
+      @if (usuarioActual?.rol === 'APROBADOR') {
+        <a routerLink="/solicitudes-pendientes">
+          <i class="pi pi-inbox"></i>
+          <span>Pendientes</span>
+        </a>
+      }
+
       <a>
         <i class="pi pi-cog"></i>
         <span>Configuración</span>
@@ -35,10 +42,12 @@
 
       <div class="separador"></div>
 
-      <a>
-        <i class="pi pi-shield"></i>
-        <span>Panel Admin</span>
-      </a>
+      @if (usuarioActual?.rol === 'APROBADOR' || usuarioActual?.rol === 'ADMIN') {
+        <a>
+          <i class="pi pi-shield"></i>
+          <span>Panel Admin</span>
+        </a>
+      }
 
     </nav>
 

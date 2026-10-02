@@ -90,6 +90,32 @@ describe('EspaciosComponent', () => {
     expect(sidebar.textContent).not.toContain(['Juan', 'Rodríguez'].join(' '));
   });
 
+  it('hides Panel Admin and Pendientes from SOLICITANTE', () => {
+    const menuText = (fixture.nativeElement.querySelector('.menu') as HTMLElement).textContent ?? '';
+    expect(menuText).not.toContain('Panel Admin');
+    expect(menuText).not.toContain('Pendientes');
+  });
+
+  it('shows Panel Admin and Pendientes to APROBADOR', () => {
+    const authService = TestBed.inject(AuthService);
+    authService.obtenerUsuarioActual()!.rol = 'APROBADOR';
+    fixture.detectChanges();
+
+    const menuText = (fixture.nativeElement.querySelector('.menu') as HTMLElement).textContent ?? '';
+    expect(menuText).toContain('Panel Admin');
+    expect(menuText).toContain('Pendientes');
+  });
+
+  it('shows Panel Admin but not Pendientes to ADMIN', () => {
+    const authService = TestBed.inject(AuthService);
+    authService.obtenerUsuarioActual()!.rol = 'ADMIN';
+    fixture.detectChanges();
+
+    const menuText = (fixture.nativeElement.querySelector('.menu') as HTMLElement).textContent ?? '';
+    expect(menuText).toContain('Panel Admin');
+    expect(menuText).not.toContain('Pendientes');
+  });
+
   it('shows only the role when cargo is null, without null or dangling separators', () => {
     const authService = TestBed.inject(AuthService);
     authService.obtenerUsuarioActual()!.cargo = null;

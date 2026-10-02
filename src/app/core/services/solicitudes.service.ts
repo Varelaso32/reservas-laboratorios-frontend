@@ -1,9 +1,13 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { API_BASE_URL } from '../config/api.config';
-import { SolicitudCrear, SolicitudCreada } from '../../shared/models/solicitud.model';
+import {
+  SolicitudCrear,
+  SolicitudCreada,
+  SolicitudPendiente
+} from '../../shared/models/solicitud.model';
 
 @Injectable({ providedIn: 'root' })
 export class SolicitudesService {
@@ -11,5 +15,16 @@ export class SolicitudesService {
 
   crearSolicitud(solicitud: SolicitudCrear): Observable<SolicitudCreada> {
     return this.http.post<SolicitudCreada>(`${API_BASE_URL}/solicitudes/`, solicitud);
+  }
+
+  consultarPendientes(espacioId?: number): Observable<SolicitudPendiente[]> {
+    let params = new HttpParams();
+    if (espacioId !== undefined) {
+      params = params.set('espacio_id', espacioId);
+    }
+
+    return this.http.get<SolicitudPendiente[]>(`${API_BASE_URL}/solicitudes/pendientes`, {
+      params
+    });
   }
 }
