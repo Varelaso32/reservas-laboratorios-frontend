@@ -109,17 +109,57 @@
 
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  min-width: 0;
+}
+
+.usuario-info {
+  flex: 1;
+  min-width: 0;
 
   strong {
     display: block;
     font-size: 11px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   small {
     display: block;
     color: #a0a1a7;
     font-size: 9px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.logout {
+  width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #777984;
+  cursor: pointer;
+
+  i {
+    font-size: 14px;
+  }
+
+  &:hover {
+    background: #f1f1f3;
+    color: #17181c;
+  }
+
+  &:focus-visible {
+    outline: 2px solid #697093;
+    outline-offset: 1px;
   }
 }
 
@@ -268,7 +308,7 @@
   align-items: flex-start;
   gap: 7px;
 
-  padding-right: 65px;
+  padding-right: 82px;
 
   font-size: 12px;
   line-height: 1.2;
@@ -289,9 +329,9 @@
 }
 
 
-/* ESTADOS */
+/* TIPO DE ESPACIO */
 
-.estado {
+.tipo-espacio {
   position: absolute;
   top: 0;
   right: 0;
@@ -302,24 +342,8 @@
   border-radius: 10px;
 
   white-space: nowrap;
-}
-
-
-.estado.disponible {
-  color: #278d49;
-  background: #eaf8ef;
-}
-
-
-.estado.ocupado {
-  color: #d94343;
-  background: #fdecec;
-}
-
-
-.estado.reservado {
-  color: #ad7513;
-  background: #fff5db;
+  color: #696b73;
+  background: #f1f1f3;
 }
 
 
@@ -338,30 +362,25 @@
 }
 
 
-/* EQUIPAMIENTO */
+.estado-lista {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 28px 16px;
+  color: #777984;
+  font-size: 13px;
+  text-align: center;
+}
 
-.equipamiento {
-  margin-top: 10px;
+.error-carga {
+  p {
+    margin: 0 0 12px;
+    color: #a12d2d;
+  }
 
-  display: flex;
-
-  flex-wrap: wrap;
-
-  gap: 5px;
-
-
-  span {
-    background: #f5f5f6;
-
-    border: 1px solid #eeeeef;
-
-    border-radius: 4px;
-
-    padding: 3px 6px;
-
-    font-size: 9px;
-
-    color: #70727a;
+  button {
+    width: auto;
+    margin: 0;
+    padding: 8px 18px;
   }
 }
 

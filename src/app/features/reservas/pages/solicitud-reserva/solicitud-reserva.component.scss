@@ -22,6 +22,10 @@
 .modal {
   width: 100%;
   max-width: 580px;
+  max-height: calc(100vh - 24px);
+
+  display: flex;
+  flex-direction: column;
 
   background: white;
 
@@ -34,6 +38,7 @@
 }
 
 .modal-header {
+  flex-shrink: 0;
   padding: 26px 30px 22px;
 
   border-bottom: 1px solid #ececef;
@@ -82,6 +87,9 @@
 }
 
 .modal-body {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
   padding: 28px 30px;
 
   display: flex;
@@ -167,6 +175,7 @@
 }
 
 .modal-footer {
+  flex-shrink: 0;
   padding: 0 30px 26px;
 
   display: grid;
@@ -223,4 +232,14 @@
 .no-disponible {
   background: #fff0f0;
   color: #c83c3c;
+}
+
+.consultando {
+  background: #f3f3f5;
+  color: #696b73;
+}
+
+.confirmar:disabled {
+  cursor: wait;
+  opacity: 0.7;
 }
