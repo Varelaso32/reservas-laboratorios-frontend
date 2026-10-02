@@ -1,23 +1,312 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideRouter } from '@angular/router';
+import { API_BASE_URL } from '../../../../core/config/api.config';
+import { AuthService } from '../../../../core/services/auth.service';
+import { SolicitudesService } from '../../../../core/services/solicitudes.service';
+import { Espacio } from '../../../../shared/models/espacio.model';
+import { SolicitudCreada } from '../../../../shared/models/solicitud.model';
 
 import { SolicitudReservaComponent } from './solicitud-reserva.component';
 
 describe('SolicitudReservaComponent', () => {
   let component: SolicitudReservaComponent;
   let fixture: ComponentFixture<SolicitudReservaComponent>;
+  let httpTestingController: HttpTestingController;
+  let sesionActiva: boolean;
+  let usuario: { id: number; nombre: string; email: string; rol: 'SOLICITANTE'; cargo: 'ESTUDIANTE' };
+  const espacio: Espacio = {
+    id: 17,
+    nombre: 'Laboratorio de Redes',
+    tipo: 'LABORATORIO',
+    capacidad: 25,
+    ubicacion: 'Bloque A, piso 2'
+  };
 
   beforeEach(async () => {
+    sesionActiva = true;
+    usuario = {
+      id: 4,
+      nombre: 'Solicitante de prueba',
+      email: 'estudiante@reservas.test',
+      rol: 'SOLICITANTE',
+      cargo: 'ESTUDIANTE'
+    };
+
     await TestBed.configureTestingModule({
-      imports: [SolicitudReservaComponent]
+      imports: [SolicitudReservaComponent],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        {
+          provide: AuthService,
+          useValue: {
+            tieneSesionActiva: () => sesionActiva,
+            obtenerUsuarioActual: () => sesionActiva ? usuario : null
+          }
+        }
+      ]
     })
     .compileComponents();
 
+    httpTestingController = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(SolicitudReservaComponent);
     component = fixture.componentInstance;
+    component.espacio = espacio;
     fixture.detectChanges();
   });
 
+  afterEach(() => httpTestingController.verify());
+
+  function completarFormulario(): void {
+    component.formReserva.setValue({
+      fecha: '2026-10-05',
+      horaInicio: '08:00',
+      horaFin: '10:00',
+      asistentes: 10,
+      proposito: 'Prueba de disponibilidad'
+    });
+  }
+
+  function obtenerConsultaDisponibilidad() {
+    return httpTestingController.expectOne(
+      request => request.url === `${API_BASE_URL}/espacios/17/disponibilidad`
+    );
+  }
+
+  function obtenerSolicitudPost() {
+    return httpTestingController.expectOne(`${API_BASE_URL}/solicitudes/`);
+  }
+
+  function respuestaCreada(): SolicitudCreada {
+    return {
+      id: 301,
+      espacio_id: 17,
+      espacio_nombre: espacio.nombre,
+      inicio: '2026-10-05T08:00:00-05:00',
+      fin: '2026-10-05T10:00:00-05:00',
+      proposito: 'Prueba de disponibilidad',
+      asistentes: 10,
+      equipamiento: null,
+      estado: 'PENDIENTE',
+      motivo_rechazo: null,
+      fecha_decision: null,
+      creada_en: '2026-10-02T09:00:00-05:00',
+      mensaje: 'Solicitud #301 registrada. Quedó en estado PENDIENTE.'
+    };
+  }
+
+  function responderDisponibilidad(disponible: boolean): void {
+    obtenerConsultaDisponibilidad().flush({
+      espacio_id: 17,
+      disponible,
+      mensaje: disponible ? 'Disponible' : 'No disponible'
+    });
+  }
+
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  it('does not request availability when any query field is incomplete', () => {
+    component.formReserva.controls.fecha.setValue('2026-10-05');
+    component.formReserva.controls.horaInicio.setValue('08:00');
+
+    component.validarDisponibilidad();
+
+    httpTestingController.expectNone(() => true);
+    expect(component.mensajeDisponibilidad).toBe('');
+  });
+
+  it('requests availability using the selected id and exact date and time params', () => {
+    completarFormulario();
+
+    component.validarDisponibilidad();
+
+    const request = obtenerConsultaDisponibilidad();
+    expect(request.request.method).toBe('GET');
+    expect(request.request.params.get('fecha')).toBe('2026-10-05');
+    expect(request.request.params.get('hora_inicio')).toBe('08:00');
+    expect(request.request.params.get('hora_fin')).toBe('10:00');
+    request.flush({ espacio_id: 17, disponible: true, mensaje: 'Disponible según backend' });
+
+    expect(component.disponible).toBeTrue();
+    expect(component.mensajeDisponibilidad).toBe('Disponible según backend');
+    expect(component.estadoDisponibilidad).toBe('disponible');
+  });
+
+  it('shows the backend message with the unavailable style when the space is occupied', () => {
+    completarFormulario();
+    component.validarDisponibilidad();
+
+    obtenerConsultaDisponibilidad().flush({
+      espacio_id: 17,
+      disponible: false,
+      mensaje: 'El espacio ya se encuentra ocupado en ese horario'
+    });
+    fixture.detectChanges();
+
+    expect(component.disponible).toBeFalse();
+    expect(component.mensajeDisponibilidad).toBe('El espacio ya se encuentra ocupado en ese horario');
+    expect(fixture.nativeElement.querySelector('.disponibilidad').classList).toContain('no-disponible');
+  });
+
+  it('rejects an invalid time range locally without making a request', () => {
+    component.formReserva.patchValue({
+      fecha: '2026-10-05',
+      horaInicio: '10:00',
+      horaFin: '10:00'
+    });
+
+    component.validarDisponibilidad();
+
+    httpTestingController.expectNone(() => true);
+    expect(component.disponible).toBeFalse();
+    expect(component.estadoDisponibilidad).toBe('hora-invalida');
+    expect(component.mensajeDisponibilidad).toContain('posterior');
+  });
+
+  it('revalidates on confirmation and blocks the temporary flow when unavailable', () => {
+    completarFormulario();
+    const closeSpy = spyOn(component.cerrar, 'emit');
+    const alertSpy = spyOn(window, 'alert');
+
+    component.confirmarReserva();
+
+    obtenerConsultaDisponibilidad().flush({
+      espacio_id: 17,
+      disponible: false,
+      mensaje: 'No disponible'
+    });
+
+    expect(component.disponible).toBeFalse();
+    expect(closeSpy).not.toHaveBeenCalled();
+    expect(alertSpy).not.toHaveBeenCalled();
+  });
+
+  it('does not consider an HTTP error available or continue confirmation', () => {
+    completarFormulario();
+    const closeSpy = spyOn(component.cerrar, 'emit');
+
+    component.confirmarReserva();
+
+    obtenerConsultaDisponibilidad().flush(
+      { detail: 'Error del servidor' },
+      { status: 500, statusText: 'Internal Server Error' }
+    );
+
+    expect(component.disponible).toBeNull();
+    expect(component.estadoDisponibilidad).toBe('error');
+    expect(component.mensajeDisponibilidad).toBe('Error del servidor');
+    expect(closeSpy).not.toHaveBeenCalled();
+    expect(component.formReserva.controls.fecha.value).toBe('2026-10-05');
+  });
+
+  it('does not send when the user has no active session', () => {
+    sesionActiva = false;
+    completarFormulario();
+
+    component.disponible = true;
+    component.confirmarReserva();
+
+    httpTestingController.expectNone(() => true);
+    expect(component.mensajeDisponibilidad).toContain('Inicia sesión');
+  });
+
+  it('blocks assistants above the selected space capacity before requesting availability', () => {
+    completarFormulario();
+    component.formReserva.controls.asistentes.setValue(26);
+
+    component.confirmarReserva();
+
+    httpTestingController.expectNone(() => true);
+    expect(component.formReserva.controls.asistentes.hasError('capacidadExcedida')).toBeTrue();
+  });
+
+  it('blocks past reservations using Colombia local time before making requests', () => {
+    component.formReserva.setValue({
+      fecha: '2000-01-01',
+      horaInicio: '08:00',
+      horaFin: '10:00',
+      asistentes: 10,
+      proposito: 'Solicitud pasada'
+    });
+
+    component.confirmarReserva();
+
+    httpTestingController.expectNone(() => true);
+    expect(component.mensajeDisponibilidad).toContain('fecha u hora pasada');
+  });
+
+  it('sends only backend fields and uses the real space id after an available response', () => {
+    completarFormulario();
+    component.seleccionarActividad('Examen');
+    const closeSpy = spyOn(component.cerrar, 'emit');
+    const alertSpy = spyOn(window, 'alert');
+
+    component.confirmarReserva();
+    responderDisponibilidad(true);
+
+    const post = obtenerSolicitudPost();
+    expect(post.request.method).toBe('POST');
+    expect(post.request.body).toEqual({
+      espacio_id: 17,
+      fecha: '2026-10-05',
+      hora_inicio: '08:00',
+      hora_fin: '10:00',
+      proposito: 'Prueba de disponibilidad',
+      asistentes: 10
+    });
+    expect(post.request.body.solicitante).toBeUndefined();
+    expect(post.request.body.tipoActividad).toBeUndefined();
+    expect(post.request.body.equipamiento).toBeUndefined();
+    expect(closeSpy).not.toHaveBeenCalled();
+
+    const respuesta = respuestaCreada();
+    post.flush(respuesta, { status: 201, statusText: 'Created' });
+
+    expect(alertSpy).toHaveBeenCalledOnceWith(respuesta.mensaje);
+    expect(component.formReserva.controls.fecha.value).toBeNull();
+    expect(component.estadoDisponibilidad).toBe('neutro');
+    expect(component.mensajeDisponibilidad).toBe('');
+    expect(closeSpy).toHaveBeenCalledOnceWith();
+  });
+
+  it('keeps the modal and form open when creation returns HTTP 409', () => {
+    completarFormulario();
+    const closeSpy = spyOn(component.cerrar, 'emit');
+    spyOn(window, 'alert');
+
+    component.confirmarReserva();
+    responderDisponibilidad(true);
+    obtenerSolicitudPost().flush(
+      { detail: 'El espacio ya está ocupado en ese horario' },
+      { status: 409, statusText: 'Conflict' }
+    );
+
+    expect(closeSpy).not.toHaveBeenCalled();
+    expect(component.formReserva.controls.fecha.value).toBe('2026-10-05');
+    expect(component.mensajeDisponibilidad).toBe('El espacio ya está ocupado en ese horario');
+  });
+
+  it('does not make duplicate availability or creation requests on repeated confirmation', () => {
+    completarFormulario();
+    const solicitudesService = TestBed.inject(SolicitudesService);
+    const createSpy = spyOn(solicitudesService, 'crearSolicitud').and.callThrough();
+    spyOn(window, 'alert');
+
+    component.confirmarReserva();
+    component.confirmarReserva();
+    responderDisponibilidad(true);
+    const post = obtenerSolicitudPost();
+    component.confirmarReserva();
+
+    expect(createSpy).toHaveBeenCalledTimes(1);
+    const respuesta = respuestaCreada();
+    post.flush(respuesta, { status: 201, statusText: 'Created' });
+
+    expect(createSpy).toHaveBeenCalledTimes(1);
   });
 });

@@ -8,8 +8,13 @@
         <h2>Reservar espacio</h2>
 
         <p class="espacio-seleccionado">
-          <span class="punto"></span>
-          {{ espacioNombre }} · Piso {{ piso }}
+          @if (espacio; as espacioActual) {
+            <span class="punto"></span>
+            {{ espacioActual.nombre }} · {{ espacioActual.tipo }}
+            @if (espacioActual.ubicacion) {
+              · {{ espacioActual.ubicacion }}
+            }
+          }
         </p>
       </div>
 
@@ -33,19 +38,22 @@
 
           <input
             type="text"
-            placeholder="Ej. Prof. María González"
-            formControlName="solicitante"
+            [value]="usuarioActual?.nombre ?? ''"
+            [placeholder]="usuarioActual ? '' : 'Inicia sesión para solicitar'"
+            readonly
           />
-
-          @if (
-            formReserva.controls.solicitante.invalid &&
-            formReserva.controls.solicitante.touched
-          ) {
-            <small class="error">
-              El solicitante es obligatorio.
-            </small>
-          }
         </div>
+
+        @if (!puedeCrearSolicitud) {
+          <p class="error sesion-requerida" role="alert">
+            @if (usuarioActual) {
+              Solo una cuenta SOLICITANTE puede enviar esta solicitud.
+            } @else {
+              Inicia sesión para enviar una solicitud.
+              <a routerLink="/login">Iniciar sesión</a>
+            }
+          </p>
+        }
 
 
         <!-- FECHA / INICIO / FIN -->
@@ -113,14 +121,16 @@
         </div>
 
         @if (mensajeDisponibilidad) {
-  <div
-    class="disponibilidad"
-    [class.disponible]="disponible"
-    [class.no-disponible]="!disponible"
-  >
-    {{ mensajeDisponibilidad }}
-  </div>
-}
+          <div
+            class="disponibilidad"
+            [class.disponible]="estadoDisponibilidad === 'disponible'"
+            [class.no-disponible]="estadoDisponibilidad === 'no-disponible' || estadoDisponibilidad === 'hora-invalida' || estadoDisponibilidad === 'error'"
+            [class.consultando]="estadoDisponibilidad === 'consultando'"
+            role="status"
+          >
+            {{ mensajeDisponibilidad }}
+          </div>
+        }
 
         <!-- ASISTENTES -->
         <div class="campo">
@@ -129,6 +139,7 @@
           <input
             type="number"
             min="1"
+            [max]="espacio?.capacidad ?? null"
             placeholder="Ej. 20"
             formControlName="asistentes"
           />
@@ -139,6 +150,10 @@
           ) {
             <small class="error">
               Debe ingresar al menos 1 asistente.
+            </small>
+          } @else if (formReserva.controls.asistentes.hasError('capacidadExcedida')) {
+            <small class="error">
+              La cantidad de asistentes supera la capacidad del espacio ({{ espacio?.capacidad }}).
             </small>
           }
         </div>
@@ -220,7 +235,7 @@
             formReserva.controls.proposito.touched
           ) {
             <small class="error">
-              El propósito es obligatorio.
+              El propósito es obligatorio y debe contener hasta 500 caracteres.
             </small>
           }
 
@@ -243,9 +258,16 @@
         <button
           type="button"
           class="confirmar"
+          [disabled]="cargandoDisponibilidad || cargandoSolicitud || !puedeCrearSolicitud"
           (click)="confirmarReserva()"
         >
-          Confirmar reserva
+          @if (cargandoDisponibilidad) {
+            Validando...
+          } @else if (cargandoSolicitud) {
+            Enviando...
+          } @else {
+            Confirmar reserva
+          }
         </button>
 
       </div>

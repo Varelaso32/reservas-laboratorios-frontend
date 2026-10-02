@@ -1,0 +1,283 @@
+:host {
+  display: block;
+  min-height: 100vh;
+  color: #101116;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  padding: 20px 22px 26px;
+  background: #fff;
+}
+
+.auth-content {
+  width: min(100%, 316px);
+}
+
+.auth-heading {
+  min-height: 51px;
+
+  h1 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1.25;
+  }
+
+  p {
+    margin: 6px 0 0;
+    color: #697093;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+}
+
+.signup-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+
+  h1 {
+    font-size: 18px;
+  }
+}
+
+.back-button {
+  width: 18px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  margin: -1px 0 0 -17px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #697093;
+  cursor: pointer;
+
+  svg {
+    width: 15px;
+    height: 15px;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 2;
+  }
+}
+
+.auth-tabs {
+  height: 33px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
+  margin: 21px 0 20px;
+  padding: 3px;
+  border-radius: 8px;
+  background: #f1f1f3;
+
+  button {
+    min-width: 0;
+    border: 0;
+    border-radius: 6px;
+    outline: none;
+    background: transparent;
+    color: #697093;
+    cursor: pointer;
+    font: inherit;
+    font-size: 11px;
+
+    &:focus-visible {
+      outline: 2px solid #697093;
+      outline-offset: 1px;
+    }
+  }
+
+  button.active {
+    background: #fff;
+    box-shadow: 0 1px 4px rgb(20 22 32 / 12%);
+    color: #101116;
+    font-weight: 600;
+  }
+}
+
+.field {
+  display: grid;
+  gap: 7px;
+  margin-bottom: 13px;
+
+  label {
+    font-size: 11px;
+    font-weight: 500;
+  }
+
+  > input,
+  .password-wrap input {
+    width: 100%;
+    height: 36px;
+    padding: 0 12px;
+    border: 1px solid #d2d2d5;
+    border-radius: 7px;
+    outline: none;
+    background: #fafafa;
+    color: #101116;
+    font: inherit;
+    font-size: 12px;
+
+    &::placeholder {
+      color: #9397a7;
+      opacity: 1;
+    }
+
+    &:focus {
+      border-color: #8186a5;
+      box-shadow: 0 0 0 2px rgb(105 112 147 / 12%);
+    }
+
+    &[aria-invalid='true'] {
+      border-color: #b42318;
+    }
+  }
+}
+
+.password-wrap {
+  position: relative;
+
+  input {
+    padding-right: 40px !important;
+  }
+}
+
+.visibility-button {
+  position: absolute;
+  top: 0;
+  right: 3px;
+  width: 34px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #73788e;
+  cursor: pointer;
+
+  svg {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.7;
+  }
+}
+
+.field-error,
+.form-message {
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.field-error,
+.error-message {
+  color: #b42318;
+}
+
+.info-message {
+  color: #515775;
+}
+
+.form-message {
+  margin: 0 0 12px;
+  white-space: pre-line;
+}
+
+.forgot-link {
+  display: block;
+  margin: -2px 0 18px auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #68709b;
+  font: inherit;
+  font-size: 11px;
+
+  &:disabled {
+    cursor: default;
+    opacity: 1;
+  }
+}
+
+.primary-button {
+  width: 100%;
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 6px;
+  background: #0d0d13;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+
+  &:hover:not(:disabled) {
+    background: #292a31;
+  }
+
+  &:disabled {
+    cursor: wait;
+    opacity: 0.72;
+  }
+}
+
+.spinner {
+  width: 13px;
+  height: 13px;
+  border: 2px solid rgb(255 255 255 / 45%);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 700ms linear infinite;
+}
+
+.approval-note {
+  margin: 11px 0 0;
+  color: #a2a4ad;
+  font-size: 9px;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.version-note {
+  margin-top: 18px;
+  color: #9a9caf;
+  font-size: 10px;
+  text-align: center;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+  }
+}
+
+.auth-content button:focus-visible {
+  outline: 2px solid #697093;
+  outline-offset: 1px;
+}

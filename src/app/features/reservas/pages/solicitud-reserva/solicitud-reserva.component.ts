@@ -1,51 +1,53 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output, inject } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import {
   FormControl,
   FormGroup,
   ReactiveFormsModule,
   Validators
 } from '@angular/forms';
+import { Subscription } from 'rxjs';
+import { AuthService } from '../../../../core/services/auth.service';
+import { EspaciosService } from '../../../../core/services/espacios.service';
+import { SolicitudesService } from '../../../../core/services/solicitudes.service';
+import { obtenerMensajeErrorApi } from '../../../../core/utils/api-error.util';
+import { Espacio } from '../../../../shared/models/espacio.model';
+import { SolicitudCrear } from '../../../../shared/models/solicitud.model';
+
+type EstadoDisponibilidad =
+  | 'neutro'
+  | 'consultando'
+  | 'disponible'
+  | 'no-disponible'
+  | 'hora-invalida'
+  | 'error';
 
 @Component({
   selector: 'app-solicitud-reserva',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, RouterLink],
   templateUrl: './solicitud-reserva.component.html',
   styleUrl: './solicitud-reserva.component.scss'
 })
 export class SolicitudReservaComponent {
+  private readonly authService = inject(AuthService);
+  private readonly espaciosService = inject(EspaciosService);
+  private readonly solicitudesService = inject(SolicitudesService);
+  private consultaSubscription: Subscription | null = null;
+  private ultimaConsultaKey: string | null = null;
 
-  @Input() espacioNombre = '';
-  @Input() piso = 0;
+  @Input() espacio: Espacio | null = null;
 
   @Output() cerrar = new EventEmitter<void>();
 
   tipoActividad = 'Clase';
 
   mensajeDisponibilidad = '';
-  disponible = true;
-
-  reservasMock = [
-    {
-      espacio: 'Lab. Redes',
-      fecha: '2026-09-16',
-      horaInicio: '09:00',
-      horaFin: '11:00'
-    },
-    {
-      espacio: 'Sala de Reuniones A',
-      fecha: '2026-09-16',
-      horaInicio: '14:00',
-      horaFin: '16:00'
-    }
-  ];
+  disponible: boolean | null = null;
+  estadoDisponibilidad: EstadoDisponibilidad = 'neutro';
+  cargandoDisponibilidad = false;
+  cargandoSolicitud = false;
 
   formReserva = new FormGroup({
-
-    solicitante: new FormControl(
-      '',
-      Validators.required
-    ),
-
     fecha: new FormControl(
       '',
       Validators.required
@@ -65,16 +67,36 @@ export class SolicitudReservaComponent {
       null,
       [
         Validators.required,
-        Validators.min(1)
+        Validators.min(1),
+        control => {
+          const capacidad = this.espacio?.capacidad;
+          return capacidad !== undefined && control.value !== null && control.value > capacidad
+            ? { capacidadExcedida: true }
+            : null;
+        }
       ]
     ),
 
     proposito: new FormControl(
       '',
-      Validators.required
+      [Validators.required, Validators.maxLength(500), Validators.pattern(/\S/)]
     )
 
   });
+
+  get espacioNombre(): string {
+    return this.espacio?.nombre ?? '';
+  }
+
+  get usuarioActual() {
+    return this.authService.tieneSesionActiva()
+      ? this.authService.obtenerUsuarioActual()
+      : null;
+  }
+
+  get puedeCrearSolicitud(): boolean {
+    return this.usuarioActual?.rol === 'SOLICITANTE';
+  }
 
   seleccionarActividad(tipo: string) {
     this.tipoActividad = tipo;
@@ -84,138 +106,180 @@ export class SolicitudReservaComponent {
     this.cerrar.emit();
   }
 
-  validarDisponibilidad() {
-
-    const fecha = this.formReserva.value.fecha;
-    const horaInicio = this.formReserva.value.horaInicio;
-    const horaFin = this.formReserva.value.horaFin;
-
-    console.log('--- VALIDACIÓN DE DISPONIBILIDAD ---');
-    console.log('Espacio seleccionado:', this.espacioNombre);
-    console.log('Fecha seleccionada:', fecha);
-    console.log('Hora inicio:', horaInicio);
-    console.log('Hora fin:', horaFin);
-
-    if (!fecha || !horaInicio || !horaFin) {
-
-      this.mensajeDisponibilidad = '';
-
+  validarDisponibilidad(): void {
+    if (this.cargandoSolicitud) {
       return;
     }
-
-    const existeCruce = this.reservasMock.some(reserva => {
-
-      const mismoEspacio =
-        reserva.espacio === this.espacioNombre;
-
-      const mismaFecha =
-        reserva.fecha === fecha;
-
-      const cruzaHorario =
-        horaInicio < reserva.horaFin &&
-        horaFin > reserva.horaInicio;
-
-      console.log('Comparando contra:', reserva);
-      console.log('Mismo espacio:', mismoEspacio);
-      console.log('Misma fecha:', mismaFecha);
-      console.log('Cruza horario:', cruzaHorario);
-
-      return (
-        mismoEspacio &&
-        mismaFecha &&
-        cruzaHorario
-      );
-    });
-
-    console.log('¿Existe cruce?:', existeCruce);
-
-    if (existeCruce) {
-
-      this.disponible = false;
-
-      this.mensajeDisponibilidad =
-        'Este espacio no está disponible en el horario seleccionado.';
-
-    } else {
-
-      this.disponible = true;
-
-      this.mensajeDisponibilidad =
-        'El espacio está disponible en este horario.';
-    }
-
+    this.consultarDisponibilidad(false, false);
   }
 
-  confirmarReserva() {
+  confirmarReserva(): void {
+    if (this.cargandoDisponibilidad || this.cargandoSolicitud) {
+      return;
+    }
 
+    if (!this.usuarioActual) {
+      this.mostrarErrorFormulario('Inicia sesión para enviar una solicitud.');
+      return;
+    }
+
+    if (!this.puedeCrearSolicitud) {
+      this.mostrarErrorFormulario('Solo una cuenta con rol SOLICITANTE puede crear solicitudes.');
+      return;
+    }
+
+    if (!this.espacio || this.espacio.id === undefined || this.espacio.id === null) {
+      this.mostrarErrorFormulario('Selecciona un espacio válido antes de continuar.');
+      return;
+    }
+
+    this.formReserva.controls.asistentes.updateValueAndValidity();
     if (this.formReserva.invalid) {
-
       this.formReserva.markAllAsTouched();
-
-      alert(
-        'Completa todos los campos obligatorios antes de continuar.'
-      );
-
+      this.mostrarErrorFormulario('Revisa los campos obligatorios y sus validaciones.');
       return;
     }
 
-    this.validarDisponibilidad();
-
-    if (!this.disponible) {
-
-      alert(
-        'No es posible reservar este espacio porque el horario seleccionado no está disponible.'
-      );
-
+    const { fecha, horaInicio } = this.formReserva.getRawValue();
+    if (fecha && horaInicio && this.fechaHoraEnPasadoEnColombia(fecha, horaInicio)) {
+      this.mostrarErrorFormulario('No se puede solicitar un espacio en una fecha u hora pasada.');
       return;
     }
 
-    const solicitudMock = {
+    this.consultarDisponibilidad(true, true);
+  }
 
-      espacio: this.espacioNombre,
+  private consultarDisponibilidad(forzar: boolean, continuarAlConfirmar: boolean): void {
+    const { fecha, horaInicio, horaFin } = this.formReserva.getRawValue();
 
-      piso: this.piso,
+    if (!this.espacio?.id || !fecha || !horaInicio || !horaFin) {
+      this.cancelarConsulta();
+      this.ultimaConsultaKey = null;
+      this.disponible = null;
+      this.estadoDisponibilidad = 'neutro';
+      this.mensajeDisponibilidad = '';
+      return;
+    }
 
-      solicitante:
-        this.formReserva.value.solicitante,
+    if (horaFin <= horaInicio) {
+      this.cancelarConsulta();
+      this.ultimaConsultaKey = null;
+      this.disponible = false;
+      this.estadoDisponibilidad = 'hora-invalida';
+      this.mensajeDisponibilidad = 'La hora de fin debe ser posterior a la hora de inicio.';
+      return;
+    }
 
-      fecha:
-        this.formReserva.value.fecha,
+    const consultaKey = `${this.espacio.id}|${fecha}|${horaInicio}|${horaFin}`;
+    if (!forzar && consultaKey === this.ultimaConsultaKey) {
+      return;
+    }
 
-      horaInicio:
-        this.formReserva.value.horaInicio,
+    this.consultaSubscription?.unsubscribe();
+    this.ultimaConsultaKey = consultaKey;
+    this.disponible = null;
+    this.estadoDisponibilidad = 'consultando';
+    this.cargandoDisponibilidad = true;
+    this.mensajeDisponibilidad = 'Consultando disponibilidad...';
 
-      horaFin:
-        this.formReserva.value.horaFin,
+    this.consultaSubscription = this.espaciosService
+      .consultarDisponibilidad(this.espacio.id, fecha, horaInicio, horaFin)
+      .subscribe({
+        next: respuesta => {
+          this.disponible = respuesta.disponible;
+          this.estadoDisponibilidad = respuesta.disponible ? 'disponible' : 'no-disponible';
+          this.mensajeDisponibilidad = respuesta.mensaje;
+          this.cargandoDisponibilidad = false;
+          this.consultaSubscription = null;
 
-      asistentes:
-        this.formReserva.value.asistentes,
+          if (continuarAlConfirmar && respuesta.disponible) {
+            this.crearSolicitudReal();
+          }
+        },
+        error: error => {
+          this.disponible = null;
+          this.estadoDisponibilidad = 'error';
+          this.mensajeDisponibilidad =
+            obtenerMensajeErrorApi(error) ?? 'No se pudo verificar la disponibilidad. Intenta nuevamente.';
+          this.cargandoDisponibilidad = false;
+          this.consultaSubscription = null;
+          this.ultimaConsultaKey = null;
+        }
+      });
+  }
 
-      tipoActividad:
-        this.tipoActividad,
+  private cancelarConsulta(): void {
+    this.consultaSubscription?.unsubscribe();
+    this.consultaSubscription = null;
+    this.cargandoDisponibilidad = false;
+  }
 
-      proposito:
-        this.formReserva.value.proposito
+  private crearSolicitudReal(): void {
+    const espacio = this.espacio;
+    const { fecha, horaInicio, horaFin, asistentes, proposito } = this.formReserva.getRawValue();
+    if (!espacio || !fecha || !horaInicio || !horaFin || asistentes === null || !proposito) {
+      this.mostrarErrorFormulario('Completa los datos de la solicitud antes de continuar.');
+      return;
+    }
 
+    const solicitud: SolicitudCrear = {
+      espacio_id: espacio.id,
+      fecha,
+      hora_inicio: horaInicio,
+      hora_fin: horaFin,
+      proposito: proposito.trim(),
+      asistentes
     };
 
-    console.log(
-      'Solicitud creada:',
-      solicitudMock
-    );
-
-    alert(
-      'Solicitud de reserva creada correctamente.'
-    );
-
-    this.formReserva.reset();
-
-    this.tipoActividad = 'Clase';
-
-    this.mensajeDisponibilidad = '';
-
-    this.disponible = true;
-
-    this.cerrarModal();
+    this.cargandoSolicitud = true;
+    this.solicitudesService.crearSolicitud(solicitud).subscribe({
+      next: respuesta => {
+        this.cargandoSolicitud = false;
+        alert(respuesta.mensaje);
+        this.formReserva.reset();
+        this.tipoActividad = 'Clase';
+        this.limpiarEstadoDisponibilidad();
+        this.cerrarModal();
+      },
+      error: error => {
+        this.cargandoSolicitud = false;
+        this.disponible = null;
+        this.estadoDisponibilidad = 'error';
+        this.mensajeDisponibilidad =
+          obtenerMensajeErrorApi(error) ?? 'No se pudo crear la solicitud. Intenta nuevamente.';
+      }
+    });
   }
+
+  private mostrarErrorFormulario(mensaje: string): void {
+    this.disponible = false;
+    this.estadoDisponibilidad = 'error';
+    this.mensajeDisponibilidad = mensaje;
+  }
+
+  private limpiarEstadoDisponibilidad(): void {
+    this.mensajeDisponibilidad = '';
+    this.disponible = null;
+    this.estadoDisponibilidad = 'neutro';
+    this.ultimaConsultaKey = null;
+  }
+
+  private fechaHoraEnPasadoEnColombia(fecha: string, hora: string): boolean {
+    const partes = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Bogota',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hourCycle: 'h23'
+    }).formatToParts(new Date());
+    const valores = Object.fromEntries(partes.map(parte => [parte.type, parte.value]));
+    const fechaActual = `${valores['year']}-${valores['month']}-${valores['day']}`;
+    const horaActual = `${valores['hour']}:${valores['minute']}:${valores['second']}`;
+
+    return fecha < fechaActual || (fecha === fechaActual && `${hora}:00` < horaActual);
+  }
+
 }
