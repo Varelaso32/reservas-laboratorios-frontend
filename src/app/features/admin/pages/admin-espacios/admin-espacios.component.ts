@@ -9,6 +9,7 @@ import { EspaciosService } from '../../../../core/services/espacios.service';
 import { SolicitudesService } from '../../../../core/services/solicitudes.service';
 import { obtenerMensajeErrorApi } from '../../../../core/utils/api-error.util';
 import { Espacio } from '../../../../shared/models/espacio.model';
+import { obtenerColorIdentificadorEspacio } from '../../../../shared/utils/espacio-color.util';
 import { EstadoDetalleSolicitud, SolicitudPendiente } from '../../../../shared/models/solicitud.model';
 import { SolicitudesEspacioModalComponent } from '../../../solicitudes/components/solicitudes-espacio-modal/solicitudes-espacio-modal.component';
 
@@ -40,6 +41,9 @@ export class AdminEspaciosComponent implements OnDestroy, OnInit {
   errorSolicitudes: string | null = null;
   detallesSolicitudes = new Map<number, EstadoDetalleSolicitud>();
   aprobandoSolicitudId: number | null = null;
+  solicitudRechazoId: number | null = null;
+  rechazandoSolicitudId: number | null = null;
+  private rechazoSubscription: Subscription | null = null;
 
   get usuarioActual() {
     return this.authService.obtenerUsuarioActual();
@@ -117,6 +121,10 @@ export class AdminEspaciosComponent implements OnDestroy, OnInit {
     return this.conteosPendientes.get(espacioId) ?? 0;
   }
 
+  obtenerColorEspacio(espacioId: number): string {
+    return obtenerColorIdentificadorEspacio(espacioId);
+  }
+
   verSolicitudes(espacio: Espacio): void {
     if (!this.puedeConsultarSolicitudes) {
       return;
@@ -166,7 +174,7 @@ export class AdminEspaciosComponent implements OnDestroy, OnInit {
     this.aprobacionSubscription = this.solicitudesService.aprobarSolicitud(solicitudId).subscribe({
       next: () => {
         this.messageService.add({
-          key: 'solicitud-aprobada',
+          key: 'solicitudes-acciones',
           severity: 'success',
           summary: 'Reserva aprobada',
           detail: 'La solicitud fue aprobada correctamente.',
@@ -187,7 +195,7 @@ export class AdminEspaciosComponent implements OnDestroy, OnInit {
             ? 'La solicitud ya no puede aprobarse.'
             : 'No se pudo aprobar la solicitud. Intenta nuevamente.');
         this.messageService.add({
-          key: 'solicitud-aprobada',
+          key: 'solicitudes-acciones',
           severity: conflicto ? 'warn' : 'error',
           summary: conflicto ? 'No se pudo aprobar la solicitud' : 'Error al aprobar la solicitud',
           detail: mensaje,
@@ -199,8 +207,78 @@ export class AdminEspaciosComponent implements OnDestroy, OnInit {
     });
   }
 
+  abrirDialogoRechazo(solicitudId: number): void {
+    if (
+      this.puedeConsultarSolicitudes &&
+      this.rechazandoSolicitudId === null &&
+      this.solicitudes.some(solicitud => solicitud.id === solicitudId && solicitud.estado === 'PENDIENTE')
+    ) {
+      this.solicitudRechazoId = solicitudId;
+    }
+  }
+
+  cancelarRechazo(): void {
+    if (this.rechazandoSolicitudId === null) {
+      this.solicitudRechazoId = null;
+    }
+  }
+
+  rechazarSolicitud(solicitudId: number, motivo: string): void {
+    if (
+      !this.puedeConsultarSolicitudes ||
+      this.rechazandoSolicitudId !== null ||
+      this.solicitudRechazoId !== solicitudId ||
+      !this.solicitudes.some(solicitud => solicitud.id === solicitudId && solicitud.estado === 'PENDIENTE')
+    ) {
+      return;
+    }
+
+    const espacio = this.espacioSeleccionado;
+    const motivoLimpio = motivo.trim();
+    if (!espacio || !motivoLimpio || motivoLimpio.length > 500) {
+      return;
+    }
+
+    this.rechazandoSolicitudId = solicitudId;
+    this.rechazoSubscription = this.solicitudesService.rechazarSolicitud(solicitudId, motivoLimpio).subscribe({
+      next: () => {
+        this.messageService.add({
+          key: 'solicitudes-acciones',
+          severity: 'success',
+          summary: 'Solicitud rechazada',
+          detail: 'La solicitud fue rechazada correctamente.',
+          life: 5000
+        });
+        this.solicitudRechazoId = null;
+        this.rechazandoSolicitudId = null;
+        this.cargarConteosPendientes();
+        if (this.espacioSeleccionado?.id === espacio.id) {
+          this.verSolicitudes(espacio);
+        }
+        this.rechazoSubscription = null;
+      },
+      error: error => {
+        const conflicto = error instanceof HttpErrorResponse && error.status === 409;
+        const mensaje = obtenerMensajeErrorApi(error) ??
+          (conflicto
+            ? 'La solicitud ya no está pendiente.'
+            : 'No se pudo rechazar la solicitud. Intenta nuevamente.');
+        this.messageService.add({
+          key: 'solicitudes-acciones',
+          severity: conflicto ? 'warn' : 'error',
+          summary: conflicto ? 'No se pudo rechazar la solicitud' : 'Error al rechazar la solicitud',
+          detail: mensaje,
+          life: 5000
+        });
+        this.rechazandoSolicitudId = null;
+        this.rechazoSubscription = null;
+      }
+    });
+  }
+
   cerrarSolicitudes(): void {
     this.cancelarCargasDetalle();
+    this.cancelarRechazo();
     this.espacioSeleccionado = null;
     this.solicitudes = [];
     this.errorSolicitudes = null;
@@ -209,6 +287,7 @@ export class AdminEspaciosComponent implements OnDestroy, OnInit {
   ngOnDestroy(): void {
     this.cancelarCargasDetalle();
     this.aprobacionSubscription?.unsubscribe();
+    this.rechazoSubscription?.unsubscribe();
   }
 
   private cargarDetallesSolicitudes(solicitudes: SolicitudPendiente[]): void {

@@ -117,6 +117,18 @@ describe('AdminEspaciosComponent', () => {
     };
   }
 
+  function abrirModalConDetalle(): void {
+    (fixture.nativeElement.querySelector('.ver-solicitudes') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    httpTestingController.expectOne(request =>
+      request.url === `${API_BASE_URL}/solicitudes/pendientes` &&
+      request.params.get('espacio_id') === '42'
+    ).flush([solicitudPendiente]);
+    fixture.detectChanges();
+    httpTestingController.expectOne(`${API_BASE_URL}/solicitudes/51`).flush(respuestaDetalle());
+    fixture.detectChanges();
+  }
+
   it('renders the admin table and obtains one global count for APROBADOR', () => {
     crearPagina('APROBADOR');
     cargarEspacios();
@@ -127,8 +139,7 @@ describe('AdminEspaciosComponent', () => {
     pendientes.flush([
       solicitudPendiente,
       { ...solicitudPendiente, id: 52, vencida: false },
-      { ...solicitudPendiente, id: 53, estado: 'APROBADA' },
-      { ...solicitudPendiente, id: 54, espacio: { ...espacios[1] } }
+      { ...solicitudPendiente, id: 53, estado: 'APROBADA' }
     ]);
     fixture.detectChanges();
 
@@ -147,8 +158,23 @@ describe('AdminEspaciosComponent', () => {
     expect(fixture.nativeElement.querySelector('.nuevo-espacio').disabled).toBeTrue();
 
     const solicitudes = Array.from(fixture.nativeElement.querySelectorAll('tbody tr')) as HTMLElement[];
-    expect(solicitudes[0].querySelectorAll('.sin-dato').length).toBe(4);
-    expect(solicitudes[1].textContent).toContain('—');
+    expect(solicitudes[0].querySelectorAll('.sin-dato').length).toBe(2);
+    expect(solicitudes[0].querySelector('.ver-solicitudes.con-pendientes')?.textContent)
+      .toContain('Ver solicitudes · 2');
+    expect(solicitudes[1].querySelector('.ver-solicitudes.con-pendientes')).toBeNull();
+    expect(solicitudes[1].querySelector('.ver-solicitudes')?.textContent?.trim())
+      .toBe('Ver solicitudes');
+    expect(solicitudes[0].querySelector('.estado-no-disponible')?.textContent?.trim()).toBe('—');
+    expect(solicitudes[0].querySelector('.identificador-color')?.getAttribute('style'))
+      .toContain('background-color');
+    expect(solicitudes[0].querySelector('.codigo-espacio')).toBeNull();
+    expect(solicitudes[0].querySelectorAll('.accion-espacio').length).toBe(2);
+    for (const action of Array.from(solicitudes[0].querySelectorAll('.accion-espacio')) as HTMLButtonElement[]) {
+      expect(action.disabled).toBeTrue();
+      expect(action.getAttribute('aria-disabled')).toBe('true');
+      expect(action.querySelector('.pi-pencil, .pi-trash')).toBeTruthy();
+    }
+    expect(fixture.nativeElement.querySelector('.nuevo-espacio').classList.contains('nuevo-espacio')).toBeTrue();
   });
 
   it('shows pending requests as inline cards and loads details only for the selected space', () => {
@@ -201,8 +227,8 @@ describe('AdminEspaciosComponent', () => {
     expect(modal.querySelector('.boton-detalle')).toBeNull();
     expect(modal.querySelector('.volver-solicitudes')).toBeNull();
     expect(modal.querySelector('.boton-aprobar')).toBeTruthy();
-    expect(modal.textContent).not.toMatch(/rechazar|tipo de actividad|REQ-\d+/i);
-    expect(modal.querySelector('.boton-rechazar')).toBeNull();
+    expect(modal.textContent).not.toMatch(/tipo de actividad|REQ-\d+/i);
+    expect(modal.querySelector('.boton-rechazar')?.textContent).toContain('Rechazar');
   });
 
   it('shows the admin table for ADMIN without calling pending requests or showing the action', () => {
@@ -214,7 +240,8 @@ describe('AdminEspaciosComponent', () => {
 
     expect(fixture.nativeElement.textContent).toContain('Panel Admin');
     expect(fixture.nativeElement.querySelector('.ver-solicitudes')).toBeNull();
-    expect(fixture.nativeElement.querySelectorAll('.sin-dato').length).toBe(10);
+    expect(fixture.nativeElement.querySelectorAll('.sin-dato').length).toBe(6);
+    expect(fixture.nativeElement.querySelectorAll('.accion-espacio').length).toBe(4);
     expect(fixture.nativeElement.querySelector('.menu a[routerLink="/espacios"]')).toBeTruthy();
   });
 
@@ -309,7 +336,7 @@ describe('AdminEspaciosComponent', () => {
 
     const messageService = TestBed.inject(MessageService);
     expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
-      key: 'solicitud-aprobada',
+      key: 'solicitudes-acciones',
       severity: 'success',
       summary: 'Reserva aprobada',
       detail: 'La solicitud fue aprobada correctamente.'
@@ -360,7 +387,7 @@ describe('AdminEspaciosComponent', () => {
     expect((fixture.nativeElement.querySelector('.boton-aprobar') as HTMLButtonElement).disabled)
       .toBeFalse();
     expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
-      key: 'solicitud-aprobada',
+      key: 'solicitudes-acciones',
       severity: 'warn',
       detail: 'La solicitud está vencida.'
     }));
@@ -393,9 +420,175 @@ describe('AdminEspaciosComponent', () => {
 
     expect(fixture.nativeElement.querySelectorAll('.card-solicitud').length).toBe(1);
     expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
-      key: 'solicitud-aprobada',
+      key: 'solicitudes-acciones',
       severity: 'error',
       detail: 'Error al procesar la aprobación.'
+    }));
+  });
+
+  it('opens the reject dialog without sending a request and validates the required reason', () => {
+    crearPagina('APROBADOR');
+    cargarEspacios();
+    httpTestingController.expectOne(`${API_BASE_URL}/solicitudes/pendientes`).flush([solicitudPendiente]);
+    abrirModalConDetalle();
+
+    (fixture.nativeElement.querySelector('.boton-rechazar') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    const dialog = fixture.nativeElement.querySelector('.dialogo-rechazo') as HTMLElement;
+    const textarea = dialog.querySelector('textarea') as HTMLTextAreaElement;
+    const confirmButton = dialog.querySelector('.boton-confirmar-rechazo') as HTMLButtonElement;
+    expect(dialog.getAttribute('role')).toBe('alertdialog');
+    expect(dialog.textContent).toContain('¿Confirmar rechazo de esta solicitud?');
+    expect(dialog.textContent).toContain('Motivo del rechazo');
+    expect(confirmButton.disabled).toBeTrue();
+    httpTestingController.expectNone(`${API_BASE_URL}/solicitudes/51/rechazar`);
+
+    textarea.value = '   ';
+    textarea.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(confirmButton.disabled).toBeTrue();
+
+    textarea.value = 'x'.repeat(501);
+    textarea.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(confirmButton.disabled).toBeTrue();
+
+    textarea.value = '  Falta disponibilidad  ';
+    textarea.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(confirmButton.disabled).toBeFalse();
+    expect(dialog.textContent).toContain('24 / 500');
+    httpTestingController.expectNone(`${API_BASE_URL}/solicitudes/51/rechazar`);
+  });
+
+  it('cancels rejection without a request and clears the reason', () => {
+    crearPagina('APROBADOR');
+    cargarEspacios();
+    httpTestingController.expectOne(`${API_BASE_URL}/solicitudes/pendientes`).flush([solicitudPendiente]);
+    abrirModalConDetalle();
+    (fixture.nativeElement.querySelector('.boton-rechazar') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    const textarea = fixture.nativeElement.querySelector('#motivo-rechazo') as HTMLTextAreaElement;
+    textarea.value = 'Motivo que se debe limpiar';
+    textarea.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('.boton-cancelar-rechazo') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.dialogo-rechazo')).toBeNull();
+    httpTestingController.expectNone(`${API_BASE_URL}/solicitudes/51/rechazar`);
+    (fixture.nativeElement.querySelector('.boton-rechazar') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect((fixture.nativeElement.querySelector('#motivo-rechazo') as HTMLTextAreaElement).value).toBe('');
+  });
+
+  it('rejects with the trimmed reason and real id, blocks duplicates, then refreshes pending data', () => {
+    crearPagina('APROBADOR');
+    cargarEspacios();
+    httpTestingController.expectOne(`${API_BASE_URL}/solicitudes/pendientes`).flush([solicitudPendiente]);
+    abrirModalConDetalle();
+    (fixture.nativeElement.querySelector('.boton-rechazar') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    const textarea = fixture.nativeElement.querySelector('#motivo-rechazo') as HTMLTextAreaElement;
+    textarea.value = '  Falta disponibilidad  ';
+    textarea.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    const confirmButton = fixture.nativeElement.querySelector('.boton-confirmar-rechazo') as HTMLButtonElement;
+    confirmButton.click();
+    fixture.detectChanges();
+    expect(confirmButton.disabled).toBeTrue();
+    confirmButton.click();
+
+    const rechazo = httpTestingController.expectOne(`${API_BASE_URL}/solicitudes/51/rechazar`);
+    expect(rechazo.request.method).toBe('POST');
+    expect(rechazo.request.body).toEqual({ motivo: 'Falta disponibilidad' });
+    httpTestingController.expectNone(`${API_BASE_URL}/solicitudes/51/rechazar`);
+    rechazo.flush({ mensaje: 'Solicitud rechazada', solicitud: { ...respuestaDetalle(), estado: 'RECHAZADA' } });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.dialogo-rechazo')).toBeNull();
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      key: 'solicitudes-acciones',
+      severity: 'success',
+      summary: 'Solicitud rechazada',
+      detail: 'La solicitud fue rechazada correctamente.'
+    }));
+    const globalRefresh = httpTestingController.expectOne(request =>
+      request.url === `${API_BASE_URL}/solicitudes/pendientes` &&
+      !request.params.has('espacio_id')
+    );
+    const spaceRefresh = httpTestingController.expectOne(request =>
+      request.url === `${API_BASE_URL}/solicitudes/pendientes` &&
+      request.params.get('espacio_id') === '42'
+    );
+    globalRefresh.flush([]);
+    spaceRefresh.flush([]);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('0 pendientes');
+    expect(fixture.nativeElement.querySelector('.card-solicitud')).toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('Rechazada');
+  });
+
+  it('keeps the request and rejection dialog open after a 409 using backend detail', () => {
+    crearPagina('APROBADOR');
+    cargarEspacios();
+    httpTestingController.expectOne(`${API_BASE_URL}/solicitudes/pendientes`).flush([solicitudPendiente]);
+    abrirModalConDetalle();
+    (fixture.nativeElement.querySelector('.boton-rechazar') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const textarea = fixture.nativeElement.querySelector('#motivo-rechazo') as HTMLTextAreaElement;
+    textarea.value = 'No disponible';
+    textarea.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('.boton-confirmar-rechazo') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    httpTestingController.expectOne(`${API_BASE_URL}/solicitudes/51/rechazar`).flush(
+      { detail: 'La solicitud ya fue procesada.' },
+      { status: 409, statusText: 'Conflict' }
+    );
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.dialogo-rechazo')).toBeTruthy();
+    expect(fixture.nativeElement.querySelectorAll('.card-solicitud').length).toBe(1);
+    expect(fixture.nativeElement.textContent).toContain('1 pendiente');
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      key: 'solicitudes-acciones',
+      severity: 'warn',
+      detail: 'La solicitud ya fue procesada.'
+    }));
+    httpTestingController.expectNone(request =>
+      request.url === `${API_BASE_URL}/solicitudes/pendientes`
+    );
+  });
+
+  it('keeps the request and open dialog after a rejection server error', () => {
+    crearPagina('APROBADOR');
+    cargarEspacios();
+    httpTestingController.expectOne(`${API_BASE_URL}/solicitudes/pendientes`).flush([solicitudPendiente]);
+    abrirModalConDetalle();
+    (fixture.nativeElement.querySelector('.boton-rechazar') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const textarea = fixture.nativeElement.querySelector('#motivo-rechazo') as HTMLTextAreaElement;
+    textarea.value = 'No disponible';
+    textarea.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('.boton-confirmar-rechazo') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    httpTestingController.expectOne(`${API_BASE_URL}/solicitudes/51/rechazar`).flush(
+      { detail: 'Error de servicio.' },
+      { status: 500, statusText: 'Internal Server Error' }
+    );
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.dialogo-rechazo')).toBeTruthy();
+    expect(fixture.nativeElement.querySelectorAll('.card-solicitud').length).toBe(1);
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      severity: 'error',
+      detail: 'Error de servicio.'
     }));
   });
 

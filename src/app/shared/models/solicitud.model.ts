@@ -70,6 +70,15 @@ export interface AprobacionSolicitud {
   reserva: ReservaGenerada;
 }
 
+export interface RechazoIn {
+  motivo: string;
+}
+
+export interface RechazoSolicitud {
+  mensaje: string;
+  solicitud: SolicitudDetalle;
+}
+
 export interface SolicitudCrear {
   espacio_id: number;
   fecha: string;

@@ -112,7 +112,16 @@
             } @else {
               @for (espacio of espacios; track espacio.id) {
                 <tr>
-                  <td class="nombre-espacio">{{ espacio.nombre }}</td>
+                  <td>
+                    <div class="espacio-identidad">
+                      <span
+                        class="identificador-color"
+                        aria-hidden="true"
+                        [style.background-color]="obtenerColorEspacio(espacio.id)"
+                      ></span>
+                      <strong class="nombre-espacio">{{ espacio.nombre }}</strong>
+                    </div>
+                  </td>
                   <td>{{ espacio.ubicacion ?? '—' }}</td>
                   <td>{{ espacio.capacidad }} pers.</td>
                   <td class="sin-dato">—</td>
@@ -124,17 +133,47 @@
                         (click)="verSolicitudes(espacio)"
                         [attr.aria-label]="'Ver solicitudes pendientes de ' + espacio.nombre"
                         [title]="errorConteos ? 'No se pudo cargar el contador' : ''"
+                        [class.con-pendientes]="!cargandoConteos && !errorConteos && obtenerConteoPendientes(espacio.id) > 0"
                       >
                         <i class="pi pi-eye" aria-hidden="true"></i>
-                        <span>Ver solicitudes · {{ cargandoConteos ? '…' : errorConteos ? '—' : obtenerConteoPendientes(espacio.id) }}</span>
+                        <span>
+                          @if (cargandoConteos) {
+                            Ver solicitudes · …
+                          } @else if (errorConteos) {
+                            Ver solicitudes
+                          } @else if (obtenerConteoPendientes(espacio.id) > 0) {
+                            Ver solicitudes · {{ obtenerConteoPendientes(espacio.id) }}
+                          } @else {
+                            Ver solicitudes
+                          }
+                        </span>
                       </button>
                     } @else {
                       <span class="sin-dato">—</span>
                     }
                   </td>
                   <td class="sin-dato">—</td>
-                  <td class="sin-dato">—</td>
-                  <td class="sin-dato">—</td>
+                  <td class="estado-no-disponible" aria-label="Estado no disponible">—</td>
+                  <td class="acciones-espacio">
+                    <button
+                      type="button"
+                      class="accion-espacio"
+                      aria-label="Editar espacio no disponible"
+                      aria-disabled="true"
+                      disabled
+                    >
+                      <i class="pi pi-pencil" aria-hidden="true"></i>
+                    </button>
+                    <button
+                      type="button"
+                      class="accion-espacio"
+                      aria-label="Eliminar espacio no disponible"
+                      aria-disabled="true"
+                      disabled
+                    >
+                      <i class="pi pi-trash" aria-hidden="true"></i>
+                    </button>
+                  </td>
                 </tr>
               }
             }
@@ -153,8 +192,13 @@
     [error]="errorSolicitudes"
     [detalles]="detallesSolicitudes"
     [aprobandoSolicitudId]="aprobandoSolicitudId"
+    [solicitudRechazoId]="solicitudRechazoId"
+    [rechazandoSolicitudId]="rechazandoSolicitudId"
     (cerrar)="cerrarSolicitudes()"
     (reintentar)="verSolicitudes(espacioSeleccionado)"
     (aprobar)="aprobarSolicitud($event)"
+    (solicitarRechazo)="abrirDialogoRechazo($event)"
+    (cancelarRechazo)="cancelarRechazo()"
+    (rechazar)="rechazarSolicitud($event.solicitudId, $event.motivo)"
   />
 }

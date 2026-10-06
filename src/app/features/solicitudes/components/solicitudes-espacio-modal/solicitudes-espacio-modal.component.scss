@@ -115,18 +115,29 @@
   color: #9a9ca3;
   font-size: 9px;
 }
-.boton-aprobar {
+.acciones-card-solicitud { display: flex; align-items: center; gap: 8px; }
+.boton-rechazar, .boton-aprobar {
   min-height: 30px;
   padding: 0 13px;
-  border: 0;
   border-radius: 5px;
-  background: #0b0b11;
-  color: #fff;
   cursor: pointer;
   font: inherit;
   font-size: 10px;
   font-weight: 600;
   white-space: nowrap;
+}
+.boton-rechazar {
+  border: 1px solid #e8dede;
+  background: #fff;
+  color: #b33737;
+}
+.boton-rechazar:hover:not(:disabled) { border-color: #d7bcbc; background: #fffafa; }
+.boton-rechazar:disabled { opacity: .6; cursor: wait; }
+.boton-rechazar:focus-visible { outline: 2px solid #b33737; outline-offset: 2px; }
+.boton-aprobar {
+  border: 0;
+  background: #0b0b11;
+  color: #fff;
 }
 .boton-aprobar:hover:not(:disabled) { background: #292a31; }
 .boton-aprobar:disabled { opacity: .6; cursor: wait; }
@@ -135,12 +146,97 @@
 .estado-carga-detalle { color: #777984; }
 .error-detalle { color: #a12d2d; }
 
+.dialogo-rechazo-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(17, 18, 23, .42);
+}
+.dialogo-rechazo {
+  width: min(390px, 100%);
+  padding: 22px 24px 20px;
+  border: 1px solid #ececef;
+  border-radius: 9px;
+  background: #fff;
+  box-shadow: 0 16px 42px rgba(0, 0, 0, .2);
+
+  h2 { margin: 12px 0 0; color: #25262d; font-size: 14px; font-weight: 600; }
+  > p { margin: 6px 0 18px; color: #858791; font-size: 11px; }
+  > label { display: block; margin-bottom: 6px; color: #454751; font-size: 10px; font-weight: 600; }
+  textarea {
+    display: block;
+    width: 100%;
+    min-height: 72px;
+    padding: 9px 10px;
+    resize: vertical;
+    border: 1px solid #dedee2;
+    border-radius: 5px;
+    background: #fff;
+    color: #25262d;
+    font: inherit;
+    font-size: 11px;
+
+    &:focus { border-color: #858791; outline: 2px solid rgba(105, 112, 147, .16); }
+    &[aria-invalid="true"] { border-color: #e2b8b8; }
+  }
+}
+.icono-advertencia {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 50%;
+  background: #fff2d3;
+  color: #98660c;
+  font-size: 15px;
+}
+.ayuda-motivo {
+  display: flex;
+  min-height: 18px;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 4px;
+  color: #858791;
+  font-size: 9px;
+}
+.ayuda-motivo [role="alert"] { color: #a14b4b; }
+.acciones-rechazo { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+.boton-cancelar-rechazo, .boton-confirmar-rechazo {
+  min-height: 31px;
+  padding: 0 13px;
+  border-radius: 5px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 600;
+}
+.boton-cancelar-rechazo {
+  border: 1px solid #dedee2;
+  background: #fff;
+  color: #555761;
+
+  &:hover:not(:disabled) { background: #f7f7f8; }
+}
+.boton-confirmar-rechazo {
+  border: 1px solid #b33737;
+  background: #b33737;
+  color: #fff;
+
+  &:hover:not(:disabled) { background: #992d2d; }
+  &:disabled { opacity: .55; cursor: not-allowed; }
+}
+.boton-cancelar-rechazo:disabled { opacity: .55; cursor: not-allowed; }
+
 :host ::ng-deep .p-toast-message-success {
   border-color: #d9eadc;
   background: #fff;
   color: #25262d;
 }
 :host ::ng-deep .p-toast-message-success .p-toast-message-icon { color: #34734a; }
+:host ::ng-deep .p-toast { z-index: 1200 !important; }
 
 .feedback-solicitudes {
   margin: 0;

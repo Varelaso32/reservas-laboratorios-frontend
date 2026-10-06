@@ -1,5 +1,5 @@
 <div class="overlay">
-  <p-toast key="solicitud-aprobada" position="bottom-right" />
+  <p-toast key="solicitudes-acciones" position="bottom-right" />
   <section
     class="modal-solicitudes"
     role="dialog"
@@ -15,7 +15,7 @@
         type="button"
         class="cerrar-solicitudes"
         aria-label="Cerrar solicitudes pendientes"
-        [disabled]="aprobandoSolicitudId !== null"
+        [disabled]="aprobandoSolicitudId !== null || rechazandoSolicitudId !== null"
         (click)="cerrarModal()"
       >
         <i class="pi pi-times" aria-hidden="true"></i>
@@ -91,19 +91,29 @@
 
               <footer class="card-solicitud-footer">
                 <span>Creada {{ formatearFechaHora(solicitud.creada_en) }}</span>
-                <button
-                  type="button"
-                  class="boton-aprobar"
-                  [disabled]="aprobandoSolicitudId !== null"
-                  [attr.aria-busy]="aprobandoSolicitudId === solicitud.id"
-                  (click)="aprobar.emit(solicitud.id)"
-                >
-                  @if (aprobandoSolicitudId === solicitud.id) {
-                    Aprobando...
-                  } @else {
-                    Aprobar reserva
-                  }
-                </button>
+                <div class="acciones-card-solicitud">
+                  <button
+                    type="button"
+                    class="boton-rechazar"
+                    [disabled]="aprobandoSolicitudId !== null || rechazandoSolicitudId !== null"
+                    (click)="abrirRechazo(solicitud.id)"
+                  >
+                    Rechazar
+                  </button>
+                  <button
+                    type="button"
+                    class="boton-aprobar"
+                    [disabled]="aprobandoSolicitudId !== null || rechazandoSolicitudId !== null"
+                    [attr.aria-busy]="aprobandoSolicitudId === solicitud.id"
+                    (click)="aprobar.emit(solicitud.id)"
+                  >
+                    @if (aprobandoSolicitudId === solicitud.id) {
+                      Aprobando...
+                    } @else {
+                      Aprobar reserva
+                    }
+                  </button>
+                </div>
               </footer>
             </article>
           }
@@ -111,4 +121,64 @@
       </section>
     }
   </section>
+
+  @if (solicitudRechazoId !== null) {
+    <div class="dialogo-rechazo-overlay">
+      <section
+        class="dialogo-rechazo"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="titulo-rechazo"
+        aria-describedby="descripcion-rechazo"
+      >
+        <div class="icono-advertencia" aria-hidden="true">
+          <i class="pi pi-exclamation-triangle"></i>
+        </div>
+        <h2 id="titulo-rechazo">¿Confirmar rechazo de esta solicitud?</h2>
+        <p id="descripcion-rechazo">Esta acción no se puede deshacer.</p>
+
+        <label for="motivo-rechazo">Motivo del rechazo</label>
+        <textarea
+          id="motivo-rechazo"
+          rows="3"
+          maxlength="500"
+          [formControl]="motivoRechazo"
+          [attr.aria-invalid]="motivoRechazo.dirty && motivoRechazo.invalid"
+          aria-describedby="ayuda-motivo contador-motivo"
+        ></textarea>
+        <div class="ayuda-motivo">
+          @if (motivoRechazo.dirty && motivoRechazo.invalid) {
+            <span id="ayuda-motivo" role="alert">Escribe un motivo de hasta 500 caracteres.</span>
+          } @else {
+            <span id="ayuda-motivo"></span>
+          }
+          <span id="contador-motivo">{{ motivoRechazo.value.length }} / 500</span>
+        </div>
+
+        <footer class="acciones-rechazo">
+          <button
+            type="button"
+            class="boton-cancelar-rechazo"
+            [disabled]="rechazandoSolicitudId !== null"
+            (click)="cancelarDialogoRechazo()"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            class="boton-confirmar-rechazo"
+            [disabled]="motivoRechazo.invalid || !motivoRechazo.value.trim() || rechazandoSolicitudId !== null"
+            [attr.aria-busy]="rechazandoSolicitudId === solicitudRechazoId"
+            (click)="confirmarRechazo()"
+          >
+            @if (rechazandoSolicitudId === solicitudRechazoId) {
+              Rechazando...
+            } @else {
+              Rechazar
+            }
+          </button>
+        </footer>
+      </section>
+    </div>
+  }
 </div>
