@@ -70,6 +70,10 @@ describe('EspaciosComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('LABORATORIO');
     expect(fixture.nativeElement.textContent).toContain('Bloque A, piso 2');
     expect(fixture.nativeElement.textContent).toContain('25 personas');
+    expect(fixture.nativeElement.textContent).toContain('Reservar ahora');
+    expect(fixture.nativeElement.querySelector('.tarjeta')?.textContent).not.toMatch(
+      /solicitudes|pendientes/i
+    );
 
     const botonReservar = fixture.nativeElement.querySelector(
       '.tarjeta button'
