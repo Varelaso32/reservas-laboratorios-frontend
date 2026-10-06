@@ -64,6 +64,32 @@ export interface ReservaGenerada {
   estado: EstadoReserva;
 }
 
+export interface ReservaResumen {
+  id: number;
+  estado: EstadoReserva;
+  espacio: EspacioResumen;
+  inicio: string;
+  fin: string;
+  solicitud_id: number;
+}
+
+export interface ReservaDetalle {
+  id: number;
+  estado: EstadoReserva;
+  espacio: EspacioResumen;
+  inicio: string;
+  fin: string;
+  solicitud_id: number;
+  finalizada: boolean;
+  titular: string;
+  proposito: string;
+  asistentes: number;
+  equipamiento: string | null;
+  aprobada_por: string | null;
+  fecha_aprobacion: string | null;
+  creada_en: string;
+}
+
 export interface AprobacionSolicitud {
   mensaje: string;
   solicitud: SolicitudDetalle;

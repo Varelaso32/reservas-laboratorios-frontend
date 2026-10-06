@@ -173,7 +173,12 @@ describe('AdminEspaciosComponent', () => {
       expect(action.disabled).toBeTrue();
       expect(action.getAttribute('aria-disabled')).toBe('true');
       expect(action.querySelector('.pi-pencil, .pi-trash')).toBeTruthy();
+      action.click();
     }
+    httpTestingController.expectNone(request =>
+      request.url.startsWith(`${API_BASE_URL}/espacios/`) &&
+      ['PUT', 'PATCH', 'DELETE'].includes(request.method)
+    );
     expect(fixture.nativeElement.querySelector('.nuevo-espacio').classList.contains('nuevo-espacio')).toBeTrue();
   });
 
