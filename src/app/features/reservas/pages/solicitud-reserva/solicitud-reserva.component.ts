@@ -7,6 +7,8 @@ import {
   Validators
 } from '@angular/forms';
 import { Subscription } from 'rxjs';
+import { MessageService } from 'primeng/api';
+import { InputNumber } from 'primeng/inputnumber';
 import { AuthService } from '../../../../core/services/auth.service';
 import { EspaciosService } from '../../../../core/services/espacios.service';
 import { SolicitudesService } from '../../../../core/services/solicitudes.service';
@@ -24,7 +26,7 @@ type EstadoDisponibilidad =
 
 @Component({
   selector: 'app-solicitud-reserva',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, InputNumber],
   templateUrl: './solicitud-reserva.component.html',
   styleUrl: './solicitud-reserva.component.scss'
 })
@@ -32,6 +34,7 @@ export class SolicitudReservaComponent {
   private readonly authService = inject(AuthService);
   private readonly espaciosService = inject(EspaciosService);
   private readonly solicitudesService = inject(SolicitudesService);
+  private readonly messageService = inject(MessageService);
   private consultaSubscription: Subscription | null = null;
   private ultimaConsultaKey: string | null = null;
 
@@ -68,6 +71,9 @@ export class SolicitudReservaComponent {
       [
         Validators.required,
         Validators.min(1),
+        control => control.value !== null && !Number.isInteger(control.value)
+          ? { enteroPositivo: true }
+          : null,
         control => {
           const capacidad = this.espacio?.capacidad;
           return capacidad !== undefined && control.value !== null && control.value > capacidad
@@ -100,6 +106,26 @@ export class SolicitudReservaComponent {
 
   seleccionarActividad(tipo: string) {
     this.tipoActividad = tipo;
+  }
+
+  filtrarTeclasAsistentes(event: KeyboardEvent): void {
+    const teclasEdicion = [
+      'Backspace', 'Delete', 'Tab', 'Enter', 'Escape', 'ArrowLeft', 'ArrowRight',
+      'ArrowUp', 'ArrowDown', 'Home', 'End'
+    ];
+
+    if (/^\d$/.test(event.key) || teclasEdicion.includes(event.key) || event.ctrlKey || event.metaKey) {
+      return;
+    }
+
+    event.preventDefault();
+  }
+
+  validarPegadoAsistentes(event: ClipboardEvent): void {
+    const valorPegado = event.clipboardData?.getData('text') ?? '';
+    if (!/^\d+$/.test(valorPegado)) {
+      event.preventDefault();
+    }
   }
 
   cerrarModal() {
@@ -167,6 +193,7 @@ export class SolicitudReservaComponent {
       this.disponible = false;
       this.estadoDisponibilidad = 'hora-invalida';
       this.mensajeDisponibilidad = 'La hora de fin debe ser posterior a la hora de inicio.';
+      this.notificar('warn', 'Horario no disponible', this.mensajeDisponibilidad);
       return;
     }
 
@@ -192,6 +219,12 @@ export class SolicitudReservaComponent {
           this.cargandoDisponibilidad = false;
           this.consultaSubscription = null;
 
+          if (respuesta.disponible && !continuarAlConfirmar) {
+            this.notificar('success', 'Horario disponible', respuesta.mensaje);
+          } else if (!respuesta.disponible) {
+            this.notificar('warn', 'Horario no disponible', respuesta.mensaje);
+          }
+
           if (continuarAlConfirmar && respuesta.disponible) {
             this.crearSolicitudReal();
           }
@@ -201,6 +234,7 @@ export class SolicitudReservaComponent {
           this.estadoDisponibilidad = 'error';
           this.mensajeDisponibilidad =
             obtenerMensajeErrorApi(error) ?? 'No se pudo verificar la disponibilidad. Intenta nuevamente.';
+          this.notificar('error', 'Error de disponibilidad', this.mensajeDisponibilidad);
           this.cargandoDisponibilidad = false;
           this.consultaSubscription = null;
           this.ultimaConsultaKey = null;
@@ -235,7 +269,13 @@ export class SolicitudReservaComponent {
     this.solicitudesService.crearSolicitud(solicitud).subscribe({
       next: respuesta => {
         this.cargandoSolicitud = false;
-        alert(respuesta.mensaje);
+        this.notificar(
+          'success',
+          'Solicitud enviada correctamente',
+          respuesta.estado === 'PENDIENTE'
+            ? 'Tu solicitud quedó en estado PENDIENTE.'
+            : respuesta.mensaje
+        );
         this.formReserva.reset();
         this.tipoActividad = 'Clase';
         this.limpiarEstadoDisponibilidad();
@@ -247,6 +287,7 @@ export class SolicitudReservaComponent {
         this.estadoDisponibilidad = 'error';
         this.mensajeDisponibilidad =
           obtenerMensajeErrorApi(error) ?? 'No se pudo crear la solicitud. Intenta nuevamente.';
+        this.notificar('error', 'No se pudo enviar la solicitud', this.mensajeDisponibilidad);
       }
     });
   }
@@ -255,6 +296,11 @@ export class SolicitudReservaComponent {
     this.disponible = false;
     this.estadoDisponibilidad = 'error';
     this.mensajeDisponibilidad = mensaje;
+    this.notificar('warn', 'Revisa la solicitud', mensaje);
+  }
+
+  private notificar(severity: 'success' | 'info' | 'warn' | 'error', summary: string, detail: string): void {
+    this.messageService.add({ severity, summary, detail, life: 5000 });
   }
 
   private limpiarEstadoDisponibilidad(): void {

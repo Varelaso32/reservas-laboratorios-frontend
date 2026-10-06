@@ -120,31 +120,31 @@
 
         </div>
 
-        @if (mensajeDisponibilidad) {
-          <div
-            class="disponibilidad"
-            [class.disponible]="estadoDisponibilidad === 'disponible'"
-            [class.no-disponible]="estadoDisponibilidad === 'no-disponible' || estadoDisponibilidad === 'hora-invalida' || estadoDisponibilidad === 'error'"
-            [class.consultando]="estadoDisponibilidad === 'consultando'"
-            role="status"
-          >
-            {{ mensajeDisponibilidad }}
-          </div>
-        }
-
         <!-- ASISTENTES -->
-        <div class="campo">
-          <label>CANTIDAD DE ASISTENTES</label>
+        <div class="campo campo-asistentes">
+          <label for="asistentes">CANTIDAD DE ASISTENTES</label>
 
-          <input
-            type="number"
-            min="1"
-            [max]="espacio?.capacidad ?? null"
-            placeholder="Ej. 20"
+          <p-inputnumber
+            inputId="asistentes"
             formControlName="asistentes"
+            mode="decimal"
+            [min]="1"
+            [max]="espacio?.capacidad ?? undefined"
+            [step]="1"
+            [minFractionDigits]="0"
+            [maxFractionDigits]="0"
+            [useGrouping]="false"
+            [allowEmpty]="true"
+            [required]="true"
+            placeholder="Ej. 20"
+            styleClass="asistentes-input"
+            (keydown)="filtrarTeclasAsistentes($event)"
+            (paste)="validarPegadoAsistentes($event)"
           />
 
-          @if (
+          @if (formReserva.controls.asistentes.hasError('enteroPositivo')) {
+            <small class="error">Debe ingresar un número entero positivo.</small>
+          } @else if (
             formReserva.controls.asistentes.invalid &&
             formReserva.controls.asistentes.touched
           ) {

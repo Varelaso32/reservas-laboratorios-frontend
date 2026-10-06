@@ -243,3 +243,21 @@
   cursor: wait;
   opacity: 0.7;
 }
+
+:host ::ng-deep .campo-asistentes .p-inputnumber,
+:host ::ng-deep .campo-asistentes .asistentes-input {
+  width: 100%;
+}
+
+:host ::ng-deep .campo-asistentes .p-inputnumber-input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #d9d9df;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 14px;
+}
+
+:host ::ng-deep .campo-asistentes .p-inputnumber-input:focus {
+  border-color: #111218;
+}

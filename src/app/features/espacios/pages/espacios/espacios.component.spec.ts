@@ -4,6 +4,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
 import { By } from '@angular/platform-browser';
 import { ActivatedRouteSnapshot, Router, RouterStateSnapshot, UrlTree, provideRouter } from '@angular/router';
+import { MessageService } from 'primeng/api';
 
 import { AuthService } from '../../../../core/services/auth.service';
 import { authGuard } from '../../../../core/guards/auth.guard';
@@ -30,7 +31,12 @@ describe('EspaciosComponent', () => {
 
     await TestBed.configureTestingModule({
       imports: [EspaciosComponent],
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])]
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        { provide: MessageService, useValue: jasmine.createSpyObj('MessageService', ['add']) }
+      ]
     })
     .compileComponents();
 
@@ -105,7 +111,11 @@ describe('EspaciosComponent', () => {
     const menuText = (fixture.nativeElement.querySelector('.menu') as HTMLElement).textContent ?? '';
     expect(menuText).toContain('Panel Admin');
     expect(menuText).not.toContain('Pendientes');
-    expect(fixture.nativeElement.querySelector('.menu a[routerLink="/admin/espacios"]')).toBeTruthy();
+    const adminLink = fixture.nativeElement.querySelector(
+      '.menu a[routerLink="/admin/espacios"]'
+    ) as HTMLAnchorElement;
+    expect(adminLink).toBeTruthy();
+    expect(getComputedStyle(adminLink).textDecorationLine).toBe('none');
     expect(fixture.nativeElement.querySelector('.accion-solicitudes')).toBeNull();
   });
 

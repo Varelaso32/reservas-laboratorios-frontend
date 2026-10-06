@@ -80,6 +80,7 @@
     color: #696b73;
 
     cursor: pointer;
+    text-decoration: none;
 
     display: flex;
     align-items: center;
@@ -90,9 +91,19 @@
     }
   }
 
+  a:hover {
+    background: #f1f1f3;
+    color: #17181c;
+  }
+
   a.activo {
     background: #0b0b11;
     color: white;
+
+    &:hover {
+      background: #0b0b11;
+      color: white;
+    }
   }
 }
 

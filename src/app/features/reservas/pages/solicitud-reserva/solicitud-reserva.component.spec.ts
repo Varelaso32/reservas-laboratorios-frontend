@@ -2,6 +2,9 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
+import { By } from '@angular/platform-browser';
+import { MessageService } from 'primeng/api';
+import { InputNumber } from 'primeng/inputnumber';
 import { API_BASE_URL } from '../../../../core/config/api.config';
 import { AuthService } from '../../../../core/services/auth.service';
 import { SolicitudesService } from '../../../../core/services/solicitudes.service';
@@ -14,6 +17,7 @@ describe('SolicitudReservaComponent', () => {
   let component: SolicitudReservaComponent;
   let fixture: ComponentFixture<SolicitudReservaComponent>;
   let httpTestingController: HttpTestingController;
+  let messageService: jasmine.SpyObj<MessageService>;
   let sesionActiva: boolean;
   let usuario: { id: number; nombre: string; email: string; rol: 'SOLICITANTE'; cargo: 'ESTUDIANTE' };
   const espacio: Espacio = {
@@ -25,6 +29,7 @@ describe('SolicitudReservaComponent', () => {
   };
 
   beforeEach(async () => {
+    messageService = jasmine.createSpyObj<MessageService>('MessageService', ['add']);
     sesionActiva = true;
     usuario = {
       id: 4,
@@ -40,6 +45,7 @@ describe('SolicitudReservaComponent', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
+        { provide: MessageService, useValue: messageService },
         {
           provide: AuthService,
           useValue: {
@@ -62,7 +68,7 @@ describe('SolicitudReservaComponent', () => {
 
   function completarFormulario(): void {
     component.formReserva.setValue({
-      fecha: '2026-10-05',
+      fecha: '2099-10-05',
       horaInicio: '08:00',
       horaFin: '10:00',
       asistentes: 10,
@@ -85,8 +91,8 @@ describe('SolicitudReservaComponent', () => {
       id: 301,
       espacio_id: 17,
       espacio_nombre: espacio.nombre,
-      inicio: '2026-10-05T08:00:00-05:00',
-      fin: '2026-10-05T10:00:00-05:00',
+      inicio: '2099-10-05T08:00:00-05:00',
+      fin: '2099-10-05T10:00:00-05:00',
       proposito: 'Prueba de disponibilidad',
       asistentes: 10,
       equipamiento: null,
@@ -111,7 +117,7 @@ describe('SolicitudReservaComponent', () => {
   });
 
   it('does not request availability when any query field is incomplete', () => {
-    component.formReserva.controls.fecha.setValue('2026-10-05');
+    component.formReserva.controls.fecha.setValue('2099-10-05');
     component.formReserva.controls.horaInicio.setValue('08:00');
 
     component.validarDisponibilidad();
@@ -127,7 +133,7 @@ describe('SolicitudReservaComponent', () => {
 
     const request = obtenerConsultaDisponibilidad();
     expect(request.request.method).toBe('GET');
-    expect(request.request.params.get('fecha')).toBe('2026-10-05');
+    expect(request.request.params.get('fecha')).toBe('2099-10-05');
     expect(request.request.params.get('hora_inicio')).toBe('08:00');
     expect(request.request.params.get('hora_fin')).toBe('10:00');
     request.flush({ espacio_id: 17, disponible: true, mensaje: 'Disponible según backend' });
@@ -135,6 +141,11 @@ describe('SolicitudReservaComponent', () => {
     expect(component.disponible).toBeTrue();
     expect(component.mensajeDisponibilidad).toBe('Disponible según backend');
     expect(component.estadoDisponibilidad).toBe('disponible');
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      severity: 'success',
+      summary: 'Horario disponible',
+      detail: 'Disponible según backend'
+    }));
   });
 
   it('shows the backend message with the unavailable style when the space is occupied', () => {
@@ -150,12 +161,16 @@ describe('SolicitudReservaComponent', () => {
 
     expect(component.disponible).toBeFalse();
     expect(component.mensajeDisponibilidad).toBe('El espacio ya se encuentra ocupado en ese horario');
-    expect(fixture.nativeElement.querySelector('.disponibilidad').classList).toContain('no-disponible');
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      severity: 'warn',
+      summary: 'Horario no disponible',
+      detail: 'El espacio ya se encuentra ocupado en ese horario'
+    }));
   });
 
   it('rejects an invalid time range locally without making a request', () => {
     component.formReserva.patchValue({
-      fecha: '2026-10-05',
+      fecha: '2099-10-05',
       horaInicio: '10:00',
       horaFin: '10:00'
     });
@@ -166,12 +181,12 @@ describe('SolicitudReservaComponent', () => {
     expect(component.disponible).toBeFalse();
     expect(component.estadoDisponibilidad).toBe('hora-invalida');
     expect(component.mensajeDisponibilidad).toContain('posterior');
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({ severity: 'warn' }));
   });
 
   it('revalidates on confirmation and blocks the temporary flow when unavailable', () => {
     completarFormulario();
     const closeSpy = spyOn(component.cerrar, 'emit');
-    const alertSpy = spyOn(window, 'alert');
 
     component.confirmarReserva();
 
@@ -183,7 +198,7 @@ describe('SolicitudReservaComponent', () => {
 
     expect(component.disponible).toBeFalse();
     expect(closeSpy).not.toHaveBeenCalled();
-    expect(alertSpy).not.toHaveBeenCalled();
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({ severity: 'warn' }));
   });
 
   it('does not consider an HTTP error available or continue confirmation', () => {
@@ -200,8 +215,12 @@ describe('SolicitudReservaComponent', () => {
     expect(component.disponible).toBeNull();
     expect(component.estadoDisponibilidad).toBe('error');
     expect(component.mensajeDisponibilidad).toBe('Error del servidor');
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      severity: 'error',
+      detail: 'Error del servidor'
+    }));
     expect(closeSpy).not.toHaveBeenCalled();
-    expect(component.formReserva.controls.fecha.value).toBe('2026-10-05');
+    expect(component.formReserva.controls.fecha.value).toBe('2099-10-05');
   });
 
   it('does not send when the user has no active session', () => {
@@ -244,7 +263,6 @@ describe('SolicitudReservaComponent', () => {
     completarFormulario();
     component.seleccionarActividad('Examen');
     const closeSpy = spyOn(component.cerrar, 'emit');
-    const alertSpy = spyOn(window, 'alert');
 
     component.confirmarReserva();
     responderDisponibilidad(true);
@@ -253,7 +271,7 @@ describe('SolicitudReservaComponent', () => {
     expect(post.request.method).toBe('POST');
     expect(post.request.body).toEqual({
       espacio_id: 17,
-      fecha: '2026-10-05',
+      fecha: '2099-10-05',
       hora_inicio: '08:00',
       hora_fin: '10:00',
       proposito: 'Prueba de disponibilidad',
@@ -267,7 +285,11 @@ describe('SolicitudReservaComponent', () => {
     const respuesta = respuestaCreada();
     post.flush(respuesta, { status: 201, statusText: 'Created' });
 
-    expect(alertSpy).toHaveBeenCalledOnceWith(respuesta.mensaje);
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      severity: 'success',
+      summary: 'Solicitud enviada correctamente',
+      detail: 'Tu solicitud quedó en estado PENDIENTE.'
+    }));
     expect(component.formReserva.controls.fecha.value).toBeNull();
     expect(component.estadoDisponibilidad).toBe('neutro');
     expect(component.mensajeDisponibilidad).toBe('');
@@ -277,7 +299,6 @@ describe('SolicitudReservaComponent', () => {
   it('keeps the modal and form open when creation returns HTTP 409', () => {
     completarFormulario();
     const closeSpy = spyOn(component.cerrar, 'emit');
-    spyOn(window, 'alert');
 
     component.confirmarReserva();
     responderDisponibilidad(true);
@@ -287,16 +308,15 @@ describe('SolicitudReservaComponent', () => {
     );
 
     expect(closeSpy).not.toHaveBeenCalled();
-    expect(component.formReserva.controls.fecha.value).toBe('2026-10-05');
+    expect(component.formReserva.controls.fecha.value).toBe('2099-10-05');
     expect(component.mensajeDisponibilidad).toBe('El espacio ya está ocupado en ese horario');
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({ severity: 'error' }));
   });
 
   it('does not make duplicate availability or creation requests on repeated confirmation', () => {
     completarFormulario();
     const solicitudesService = TestBed.inject(SolicitudesService);
     const createSpy = spyOn(solicitudesService, 'crearSolicitud').and.callThrough();
-    spyOn(window, 'alert');
-
     component.confirmarReserva();
     component.confirmarReserva();
     responderDisponibilidad(true);
@@ -308,5 +328,46 @@ describe('SolicitudReservaComponent', () => {
     post.flush(respuesta, { status: 201, statusText: 'Created' });
 
     expect(createSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('accepts only positive integer assistant counts', () => {
+    const asistentes = component.formReserva.controls.asistentes;
+    const inputNumber = fixture.debugElement.query(By.directive(InputNumber)).componentInstance as InputNumber;
+
+    expect(inputNumber.step).toBe(1);
+    expect(inputNumber.minFractionDigits).toBe(0);
+    expect(inputNumber.maxFractionDigits).toBe(0);
+
+    const input = fixture.nativeElement.querySelector('p-inputnumber input') as HTMLInputElement;
+    for (const key of ['e', 'E', '+', '-', '.', ',', 'a', '!']) {
+      const evento = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+      input.dispatchEvent(evento);
+      expect(evento.defaultPrevented).toBeTrue();
+    }
+
+    const teclaNumerica = new KeyboardEvent('keydown', {
+      key: '2', bubbles: true, cancelable: true
+    });
+    input.dispatchEvent(teclaNumerica);
+    expect(teclaNumerica.defaultPrevented).toBeFalse();
+
+    const pegado = new Event('paste', { bubbles: true, cancelable: true }) as ClipboardEvent;
+    Object.defineProperty(pegado, 'clipboardData', {
+      value: { getData: () => '2e3' }
+    });
+    input.dispatchEvent(pegado);
+    expect(pegado.defaultPrevented).toBeTrue();
+
+    for (const cantidad of [20, 5, 1]) {
+      asistentes.setValue(cantidad);
+      expect(asistentes.valid).toBeTrue();
+    }
+
+    for (const cantidad of [1.5, -5, 26]) {
+      asistentes.setValue(cantidad);
+      expect(asistentes.invalid).toBeTrue();
+    }
+
+    expect(fixture.nativeElement.querySelector('p-inputnumber')).toBeTruthy();
   });
 });
