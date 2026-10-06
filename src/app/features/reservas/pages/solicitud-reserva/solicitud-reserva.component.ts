@@ -15,6 +15,7 @@ import { SolicitudesService } from '../../../../core/services/solicitudes.servic
 import { obtenerMensajeErrorApi } from '../../../../core/utils/api-error.util';
 import { Espacio } from '../../../../shared/models/espacio.model';
 import { SolicitudCrear } from '../../../../shared/models/solicitud.model';
+import { obtenerColorIdentificadorEspacio } from '../../../../shared/utils/espacio-color.util';
 
 type EstadoDisponibilidad =
   | 'neutro'
@@ -92,6 +93,10 @@ export class SolicitudReservaComponent {
 
   get espacioNombre(): string {
     return this.espacio?.nombre ?? '';
+  }
+
+  get colorIdentificadorEspacio(): string {
+    return this.espacio ? obtenerColorIdentificadorEspacio(this.espacio.id) : '#7758e5';
   }
 
   get usuarioActual() {

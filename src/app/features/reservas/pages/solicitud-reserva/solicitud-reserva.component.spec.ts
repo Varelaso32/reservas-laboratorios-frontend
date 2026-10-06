@@ -19,7 +19,13 @@ describe('SolicitudReservaComponent', () => {
   let httpTestingController: HttpTestingController;
   let messageService: jasmine.SpyObj<MessageService>;
   let sesionActiva: boolean;
-  let usuario: { id: number; nombre: string; email: string; rol: 'SOLICITANTE'; cargo: 'ESTUDIANTE' };
+  let usuario: {
+    id: number;
+    nombre: string;
+    email: string;
+    rol: 'SOLICITANTE' | 'APROBADOR';
+    cargo: 'ESTUDIANTE';
+  };
   const espacio: Espacio = {
     id: 17,
     nombre: 'Laboratorio de Redes',
@@ -127,6 +133,7 @@ describe('SolicitudReservaComponent', () => {
   });
 
   it('requests availability using the selected id and exact date and time params', () => {
+    expect(fixture.nativeElement.querySelector('.aviso-disponibilidad')).toBeNull();
     completarFormulario();
 
     component.validarDisponibilidad();
@@ -137,10 +144,14 @@ describe('SolicitudReservaComponent', () => {
     expect(request.request.params.get('hora_inicio')).toBe('08:00');
     expect(request.request.params.get('hora_fin')).toBe('10:00');
     request.flush({ espacio_id: 17, disponible: true, mensaje: 'Disponible según backend' });
+    fixture.detectChanges();
 
     expect(component.disponible).toBeTrue();
     expect(component.mensajeDisponibilidad).toBe('Disponible según backend');
     expect(component.estadoDisponibilidad).toBe('disponible');
+    const aviso = fixture.nativeElement.querySelector('.aviso-disponibilidad.disponible') as HTMLElement;
+    expect(aviso.textContent).toContain('Disponible según backend');
+    expect(aviso.getAttribute('role')).toBe('status');
     expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
       severity: 'success',
       summary: 'Horario disponible',
@@ -161,6 +172,7 @@ describe('SolicitudReservaComponent', () => {
 
     expect(component.disponible).toBeFalse();
     expect(component.mensajeDisponibilidad).toBe('El espacio ya se encuentra ocupado en ese horario');
+    expect(fixture.nativeElement.querySelector('.aviso-disponibilidad.no-disponible')).toBeTruthy();
     expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
       severity: 'warn',
       summary: 'Horario no disponible',
@@ -232,6 +244,16 @@ describe('SolicitudReservaComponent', () => {
 
     httpTestingController.expectNone(() => true);
     expect(component.mensajeDisponibilidad).toContain('Inicia sesión');
+  });
+
+  it('shows the non-solicitant restriction as an integrated informational notice', () => {
+    usuario.rol = 'APROBADOR';
+    fixture.detectChanges();
+
+    const aviso = fixture.nativeElement.querySelector('.aviso-restriccion') as HTMLElement;
+    expect(aviso.textContent).toContain('Solo una cuenta SOLICITANTE');
+    expect(aviso.getAttribute('role')).toBe('alert');
+    expect(aviso.classList.contains('error')).toBeFalse();
   });
 
   it('blocks assistants above the selected space capacity before requesting availability', () => {

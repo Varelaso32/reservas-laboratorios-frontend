@@ -124,7 +124,11 @@
 
               <div class="nombre">
 
-                <span class="punto"></span>
+                <span
+                  class="punto"
+                  aria-hidden="true"
+                  [style.background-color]="obtenerColorEspacio(espacio.id)"
+                ></span>
 
                 <strong>
                   {{ espacio.nombre }}
@@ -181,4 +185,3 @@
   />
 
 }
-

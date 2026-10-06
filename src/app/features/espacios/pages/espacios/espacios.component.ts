@@ -5,6 +5,7 @@ import { Espacio } from '../../../../shared/models/espacio.model';
 import { EspaciosService } from '../../../../core/services/espacios.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { obtenerMensajeErrorApi } from '../../../../core/utils/api-error.util';
+import { obtenerColorIdentificadorEspacio } from '../../../../shared/utils/espacio-color.util';
 
 @Component({
   selector: 'app-espacios',
@@ -51,6 +52,10 @@ export class EspaciosComponent implements OnInit {
 
     const cargo = usuario.cargo?.trim();
     return cargo ? `${usuario.rol} · ${cargo}` : usuario.rol;
+  }
+
+  obtenerColorEspacio(espacioId: number): string {
+    return obtenerColorIdentificadorEspacio(espacioId);
   }
 
   ngOnInit(): void {

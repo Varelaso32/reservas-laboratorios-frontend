@@ -73,6 +73,12 @@ describe('EspaciosComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Reservar ahora');
     expect(fixture.nativeElement.querySelector('.boton-aprobar')).toBeNull();
     expect(fixture.nativeElement.querySelector('.boton-rechazar')).toBeNull();
+    const puntoEspacio = fixture.nativeElement.querySelector('.tarjeta .punto') as HTMLElement;
+    expect(puntoEspacio.style.backgroundColor).toBe('rgb(216, 137, 69)');
+    expect(fixture.nativeElement.querySelector('.estado-disponible')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.estado-ocupado')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.estado-reservado')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.amenities')).toBeNull();
     expect(fixture.nativeElement.querySelector('.tarjeta')?.textContent).not.toMatch(
       /solicitudes|pendientes/i
     );
