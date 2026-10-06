@@ -1,0 +1,56 @@
+<aside class="sidebar">
+  <div class="logo">
+    <div class="logo-icon">R</div>
+    <div>
+      <strong>ReservaECCI</strong>
+      <small>Sistema de Reservas</small>
+    </div>
+  </div>
+
+  <nav class="menu" aria-label="Navegación principal">
+    <a routerLink="/dashboard" routerLinkActive="activo" ariaCurrentWhenActive="page">
+      <i class="pi pi-th-large" aria-hidden="true"></i>
+      <span>Dashboard</span>
+    </a>
+    <a routerLink="/calendario" routerLinkActive="activo" ariaCurrentWhenActive="page">
+      <i class="pi pi-calendar" aria-hidden="true"></i>
+      <span>Calendario</span>
+    </a>
+    <a routerLink="/espacios" routerLinkActive="activo" ariaCurrentWhenActive="page">
+      <i class="pi pi-building" aria-hidden="true"></i>
+      <span>Espacios</span>
+    </a>
+    <span class="menu-item inactivo">
+      <i class="pi pi-cog" aria-hidden="true"></i>
+      <span>Configuración</span>
+    </span>
+
+    <div class="separador"></div>
+
+    @if (usuarioActual?.rol === 'APROBADOR' || usuarioActual?.rol === 'ADMIN') {
+      <a routerLink="/admin/espacios">
+        <i class="pi pi-shield" aria-hidden="true"></i>
+        <span>Panel Admin</span>
+      </a>
+    }
+  </nav>
+
+  @if (usuarioActual; as usuario) {
+    <div class="usuario">
+      <div class="avatar">{{ inicialesUsuario }}</div>
+      <div class="usuario-info">
+        <strong>{{ usuario.nombre }}</strong>
+        <small>{{ rolCargoUsuario }}</small>
+      </div>
+      <button
+        type="button"
+        class="logout"
+        aria-label="Cerrar sesión"
+        title="Cerrar sesión"
+        (click)="cerrarSesion()"
+      >
+        <i class="pi pi-sign-out" aria-hidden="true"></i>
+      </button>
+    </div>
+  }
+</aside>
