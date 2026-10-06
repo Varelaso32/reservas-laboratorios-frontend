@@ -22,6 +22,23 @@ export class EspaciosService {
     return this.http.get<Espacio[]>(`${API_BASE_URL}/espacios/`, { params });
   }
 
+  consultarDisponibles(
+    fecha: string,
+    horaInicio: string,
+    horaFin: string,
+    tipo?: TipoEspacio
+  ): Observable<Espacio[]> {
+    let params = new HttpParams()
+      .set('fecha', fecha)
+      .set('hora_inicio', horaInicio)
+      .set('hora_fin', horaFin);
+    if (tipo) {
+      params = params.set('tipo', tipo);
+    }
+
+    return this.http.get<Espacio[]>(`${API_BASE_URL}/espacios/disponibles`, { params });
+  }
+
   consultarDisponibilidad(
     espacioId: number,
     fecha: string,

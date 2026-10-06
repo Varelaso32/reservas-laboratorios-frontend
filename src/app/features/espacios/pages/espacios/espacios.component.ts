@@ -1,22 +1,21 @@
 import { Component, OnInit, inject } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
 import { SolicitudReservaComponent } from '../../../reservas/pages/solicitud-reserva/solicitud-reserva.component';
 import { Espacio } from '../../../../shared/models/espacio.model';
 import { EspaciosService } from '../../../../core/services/espacios.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { obtenerMensajeErrorApi } from '../../../../core/utils/api-error.util';
 import { obtenerColorIdentificadorEspacio } from '../../../../shared/utils/espacio-color.util';
+import { PosSidebarComponent } from '../../../../shared/components/pos-sidebar/pos-sidebar.component';
 
 @Component({
   selector: 'app-espacios',
-  imports: [SolicitudReservaComponent, RouterLink],
+  imports: [SolicitudReservaComponent, PosSidebarComponent],
   templateUrl: './espacios.component.html',
   styleUrl: './espacios.component.scss'
 })
 export class EspaciosComponent implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly espaciosService = inject(EspaciosService);
-  private readonly router = inject(Router);
 
   modalReservaAbierto = false;
   cargando = false;
@@ -42,16 +41,6 @@ export class EspaciosComponent implements OnInit {
     }
 
     return `${partes[0][0]}${partes[partes.length - 1][0]}`.toLocaleUpperCase();
-  }
-
-  get rolCargoUsuario(): string {
-    const usuario = this.usuarioActual;
-    if (!usuario) {
-      return '';
-    }
-
-    const cargo = usuario.cargo?.trim();
-    return cargo ? `${usuario.rol} · ${cargo}` : usuario.rol;
   }
 
   obtenerColorEspacio(espacioId: number): string {
@@ -89,8 +78,4 @@ export class EspaciosComponent implements OnInit {
     this.espacioSeleccionado = null;
   }
 
-  cerrarSesion(): void {
-    this.authService.logout();
-    void this.router.navigateByUrl('/login');
-  }
 }

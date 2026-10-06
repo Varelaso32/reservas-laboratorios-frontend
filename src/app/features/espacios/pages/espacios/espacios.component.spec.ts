@@ -110,6 +110,10 @@ describe('EspaciosComponent', () => {
 
   it('hides Panel Admin and Pendientes from SOLICITANTE', () => {
     const menuText = (fixture.nativeElement.querySelector('.menu') as HTMLElement).textContent ?? '';
+    expect(fixture.nativeElement.querySelector('.menu a[routerLink="/dashboard"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.menu a[routerLink="/calendario"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.menu a[routerLink="/espacios"]')).toBeTruthy();
+    expect(menuText).toContain('Configuración');
     expect(menuText).not.toContain('Panel Admin');
     expect(menuText).not.toContain('Pendientes');
     expect(fixture.nativeElement.querySelector('.accion-solicitudes')).toBeNull();
@@ -127,6 +131,10 @@ describe('EspaciosComponent', () => {
       '.menu a[routerLink="/admin/espacios"]'
     ) as HTMLAnchorElement;
     expect(adminLink).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.menu a[routerLink="/dashboard"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.menu a[routerLink="/calendario"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.menu a[routerLink="/espacios"]')).toBeTruthy();
+    expect(menuText).toContain('Configuración');
     expect(getComputedStyle(adminLink).textDecorationLine).toBe('none');
     expect(fixture.nativeElement.querySelector('.accion-solicitudes')).toBeNull();
   });
