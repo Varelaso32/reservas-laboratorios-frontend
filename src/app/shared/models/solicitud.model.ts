@@ -30,6 +30,29 @@ export interface SolicitudPendiente {
   vencida: boolean;
 }
 
+export interface SolicitudDetalle {
+  id: number;
+  estado: EstadoSolicitud;
+  solicitante: SolicitanteResumen;
+  espacio: EspacioResumen;
+  inicio: string;
+  fin: string;
+  asistentes: number;
+  creada_en: string;
+  vencida: boolean;
+  proposito: string;
+  equipamiento: string | null;
+  motivo_rechazo: string | null;
+  decidido_por: string | null;
+  fecha_decision: string | null;
+}
+
+export interface EstadoDetalleSolicitud {
+  detalle: SolicitudDetalle | null;
+  cargando: boolean;
+  error: string | null;
+}
+
 export interface SolicitudCrear {
   espacio_id: number;
   fecha: string;

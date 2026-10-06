@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
+import { MessageService } from 'primeng/api';
 
 import { API_BASE_URL } from '../../../../core/config/api.config';
 import { routes } from '../../../../app.routes';
@@ -54,7 +55,8 @@ describe('AdminEspaciosComponent', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
-        provideRouter(routes)
+        provideRouter(routes),
+        { provide: MessageService, useValue: jasmine.createSpyObj('MessageService', ['add']) }
       ]
     }).compileComponents();
 
@@ -83,6 +85,17 @@ describe('AdminEspaciosComponent', () => {
   function cargarEspacios(): void {
     httpTestingController.expectOne(`${API_BASE_URL}/espacios/`).flush(espacios);
     fixture.detectChanges();
+  }
+
+  function respuestaDetalle() {
+    return {
+      ...solicitudPendiente,
+      proposito: 'Práctica de redes inalámbricas',
+      equipamiento: 'Proyector y computadores',
+      motivo_rechazo: null,
+      decidido_por: null,
+      fecha_decision: null
+    };
   }
 
   it('renders the admin table and obtains one global count for APROBADOR', () => {
@@ -119,7 +132,7 @@ describe('AdminEspaciosComponent', () => {
     expect(solicitudes[1].textContent).toContain('—');
   });
 
-  it('filters modal requests by selected space without navigating and shows real fields only', () => {
+  it('shows pending requests as inline cards and loads details only for the selected space', () => {
     crearPagina('APROBADOR');
     cargarEspacios();
     httpTestingController.expectOne(`${API_BASE_URL}/solicitudes/pendientes`).flush([
@@ -143,16 +156,32 @@ describe('AdminEspaciosComponent', () => {
     ]);
     fixture.detectChanges();
 
+    const detailRequest = httpTestingController.expectOne(`${API_BASE_URL}/solicitudes/51`);
+    expect(detailRequest.request.method).toBe('GET');
+    httpTestingController.expectNone(`${API_BASE_URL}/solicitudes/52`);
+    httpTestingController.expectNone(`${API_BASE_URL}/solicitudes/53`);
+    detailRequest.flush(respuestaDetalle());
+    fixture.detectChanges();
+
     const modal = fixture.nativeElement.querySelector('.modal-solicitudes') as HTMLElement;
     expect(router.url).toBe(urlBeforeClick);
+    expect(modal.textContent).toContain('Solicitudes · Laboratorio de Redes');
+    expect(modal.textContent).toContain('1 pendiente');
+    expect(modal.textContent).toContain('PENDIENTES DE REVISIÓN');
     expect(modal.textContent).toContain('Estudiante de Prueba');
     expect(modal.textContent).toContain('estudiante@reservas.test');
     expect(modal.textContent).toContain('Laboratorio de Redes');
-    expect(modal.textContent).toContain('Bloque A, piso 2');
-    expect(modal.textContent).toContain('PENDIENTE');
+    expect(modal.textContent).toContain('Pendiente');
     expect(modal.textContent).toContain('Vencida');
-    expect(modal.querySelectorAll('tbody tr').length).toBe(1);
-    expect(modal.textContent).not.toMatch(/aprobar|rechazar|tipo de actividad/i);
+    expect(modal.textContent).toContain('Práctica de redes inalámbricas');
+    expect(modal.textContent).toContain('Proyector y computadores');
+    expect(modal.textContent).toContain('10');
+    expect(modal.textContent).toContain('5/10/2026');
+    expect(modal.textContent).toContain('2/10/2026');
+    expect(modal.querySelectorAll('.card-solicitud').length).toBe(1);
+    expect(modal.querySelector('.boton-detalle')).toBeNull();
+    expect(modal.querySelector('.volver-solicitudes')).toBeNull();
+    expect(modal.textContent).not.toMatch(/aprobar|rechazar|tipo de actividad|REQ-\d+/i);
   });
 
   it('shows the admin table for ADMIN without calling pending requests or showing the action', () => {
@@ -166,6 +195,67 @@ describe('AdminEspaciosComponent', () => {
     expect(fixture.nativeElement.querySelector('.ver-solicitudes')).toBeNull();
     expect(fixture.nativeElement.querySelectorAll('.sin-dato').length).toBe(10);
     expect(fixture.nativeElement.querySelector('.menu a[routerLink="/espacios"]')).toBeTruthy();
+  });
+
+  it('shows loading and loads one detail request for each pending card on modal open', () => {
+    crearPagina('APROBADOR');
+    cargarEspacios();
+    httpTestingController.expectOne(`${API_BASE_URL}/solicitudes/pendientes`).flush([solicitudPendiente]);
+    fixture.detectChanges();
+
+    (fixture.nativeElement.querySelector('.ver-solicitudes') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    const pendingRequest = httpTestingController.expectOne(request =>
+      request.url === `${API_BASE_URL}/solicitudes/pendientes` &&
+      request.params.get('espacio_id') === '42'
+    );
+    pendingRequest.flush([
+      solicitudPendiente,
+      { ...solicitudPendiente, id: 52, inicio: '2026-10-06T12:00:00-05:00' }
+    ]);
+    fixture.detectChanges();
+
+    const cards = fixture.nativeElement.querySelectorAll('.card-solicitud') as NodeListOf<HTMLElement>;
+    expect(cards.length).toBe(2);
+    expect(cards[0].querySelector('[role="status"]')?.textContent).toContain('Cargando información');
+    const firstDetail = httpTestingController.expectOne(`${API_BASE_URL}/solicitudes/51`);
+    const secondDetail = httpTestingController.expectOne(`${API_BASE_URL}/solicitudes/52`);
+    expect(firstDetail.request.method).toBe('GET');
+    expect(secondDetail.request.method).toBe('GET');
+    firstDetail.flush(respuestaDetalle());
+    secondDetail.flush({ ...respuestaDetalle(), id: 52, proposito: 'Reunión de proyecto', equipamiento: null });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Práctica de redes inalámbricas');
+    expect(fixture.nativeElement.textContent).toContain('Reunión de proyecto');
+    expect(fixture.nativeElement.textContent).toContain('No especificado');
+  });
+
+  it('shows per-card detail errors and reports them through Toast', () => {
+    crearPagina('APROBADOR');
+    cargarEspacios();
+    httpTestingController.expectOne(`${API_BASE_URL}/solicitudes/pendientes`).flush([solicitudPendiente]);
+    (fixture.nativeElement.querySelector('.ver-solicitudes') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    httpTestingController.expectOne(request =>
+      request.url === `${API_BASE_URL}/solicitudes/pendientes` &&
+      request.params.get('espacio_id') === '42'
+    ).flush([solicitudPendiente]);
+    fixture.detectChanges();
+    httpTestingController.expectOne(`${API_BASE_URL}/solicitudes/51`).flush(
+      { detail: 'No tienes acceso a esta solicitud.' },
+      { status: 404, statusText: 'Not Found' }
+    );
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.error-detalle[role="alert"]')?.textContent)
+      .toContain('No tienes acceso a esta solicitud.');
+    const messageService = TestBed.inject(MessageService);
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      severity: 'error',
+      summary: 'Error al cargar una solicitud'
+    }));
   });
 
   it('keeps route access limited to the two existing admin roles', () => {

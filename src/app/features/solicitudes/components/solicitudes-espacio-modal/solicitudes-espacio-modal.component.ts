@@ -1,7 +1,7 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 
 import { Espacio } from '../../../../shared/models/espacio.model';
-import { SolicitudPendiente } from '../../../../shared/models/solicitud.model';
+import { EstadoDetalleSolicitud, SolicitudPendiente } from '../../../../shared/models/solicitud.model';
 
 @Component({
   selector: 'app-solicitudes-espacio-modal',
@@ -14,6 +14,7 @@ export class SolicitudesEspacioModalComponent {
   @Input() solicitudes: SolicitudPendiente[] = [];
   @Input() cargando = false;
   @Input() error: string | null = null;
+  @Input() detalles: ReadonlyMap<number, EstadoDetalleSolicitud> = new Map();
 
   @Output() cerrar = new EventEmitter<void>();
   @Output() reintentar = new EventEmitter<void>();
@@ -26,9 +27,27 @@ export class SolicitudesEspacioModalComponent {
     this.reintentar.emit();
   }
 
+  obtenerEstadoDetalle(solicitudId: number): EstadoDetalleSolicitud | undefined {
+    return this.detalles.get(solicitudId);
+  }
+
   formatearFechaHora(valor: string): string {
     return new Intl.DateTimeFormat('es-CO', {
       dateStyle: 'medium',
+      timeStyle: 'short',
+      timeZone: 'America/Bogota'
+    }).format(new Date(valor));
+  }
+
+  formatearFecha(valor: string): string {
+    return new Intl.DateTimeFormat('es-CO', {
+      dateStyle: 'medium',
+      timeZone: 'America/Bogota'
+    }).format(new Date(valor));
+  }
+
+  formatearHora(valor: string): string {
+    return new Intl.DateTimeFormat('es-CO', {
       timeStyle: 'short',
       timeZone: 'America/Bogota'
     }).format(new Date(valor));

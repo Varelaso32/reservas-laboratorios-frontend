@@ -6,6 +6,7 @@ import { API_BASE_URL } from '../config/api.config';
 import {
   SolicitudCrear,
   SolicitudCreada,
+  SolicitudDetalle,
   SolicitudPendiente
 } from '../../shared/models/solicitud.model';
 
@@ -26,5 +27,9 @@ export class SolicitudesService {
     return this.http.get<SolicitudPendiente[]>(`${API_BASE_URL}/solicitudes/pendientes`, {
       params
     });
+  }
+
+  obtenerDetalle(solicitudId: number): Observable<SolicitudDetalle> {
+    return this.http.get<SolicitudDetalle>(`${API_BASE_URL}/solicitudes/${solicitudId}`);
   }
 }
