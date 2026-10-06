@@ -71,6 +71,8 @@ describe('EspaciosComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Bloque A, piso 2');
     expect(fixture.nativeElement.textContent).toContain('25 personas');
     expect(fixture.nativeElement.textContent).toContain('Reservar ahora');
+    expect(fixture.nativeElement.querySelector('.boton-aprobar')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.boton-rechazar')).toBeNull();
     expect(fixture.nativeElement.querySelector('.tarjeta')?.textContent).not.toMatch(
       /solicitudes|pendientes/i
     );

@@ -50,6 +50,7 @@
 
   &:hover { background: #f1f1f3; color: #17181c; }
   &:focus-visible { outline: 2px solid #697093; outline-offset: 2px; }
+  &:disabled { opacity: .6; cursor: wait; }
 }
 
 .lista-solicitudes { padding: 18px 22px 22px; }
@@ -104,15 +105,42 @@
 }
 .datos-descripcion p { margin: 4px 0 0; color: #454751; font-size: 10px; line-height: 1.45; }
 .card-solicitud-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   margin-top: 11px;
   padding-top: 8px;
   border-top: 1px solid #f0f0f2;
   color: #9a9ca3;
   font-size: 9px;
 }
+.boton-aprobar {
+  min-height: 30px;
+  padding: 0 13px;
+  border: 0;
+  border-radius: 5px;
+  background: #0b0b11;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.boton-aprobar:hover:not(:disabled) { background: #292a31; }
+.boton-aprobar:disabled { opacity: .6; cursor: wait; }
+.boton-aprobar:focus-visible { outline: 2px solid #697093; outline-offset: 2px; }
 .estado-carga-detalle, .error-detalle { margin: 12px 0 0; font-size: 10px; }
 .estado-carga-detalle { color: #777984; }
 .error-detalle { color: #a12d2d; }
+
+:host ::ng-deep .p-toast-message-success {
+  border-color: #d9eadc;
+  background: #fff;
+  color: #25262d;
+}
+:host ::ng-deep .p-toast-message-success .p-toast-message-icon { color: #34734a; }
 
 .feedback-solicitudes {
   margin: 0;

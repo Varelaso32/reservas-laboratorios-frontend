@@ -1,4 +1,5 @@
 <div class="overlay">
+  <p-toast key="solicitud-aprobada" position="bottom-right" />
   <section
     class="modal-solicitudes"
     role="dialog"
@@ -14,6 +15,7 @@
         type="button"
         class="cerrar-solicitudes"
         aria-label="Cerrar solicitudes pendientes"
+        [disabled]="aprobandoSolicitudId !== null"
         (click)="cerrarModal()"
       >
         <i class="pi pi-times" aria-hidden="true"></i>
@@ -89,6 +91,19 @@
 
               <footer class="card-solicitud-footer">
                 <span>Creada {{ formatearFechaHora(solicitud.creada_en) }}</span>
+                <button
+                  type="button"
+                  class="boton-aprobar"
+                  [disabled]="aprobandoSolicitudId !== null"
+                  [attr.aria-busy]="aprobandoSolicitudId === solicitud.id"
+                  (click)="aprobar.emit(solicitud.id)"
+                >
+                  @if (aprobandoSolicitudId === solicitud.id) {
+                    Aprobando...
+                  } @else {
+                    Aprobar reserva
+                  }
+                </button>
               </footer>
             </article>
           }

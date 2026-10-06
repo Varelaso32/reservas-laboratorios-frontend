@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 
 import { API_BASE_URL } from '../config/api.config';
 import {
+  AprobacionSolicitud,
   SolicitudCrear,
   SolicitudCreada,
   SolicitudDetalle,
@@ -31,5 +32,12 @@ export class SolicitudesService {
 
   obtenerDetalle(solicitudId: number): Observable<SolicitudDetalle> {
     return this.http.get<SolicitudDetalle>(`${API_BASE_URL}/solicitudes/${solicitudId}`);
+  }
+
+  aprobarSolicitud(solicitudId: number): Observable<AprobacionSolicitud> {
+    return this.http.post<AprobacionSolicitud>(
+      `${API_BASE_URL}/solicitudes/${solicitudId}/aprobar`,
+      null
+    );
   }
 }

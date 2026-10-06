@@ -152,7 +152,9 @@
     [cargando]="cargandoSolicitudes"
     [error]="errorSolicitudes"
     [detalles]="detallesSolicitudes"
+    [aprobandoSolicitudId]="aprobandoSolicitudId"
     (cerrar)="cerrarSolicitudes()"
     (reintentar)="verSolicitudes(espacioSeleccionado)"
+    (aprobar)="aprobarSolicitud($event)"
   />
 }

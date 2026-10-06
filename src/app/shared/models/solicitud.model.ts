@@ -2,6 +2,7 @@ import { Cargo } from '../../core/models/auth.models';
 import { TipoEspacio } from './espacio.model';
 
 export type EstadoSolicitud = 'PENDIENTE' | 'APROBADA' | 'RECHAZADA' | 'CANCELADA';
+export type EstadoReserva = 'ACTIVA' | 'CANCELADA';
 
 export interface SolicitanteResumen {
   id: number;
@@ -51,6 +52,22 @@ export interface EstadoDetalleSolicitud {
   detalle: SolicitudDetalle | null;
   cargando: boolean;
   error: string | null;
+}
+
+export interface ReservaGenerada {
+  id: number;
+  solicitud_id: number;
+  espacio_id: number;
+  espacio_nombre: string;
+  inicio: string;
+  fin: string;
+  estado: EstadoReserva;
+}
+
+export interface AprobacionSolicitud {
+  mensaje: string;
+  solicitud: SolicitudDetalle;
+  reserva: ReservaGenerada;
 }
 
 export interface SolicitudCrear {

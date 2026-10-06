@@ -11,6 +11,7 @@ import { AdminEspaciosComponent } from './admin-espacios.component';
 describe('AdminEspaciosComponent', () => {
   let fixture: ComponentFixture<AdminEspaciosComponent>;
   let httpTestingController: HttpTestingController;
+  let messageService: MessageService;
 
   const espacios = [
     {
@@ -56,11 +57,13 @@ describe('AdminEspaciosComponent', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter(routes),
-        { provide: MessageService, useValue: jasmine.createSpyObj('MessageService', ['add']) }
+        MessageService
       ]
     }).compileComponents();
 
     httpTestingController = TestBed.inject(HttpTestingController);
+    messageService = TestBed.inject(MessageService);
+    spyOn(messageService, 'add');
   });
 
   afterEach(() => {
@@ -95,6 +98,22 @@ describe('AdminEspaciosComponent', () => {
       motivo_rechazo: null,
       decidido_por: null,
       fecha_decision: null
+    };
+  }
+
+  function respuestaAprobacion() {
+    return {
+      mensaje: 'Solicitud aprobada y reserva generada.',
+      solicitud: { ...respuestaDetalle(), estado: 'APROBADA' as const },
+      reserva: {
+        id: 81,
+        solicitud_id: 51,
+        espacio_id: 42,
+        espacio_nombre: 'Laboratorio de Redes',
+        inicio: solicitudPendiente.inicio,
+        fin: solicitudPendiente.fin,
+        estado: 'ACTIVA' as const
+      }
     };
   }
 
@@ -181,7 +200,9 @@ describe('AdminEspaciosComponent', () => {
     expect(modal.querySelectorAll('.card-solicitud').length).toBe(1);
     expect(modal.querySelector('.boton-detalle')).toBeNull();
     expect(modal.querySelector('.volver-solicitudes')).toBeNull();
-    expect(modal.textContent).not.toMatch(/aprobar|rechazar|tipo de actividad|REQ-\d+/i);
+    expect(modal.querySelector('.boton-aprobar')).toBeTruthy();
+    expect(modal.textContent).not.toMatch(/rechazar|tipo de actividad|REQ-\d+/i);
+    expect(modal.querySelector('.boton-rechazar')).toBeNull();
   });
 
   it('shows the admin table for ADMIN without calling pending requests or showing the action', () => {
@@ -251,10 +272,130 @@ describe('AdminEspaciosComponent', () => {
 
     expect(fixture.nativeElement.querySelector('.error-detalle[role="alert"]')?.textContent)
       .toContain('No tienes acceso a esta solicitud.');
-    const messageService = TestBed.inject(MessageService);
     expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
       severity: 'error',
       summary: 'Error al cargar una solicitud'
+    }));
+  });
+
+  it('approves using the selected id without a payload, disables duplicate actions and refreshes real data', () => {
+    crearPagina('APROBADOR');
+    cargarEspacios();
+    httpTestingController.expectOne(`${API_BASE_URL}/solicitudes/pendientes`).flush([solicitudPendiente]);
+    (fixture.nativeElement.querySelector('.ver-solicitudes') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    httpTestingController.expectOne(request =>
+      request.url === `${API_BASE_URL}/solicitudes/pendientes` &&
+      request.params.get('espacio_id') === '42'
+    ).flush([solicitudPendiente]);
+    fixture.detectChanges();
+    httpTestingController.expectOne(`${API_BASE_URL}/solicitudes/51`).flush(respuestaDetalle());
+    fixture.detectChanges();
+
+    const approveButton = fixture.nativeElement.querySelector('.boton-aprobar') as HTMLButtonElement;
+    expect(approveButton.textContent).toContain('Aprobar reserva');
+    approveButton.click();
+    fixture.detectChanges();
+    expect(approveButton.disabled).toBeTrue();
+    expect(approveButton.getAttribute('aria-busy')).toBe('true');
+    approveButton.click();
+    fixture.detectChanges();
+
+    const approval = httpTestingController.expectOne(`${API_BASE_URL}/solicitudes/51/aprobar`);
+    expect(approval.request.method).toBe('POST');
+    expect(approval.request.body).toBeNull();
+    httpTestingController.expectNone(`${API_BASE_URL}/solicitudes/51/aprobar`);
+    approval.flush(respuestaAprobacion());
+
+    const messageService = TestBed.inject(MessageService);
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      key: 'solicitud-aprobada',
+      severity: 'success',
+      summary: 'Reserva aprobada',
+      detail: 'La solicitud fue aprobada correctamente.'
+    }));
+    const toast = fixture.nativeElement.querySelector('p-toast') as HTMLElement;
+    expect(toast.getAttribute('position')).toBe('bottom-right');
+
+    const globalRefresh = httpTestingController.expectOne(request =>
+      request.url === `${API_BASE_URL}/solicitudes/pendientes` &&
+      !request.params.has('espacio_id')
+    );
+    const spaceRefresh = httpTestingController.expectOne(request =>
+      request.url === `${API_BASE_URL}/solicitudes/pendientes` &&
+      request.params.get('espacio_id') === '42'
+    );
+    globalRefresh.flush([]);
+    spaceRefresh.flush([]);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('0 pendientes');
+    expect(fixture.nativeElement.querySelector('.card-solicitud')).toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('Aprobada');
+  });
+
+  it('keeps the request pending and shows the backend message when approval returns 409', () => {
+    crearPagina('APROBADOR');
+    cargarEspacios();
+    httpTestingController.expectOne(`${API_BASE_URL}/solicitudes/pendientes`).flush([solicitudPendiente]);
+    (fixture.nativeElement.querySelector('.ver-solicitudes') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    httpTestingController.expectOne(request =>
+      request.url === `${API_BASE_URL}/solicitudes/pendientes` &&
+      request.params.get('espacio_id') === '42'
+    ).flush([solicitudPendiente]);
+    fixture.detectChanges();
+    httpTestingController.expectOne(`${API_BASE_URL}/solicitudes/51`).flush(respuestaDetalle());
+    fixture.detectChanges();
+
+    (fixture.nativeElement.querySelector('.boton-aprobar') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    httpTestingController.expectOne(`${API_BASE_URL}/solicitudes/51/aprobar`).flush(
+      { detail: 'La solicitud está vencida.' },
+      { status: 409, statusText: 'Conflict' }
+    );
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelectorAll('.card-solicitud').length).toBe(1);
+    expect(fixture.nativeElement.textContent).toContain('1 pendiente');
+    expect((fixture.nativeElement.querySelector('.boton-aprobar') as HTMLButtonElement).disabled)
+      .toBeFalse();
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      key: 'solicitud-aprobada',
+      severity: 'warn',
+      detail: 'La solicitud está vencida.'
+    }));
+    httpTestingController.expectNone(request =>
+      request.url === `${API_BASE_URL}/solicitudes/pendientes` &&
+      !request.params.has('espacio_id')
+    );
+  });
+
+  it('shows an error Toast and keeps pending requests when approval fails', () => {
+    crearPagina('APROBADOR');
+    cargarEspacios();
+    httpTestingController.expectOne(`${API_BASE_URL}/solicitudes/pendientes`).flush([solicitudPendiente]);
+    (fixture.nativeElement.querySelector('.ver-solicitudes') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    httpTestingController.expectOne(request =>
+      request.url === `${API_BASE_URL}/solicitudes/pendientes` &&
+      request.params.get('espacio_id') === '42'
+    ).flush([solicitudPendiente]);
+    fixture.detectChanges();
+    httpTestingController.expectOne(`${API_BASE_URL}/solicitudes/51`).flush(respuestaDetalle());
+    fixture.detectChanges();
+
+    (fixture.nativeElement.querySelector('.boton-aprobar') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    httpTestingController.expectOne(`${API_BASE_URL}/solicitudes/51/aprobar`).flush(
+      { detail: 'Error al procesar la aprobación.' },
+      { status: 500, statusText: 'Internal Server Error' }
+    );
+
+    expect(fixture.nativeElement.querySelectorAll('.card-solicitud').length).toBe(1);
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      key: 'solicitud-aprobada',
+      severity: 'error',
+      detail: 'Error al procesar la aprobación.'
     }));
   });
 

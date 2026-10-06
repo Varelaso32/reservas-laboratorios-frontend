@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { MessageService } from 'primeng/api';
@@ -24,6 +25,7 @@ export class AdminEspaciosComponent implements OnDestroy, OnInit {
   private readonly router = inject(Router);
   private readonly messageService = inject(MessageService);
   private detalleSubscription = new Subscription();
+  private aprobacionSubscription: Subscription | null = null;
 
   readonly columnas = 8;
   espacios: Espacio[] = [];
@@ -37,6 +39,7 @@ export class AdminEspaciosComponent implements OnDestroy, OnInit {
   cargandoSolicitudes = false;
   errorSolicitudes: string | null = null;
   detallesSolicitudes = new Map<number, EstadoDetalleSolicitud>();
+  aprobandoSolicitudId: number | null = null;
 
   get usuarioActual() {
     return this.authService.obtenerUsuarioActual();
@@ -103,6 +106,7 @@ export class AdminEspaciosComponent implements OnDestroy, OnInit {
         this.cargandoConteos = false;
       },
       error: () => {
+        this.conteosPendientes = new Map();
         this.errorConteos = true;
         this.cargandoConteos = false;
       }
@@ -130,6 +134,7 @@ export class AdminEspaciosComponent implements OnDestroy, OnInit {
           solicitud => solicitud.espacio.id === espacio.id && solicitud.estado === 'PENDIENTE'
         );
         this.cargandoSolicitudes = false;
+        this.aprobandoSolicitudId = null;
         this.cargarDetallesSolicitudes(this.solicitudes);
       },
       error: error => {
@@ -138,6 +143,58 @@ export class AdminEspaciosComponent implements OnDestroy, OnInit {
             ? 'No tienes permiso para consultar estas solicitudes.'
             : 'No se pudieron cargar las solicitudes pendientes. Intenta nuevamente.');
         this.cargandoSolicitudes = false;
+        this.aprobandoSolicitudId = null;
+      }
+    });
+  }
+
+  aprobarSolicitud(solicitudId: number): void {
+    if (
+      !this.puedeConsultarSolicitudes ||
+      this.aprobandoSolicitudId !== null ||
+      !this.solicitudes.some(solicitud => solicitud.id === solicitudId && solicitud.estado === 'PENDIENTE')
+    ) {
+      return;
+    }
+
+    const espacio = this.espacioSeleccionado;
+    if (!espacio) {
+      return;
+    }
+
+    this.aprobandoSolicitudId = solicitudId;
+    this.aprobacionSubscription = this.solicitudesService.aprobarSolicitud(solicitudId).subscribe({
+      next: () => {
+        this.messageService.add({
+          key: 'solicitud-aprobada',
+          severity: 'success',
+          summary: 'Reserva aprobada',
+          detail: 'La solicitud fue aprobada correctamente.',
+          life: 5000
+        });
+        this.cargarConteosPendientes();
+        if (this.espacioSeleccionado?.id === espacio.id) {
+          this.verSolicitudes(espacio);
+        } else {
+          this.aprobandoSolicitudId = null;
+        }
+        this.aprobacionSubscription = null;
+      },
+      error: error => {
+        const conflicto = error instanceof HttpErrorResponse && error.status === 409;
+        const mensaje = obtenerMensajeErrorApi(error) ??
+          (conflicto
+            ? 'La solicitud ya no puede aprobarse.'
+            : 'No se pudo aprobar la solicitud. Intenta nuevamente.');
+        this.messageService.add({
+          key: 'solicitud-aprobada',
+          severity: conflicto ? 'warn' : 'error',
+          summary: conflicto ? 'No se pudo aprobar la solicitud' : 'Error al aprobar la solicitud',
+          detail: mensaje,
+          life: 5000
+        });
+        this.aprobandoSolicitudId = null;
+        this.aprobacionSubscription = null;
       }
     });
   }
@@ -151,6 +208,7 @@ export class AdminEspaciosComponent implements OnDestroy, OnInit {
 
   ngOnDestroy(): void {
     this.cancelarCargasDetalle();
+    this.aprobacionSubscription?.unsubscribe();
   }
 
   private cargarDetallesSolicitudes(solicitudes: SolicitudPendiente[]): void {

@@ -1,4 +1,5 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Toast } from 'primeng/toast';
 
 import { Espacio } from '../../../../shared/models/espacio.model';
 import { EstadoDetalleSolicitud, SolicitudPendiente } from '../../../../shared/models/solicitud.model';
@@ -6,6 +7,7 @@ import { EstadoDetalleSolicitud, SolicitudPendiente } from '../../../../shared/m
 @Component({
   selector: 'app-solicitudes-espacio-modal',
   standalone: true,
+  imports: [Toast],
   templateUrl: './solicitudes-espacio-modal.component.html',
   styleUrl: './solicitudes-espacio-modal.component.scss'
 })
@@ -15,9 +17,11 @@ export class SolicitudesEspacioModalComponent {
   @Input() cargando = false;
   @Input() error: string | null = null;
   @Input() detalles: ReadonlyMap<number, EstadoDetalleSolicitud> = new Map();
+  @Input() aprobandoSolicitudId: number | null = null;
 
   @Output() cerrar = new EventEmitter<void>();
   @Output() reintentar = new EventEmitter<void>();
+  @Output() aprobar = new EventEmitter<number>();
 
   cerrarModal(): void {
     this.cerrar.emit();
