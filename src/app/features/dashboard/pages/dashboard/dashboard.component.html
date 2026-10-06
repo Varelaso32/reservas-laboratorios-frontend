@@ -1,0 +1,138 @@
+<div class="aplicacion-pos">
+  <app-pos-sidebar seccionActiva="dashboard" />
+
+  <main class="contenido-pos">
+    <p-toast key="dashboard" position="bottom-right" />
+    <header class="topbar-pos">
+      <label class="buscador-pos">
+        <i class="pi pi-search" aria-hidden="true"></i>
+        <input type="search" placeholder="Buscar espacios, reservas..." aria-label="Buscar espacios y reservas" />
+      </label>
+      <div class="acciones-topbar">
+        <i class="pi pi-bell" aria-hidden="true"></i>
+        <div class="perfil-pos" aria-label="Usuario actual">{{ inicialesUsuario }}</div>
+      </div>
+    </header>
+
+    <section class="pagina-dashboard">
+      <header class="encabezado-dashboard">
+        <div>
+          <h1>Dashboard</h1>
+          <p>{{ fechaActual }}</p>
+        </div>
+        <a class="boton-reservar" routerLink="/espacios">
+          <i class="pi pi-plus" aria-hidden="true"></i>
+          Reservar espacio
+        </a>
+      </header>
+
+      <div class="resumen-dashboard">
+        <section class="panel-agenda" aria-labelledby="titulo-agenda">
+          <h2 id="titulo-agenda"><i class="pi pi-clock" aria-hidden="true"></i> Agenda de hoy</h2>
+
+          @if (cargandoAgenda) {
+            <p class="estado-dashboard" role="status">Cargando agenda...</p>
+          } @else if (mensajeAgendaNoDisponible) {
+            <p class="estado-dashboard limitacion-agenda" role="status">{{ mensajeAgendaNoDisponible }}</p>
+          } @else if (errorAgenda) {
+            <p class="estado-dashboard" role="status">No se pudo cargar la agenda.</p>
+          } @else if (reservasHoy.length === 0) {
+            <p class="estado-dashboard" role="status">No tienes reservas activas para hoy.</p>
+          } @else {
+            <div class="lista-agenda">
+              @for (reserva of reservasHoy; track reserva.id) {
+                <article class="fila-agenda">
+                  <span
+                    class="indicador-agenda"
+                    aria-hidden="true"
+                    [style.background-color]="obtenerColorEspacio(reserva.espacio.id)"
+                  ></span>
+                  <div class="detalle-agenda">
+                    <strong>{{ reserva.espacio.nombre }}</strong>
+                    @if (detallesReservas.get(reserva.id); as detalle) {
+                      <small>{{ detalle.titular }} · {{ detalle.proposito }}</small>
+                    }
+                  </div>
+                  <div class="horario-agenda">
+                    <strong>{{ formatearHora(reserva.inicio) }} – {{ formatearHora(reserva.fin) }}</strong>
+                    <span [class]="obtenerClaseEstado(reserva)">{{ obtenerEstadoReserva(reserva) }}</span>
+                  </div>
+                </article>
+              }
+            </div>
+          }
+        </section>
+
+        <aside class="tarjetas-resumen">
+          <section class="tarjeta-resumen">
+            <span>Total reservas hoy</span>
+            @if (cargandoAgenda) {
+              <strong aria-label="Consultando reservas">…</strong>
+            } @else if (totalReservasHoy !== null) {
+              <strong [attr.aria-label]="'Total de reservas activas hoy: ' + totalReservasHoy">
+                {{ totalReservasHoy }}
+              </strong>
+              <small>Reservas activas de tu cuenta</small>
+            } @else {
+              <strong aria-label="Total no disponible">—</strong>
+            }
+          </section>
+          <section class="tarjeta-resumen">
+            <span>Espacios disponibles</span>
+            @if (cargandoDisponibles) {
+              <strong aria-label="Consultando disponibilidad">…</strong>
+              <small>Validando disponibilidad</small>
+            } @else if (errorDisponibles) {
+              <strong aria-label="Disponibilidad no disponible">—</strong>
+              <small>Sin información disponible</small>
+            } @else {
+              <strong>{{ espaciosDisponibles.length }}</strong>
+              <small>Validado {{ intervaloDisponibilidad }} · {{ fechaDisponibilidad }}</small>
+            }
+          </section>
+        </aside>
+      </div>
+
+      <section class="seccion-disponibles" aria-labelledby="titulo-disponibles">
+        <header class="cabecera-disponibles">
+          <div>
+            <h2 id="titulo-disponibles">Espacios disponibles ahora</h2>
+            @if (intervaloDisponibilidad) {
+              <p>Disponibilidad para {{ intervaloDisponibilidad }} · {{ fechaDisponibilidad }}</p>
+            }
+          </div>
+          <a routerLink="/espacios">Ver todos <i class="pi pi-angle-right" aria-hidden="true"></i></a>
+        </header>
+
+        @if (cargandoDisponibles) {
+          <p class="estado-dashboard" role="status">Consultando disponibilidad...</p>
+        } @else if (errorDisponibles) {
+          <p class="estado-dashboard" role="status">No se pudo validar la disponibilidad.</p>
+        } @else if (espaciosDisponibles.length === 0) {
+          <p class="estado-dashboard" role="status">No hay espacios disponibles en el intervalo consultado.</p>
+        } @else {
+          <div class="grid-disponibles">
+            @for (espacio of espaciosDisponibles; track espacio.id) {
+              <article class="tarjeta-espacio">
+                <header>
+                  <span
+                    class="punto-espacio"
+                    aria-hidden="true"
+                    [style.background-color]="obtenerColorEspacio(espacio.id)"
+                  ></span>
+                  <strong>{{ espacio.nombre }}</strong>
+                  <span class="badge-disponible">Disponible</span>
+                </header>
+                @if (espacio.ubicacion) {
+                  <p><i class="pi pi-map-marker" aria-hidden="true"></i>{{ espacio.ubicacion }}</p>
+                }
+                <p><i class="pi pi-users" aria-hidden="true"></i>{{ espacio.capacidad }} personas</p>
+                <button type="button" routerLink="/espacios">Reservar ahora</button>
+              </article>
+            }
+          </div>
+        }
+      </section>
+    </section>
+  </main>
+</div>

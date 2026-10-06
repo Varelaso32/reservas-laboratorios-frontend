@@ -1,4 +1,5 @@
 <div class="overlay">
+  <p-toast key="solicitudes-acciones" position="bottom-right" />
   <section
     class="modal-solicitudes"
     role="dialog"
@@ -7,13 +8,14 @@
   >
     <header class="modal-solicitudes-header">
       <div>
-        <h2 id="titulo-solicitudes">Solicitudes pendientes</h2>
-        <p>{{ espacio?.nombre }}</p>
+        <h2 id="titulo-solicitudes">Solicitudes · {{ espacio?.nombre }}</h2>
+        <p>{{ solicitudes.length }} {{ solicitudes.length === 1 ? 'pendiente' : 'pendientes' }}</p>
       </div>
       <button
         type="button"
         class="cerrar-solicitudes"
         aria-label="Cerrar solicitudes pendientes"
+        [disabled]="aprobandoSolicitudId !== null || rechazandoSolicitudId !== null"
         (click)="cerrarModal()"
       >
         <i class="pi pi-times" aria-hidden="true"></i>
@@ -30,49 +32,153 @@
     } @else if (solicitudes.length === 0) {
       <p class="feedback-solicitudes" role="status">No hay solicitudes pendientes para este espacio.</p>
     } @else {
-      <div class="tabla-solicitudes">
-        <table>
-          <thead>
-            <tr>
-              <th scope="col">Solicitante</th>
-              <th scope="col">Espacio</th>
-              <th scope="col">Inicio</th>
-              <th scope="col">Fin</th>
-              <th scope="col">Asistentes</th>
-              <th scope="col">Creada</th>
-              <th scope="col">Estado</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (solicitud of solicitudes; track solicitud.id) {
-              <tr [class.fila-vencida]="solicitud.vencida">
-                <td>
-                  <strong>{{ solicitud.solicitante.nombre }}</strong>
-                  <small>{{ solicitud.solicitante.email }}</small>
-                </td>
-                <td>
-                  <strong>{{ solicitud.espacio.nombre }}</strong>
-                  @if (solicitud.espacio.ubicacion) {
-                    <small>{{ solicitud.espacio.ubicacion }}</small>
+      <section class="lista-solicitudes" aria-labelledby="titulo-pendientes">
+        <h3 id="titulo-pendientes">PENDIENTES DE REVISIÓN</h3>
+        <div class="cards-solicitudes">
+          @for (solicitud of solicitudes; track solicitud.id) {
+            @let estadoDetalle = obtenerEstadoDetalle(solicitud.id);
+            <article class="card-solicitud" [class.card-vencida]="solicitud.vencida">
+              <header class="card-solicitud-header">
+                <div class="solicitante">
+                  <h4>{{ solicitud.solicitante.nombre }}</h4>
+                  <p>{{ solicitud.solicitante.email }}</p>
+                </div>
+                <div class="badges-solicitud">
+                  <span class="badge-pendiente">Pendiente</span>
+                  @if (solicitud.vencida) {
+                    <span class="badge-vencida">Vencida</span>
                   }
-                </td>
-                <td>{{ formatearFechaHora(solicitud.inicio) }}</td>
-                <td>{{ formatearFechaHora(solicitud.fin) }}</td>
-                <td>{{ solicitud.asistentes }}</td>
-                <td>{{ formatearFechaHora(solicitud.creada_en) }}</td>
-                <td>
-                  <div class="estado-solicitud">
-                    <span class="estado-pendiente">{{ solicitud.estado }}</span>
-                    @if (solicitud.vencida) {
-                      <span class="estado-vencida">Vencida</span>
-                    }
+                </div>
+              </header>
+
+              <div class="datos-horario">
+                <div>
+                  <span>Fecha</span>
+                  <strong>{{ formatearFecha(solicitud.inicio) }}</strong>
+                </div>
+                <div>
+                  <span>Hora inicio</span>
+                  <strong>{{ formatearHora(solicitud.inicio) }}</strong>
+                </div>
+                <div>
+                  <span>Hora fin</span>
+                  <strong>{{ formatearHora(solicitud.fin) }}</strong>
+                </div>
+                <div>
+                  <span>Asistentes</span>
+                  <strong>{{ solicitud.asistentes }}</strong>
+                </div>
+              </div>
+
+              @if (estadoDetalle?.cargando) {
+                <p class="estado-carga-detalle" role="status">Cargando información de la solicitud...</p>
+              } @else if (estadoDetalle?.error) {
+                <p class="error-detalle" role="alert">{{ estadoDetalle?.error }}</p>
+              } @else {
+                @if (estadoDetalle?.detalle; as detalle) {
+                  <div class="datos-descripcion">
+                    <div>
+                      <span>Propósito</span>
+                      <p>{{ detalle.proposito }}</p>
+                    </div>
+                    <div>
+                      <span>Equipamiento</span>
+                      <p>{{ detalle.equipamiento ?? 'No especificado' }}</p>
+                    </div>
                   </div>
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
+                }
+              }
+
+              <footer class="card-solicitud-footer">
+                <span>Creada {{ formatearFechaHora(solicitud.creada_en) }}</span>
+                <div class="acciones-card-solicitud">
+                  <button
+                    type="button"
+                    class="boton-rechazar"
+                    [disabled]="aprobandoSolicitudId !== null || rechazandoSolicitudId !== null"
+                    (click)="abrirRechazo(solicitud.id)"
+                  >
+                    Rechazar
+                  </button>
+                  <button
+                    type="button"
+                    class="boton-aprobar"
+                    [disabled]="aprobandoSolicitudId !== null || rechazandoSolicitudId !== null"
+                    [attr.aria-busy]="aprobandoSolicitudId === solicitud.id"
+                    (click)="aprobar.emit(solicitud.id)"
+                  >
+                    @if (aprobandoSolicitudId === solicitud.id) {
+                      Aprobando...
+                    } @else {
+                      Aprobar reserva
+                    }
+                  </button>
+                </div>
+              </footer>
+            </article>
+          }
+        </div>
+      </section>
     }
   </section>
+
+  @if (solicitudRechazoId !== null) {
+    <div class="dialogo-rechazo-overlay">
+      <section
+        class="dialogo-rechazo"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="titulo-rechazo"
+        aria-describedby="descripcion-rechazo"
+      >
+        <div class="icono-advertencia" aria-hidden="true">
+          <i class="pi pi-exclamation-triangle"></i>
+        </div>
+        <h2 id="titulo-rechazo">¿Confirmar rechazo de esta solicitud?</h2>
+        <p id="descripcion-rechazo">Esta acción no se puede deshacer.</p>
+
+        <label for="motivo-rechazo">Motivo del rechazo</label>
+        <textarea
+          id="motivo-rechazo"
+          rows="3"
+          maxlength="500"
+          [formControl]="motivoRechazo"
+          [attr.aria-invalid]="motivoRechazo.dirty && motivoRechazo.invalid"
+          aria-describedby="ayuda-motivo contador-motivo"
+        ></textarea>
+        <div class="ayuda-motivo">
+          @if (motivoRechazo.dirty && motivoRechazo.invalid) {
+            <span id="ayuda-motivo" role="alert">Escribe un motivo de hasta 500 caracteres.</span>
+          } @else {
+            <span id="ayuda-motivo"></span>
+          }
+          <span id="contador-motivo">{{ motivoRechazo.value.length }} / 500</span>
+        </div>
+
+        <footer class="acciones-rechazo">
+          <button
+            type="button"
+            class="boton-cancelar-rechazo"
+            [disabled]="rechazandoSolicitudId !== null"
+            (click)="cancelarDialogoRechazo()"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            class="boton-confirmar-rechazo"
+            [disabled]="motivoRechazo.invalid || !motivoRechazo.value.trim() || rechazandoSolicitudId !== null"
+            [attr.aria-busy]="rechazandoSolicitudId === solicitudRechazoId"
+            (click)="confirmarRechazo()"
+          >
+            @if (rechazandoSolicitudId === solicitudRechazoId) {
+              Rechazando...
+            } @else {
+              Rechazar
+            }
+          </button>
+        </footer>
+      </section>
+    </div>
+  }
 </div>

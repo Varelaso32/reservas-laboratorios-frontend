@@ -4,6 +4,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
 import { By } from '@angular/platform-browser';
 import { ActivatedRouteSnapshot, Router, RouterStateSnapshot, UrlTree, provideRouter } from '@angular/router';
+import { MessageService } from 'primeng/api';
 
 import { AuthService } from '../../../../core/services/auth.service';
 import { authGuard } from '../../../../core/guards/auth.guard';
@@ -30,7 +31,12 @@ describe('EspaciosComponent', () => {
 
     await TestBed.configureTestingModule({
       imports: [EspaciosComponent],
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])]
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        { provide: MessageService, useValue: jasmine.createSpyObj('MessageService', ['add']) }
+      ]
     })
     .compileComponents();
 
@@ -64,6 +70,21 @@ describe('EspaciosComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('LABORATORIO');
     expect(fixture.nativeElement.textContent).toContain('Bloque A, piso 2');
     expect(fixture.nativeElement.textContent).toContain('25 personas');
+    expect(fixture.nativeElement.textContent).toContain('Reservar ahora');
+    expect(fixture.nativeElement.querySelector('.boton-aprobar')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.boton-rechazar')).toBeNull();
+    const puntoEspacio = fixture.nativeElement.querySelector('.tarjeta .punto') as HTMLElement;
+    expect(puntoEspacio.style.backgroundColor).toBe('rgb(216, 137, 69)');
+    expect(fixture.nativeElement.querySelector('.estado-disponible')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.estado-ocupado')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.estado-reservado')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.amenities')).toBeNull();
+    const tarjeta = fixture.nativeElement.querySelector('.tarjeta') as HTMLElement;
+    expect(getComputedStyle(tarjeta).minHeight).toBe('148px');
+    expect(getComputedStyle(tarjeta.querySelector('button') as HTMLButtonElement).minHeight).toBe('26px');
+    expect(fixture.nativeElement.querySelector('.tarjeta')?.textContent).not.toMatch(
+      /solicitudes|pendientes/i
+    );
 
     const botonReservar = fixture.nativeElement.querySelector(
       '.tarjeta button'
@@ -92,6 +113,10 @@ describe('EspaciosComponent', () => {
 
   it('hides Panel Admin and Pendientes from SOLICITANTE', () => {
     const menuText = (fixture.nativeElement.querySelector('.menu') as HTMLElement).textContent ?? '';
+    expect(fixture.nativeElement.querySelector('.menu a[routerLink="/dashboard"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.menu a[routerLink="/calendario"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.menu a[routerLink="/espacios"]')).toBeTruthy();
+    expect(menuText).toContain('Configuración');
     expect(menuText).not.toContain('Panel Admin');
     expect(menuText).not.toContain('Pendientes');
     expect(fixture.nativeElement.querySelector('.accion-solicitudes')).toBeNull();
@@ -105,7 +130,15 @@ describe('EspaciosComponent', () => {
     const menuText = (fixture.nativeElement.querySelector('.menu') as HTMLElement).textContent ?? '';
     expect(menuText).toContain('Panel Admin');
     expect(menuText).not.toContain('Pendientes');
-    expect(fixture.nativeElement.querySelector('.menu a[routerLink="/admin/espacios"]')).toBeTruthy();
+    const adminLink = fixture.nativeElement.querySelector(
+      '.menu a[routerLink="/admin/espacios"]'
+    ) as HTMLAnchorElement;
+    expect(adminLink).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.menu a[routerLink="/dashboard"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.menu a[routerLink="/calendario"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.menu a[routerLink="/espacios"]')).toBeTruthy();
+    expect(menuText).toContain('Configuración');
+    expect(getComputedStyle(adminLink).textDecorationLine).toBe('none');
     expect(fixture.nativeElement.querySelector('.accion-solicitudes')).toBeNull();
   });
 

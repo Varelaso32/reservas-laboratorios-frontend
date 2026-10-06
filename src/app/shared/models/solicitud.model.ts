@@ -2,6 +2,7 @@ import { Cargo } from '../../core/models/auth.models';
 import { TipoEspacio } from './espacio.model';
 
 export type EstadoSolicitud = 'PENDIENTE' | 'APROBADA' | 'RECHAZADA' | 'CANCELADA';
+export type EstadoReserva = 'ACTIVA' | 'CANCELADA';
 
 export interface SolicitanteResumen {
   id: number;
@@ -28,6 +29,80 @@ export interface SolicitudPendiente {
   asistentes: number;
   creada_en: string;
   vencida: boolean;
+}
+
+export interface SolicitudDetalle {
+  id: number;
+  estado: EstadoSolicitud;
+  solicitante: SolicitanteResumen;
+  espacio: EspacioResumen;
+  inicio: string;
+  fin: string;
+  asistentes: number;
+  creada_en: string;
+  vencida: boolean;
+  proposito: string;
+  equipamiento: string | null;
+  motivo_rechazo: string | null;
+  decidido_por: string | null;
+  fecha_decision: string | null;
+}
+
+export interface EstadoDetalleSolicitud {
+  detalle: SolicitudDetalle | null;
+  cargando: boolean;
+  error: string | null;
+}
+
+export interface ReservaGenerada {
+  id: number;
+  solicitud_id: number;
+  espacio_id: number;
+  espacio_nombre: string;
+  inicio: string;
+  fin: string;
+  estado: EstadoReserva;
+}
+
+export interface ReservaResumen {
+  id: number;
+  estado: EstadoReserva;
+  espacio: EspacioResumen;
+  inicio: string;
+  fin: string;
+  solicitud_id: number;
+}
+
+export interface ReservaDetalle {
+  id: number;
+  estado: EstadoReserva;
+  espacio: EspacioResumen;
+  inicio: string;
+  fin: string;
+  solicitud_id: number;
+  finalizada: boolean;
+  titular: string;
+  proposito: string;
+  asistentes: number;
+  equipamiento: string | null;
+  aprobada_por: string | null;
+  fecha_aprobacion: string | null;
+  creada_en: string;
+}
+
+export interface AprobacionSolicitud {
+  mensaje: string;
+  solicitud: SolicitudDetalle;
+  reserva: ReservaGenerada;
+}
+
+export interface RechazoIn {
+  motivo: string;
+}
+
+export interface RechazoSolicitud {
+  mensaje: string;
+  solicitud: SolicitudDetalle;
 }
 
 export interface SolicitudCrear {

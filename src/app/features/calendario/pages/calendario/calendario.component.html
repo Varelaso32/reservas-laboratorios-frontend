@@ -1,0 +1,92 @@
+<div class="aplicacion-pos">
+  <app-pos-sidebar seccionActiva="calendario" />
+
+  <main class="contenido-pos">
+    <p-toast key="calendario" position="bottom-right" />
+    <header class="topbar-pos">
+      <label class="buscador-pos">
+        <i class="pi pi-search" aria-hidden="true"></i>
+        <input type="search" placeholder="Buscar espacios, reservas..." aria-label="Buscar espacios y reservas" />
+      </label>
+      <div class="acciones-topbar">
+        <i class="pi pi-bell" aria-hidden="true"></i>
+        <div class="perfil-pos" aria-label="Usuario actual">{{ inicialesUsuario }}</div>
+      </div>
+    </header>
+
+    <section class="pagina-calendario">
+      <header class="encabezado-calendario">
+        <div>
+          <h1>Calendario</h1>
+          <p>{{ fechaActual }}</p>
+        </div>
+      </header>
+
+      @if (errorCarga) {
+        <p class="mensaje-no-disponible" role="status">No se pudieron cargar las reservas.</p>
+      }
+
+      <section class="contenedor-calendario" aria-label="Calendario semanal de reservas">
+        <header class="toolbar-calendario">
+          <strong>{{ etiquetaSemana }}</strong>
+          <div>
+            <button type="button" aria-label="Semana anterior" (click)="semanaAnterior()">
+              <i class="pi pi-angle-left" aria-hidden="true"></i>
+            </button>
+            <button type="button" aria-label="Semana siguiente" (click)="semanaSiguiente()">
+              <i class="pi pi-angle-right" aria-hidden="true"></i>
+            </button>
+          </div>
+        </header>
+
+        @if (cargando) {
+          <p class="estado-calendario" role="status">Cargando reservas...</p>
+        } @else {
+          <div class="rejilla-calendario" role="grid">
+            <div class="esquina-calendario" role="columnheader"></div>
+            @for (dia of diasSemana; track dia.fecha) {
+              <div
+                class="cabecera-dia"
+                role="columnheader"
+                [style.grid-column]="dia.columna"
+                [class.dia-actual]="dia.esHoy"
+              >
+                <span>{{ dia.nombre }}</span>
+                <strong>{{ dia.numero }}</strong>
+              </div>
+            }
+
+            @for (hora of horas; track hora; let indice = $index) {
+              <div class="etiqueta-hora" role="rowheader" [style.grid-row]="indice + 2">
+                {{ hora.toString().padStart(2, '0') }}:00
+              </div>
+            }
+
+            @for (dia of diasSemana; track dia.fecha) {
+              <div
+                class="columna-dia"
+                role="gridcell"
+                [style.grid-column]="dia.columna"
+                [style.grid-row]="'2 / span 24'"
+                [class.dia-actual]="dia.esHoy"
+                [attr.aria-label]="dia.nombre + ' ' + dia.numero"
+              >
+                @for (reserva of reservasDelDia(dia.fecha); track reserva.id) {
+                  <article
+                    class="bloque-reserva"
+                    [style.top.%]="posicionVertical(reserva, dia.fecha)"
+                    [style.height.%]="alturaVertical(reserva, dia.fecha)"
+                    [attr.aria-label]="reserva.espacio.nombre + ', ' + hora(reserva.inicio) + ' a ' + hora(reserva.fin)"
+                    [title]="reserva.espacio.nombre + ' · ' + hora(reserva.inicio) + '–' + hora(reserva.fin)"
+                  >
+                    <strong>{{ reserva.espacio.nombre }}</strong>
+                  </article>
+                }
+              </div>
+            }
+          </div>
+        }
+      </section>
+    </section>
+  </main>
+</div>

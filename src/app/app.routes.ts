@@ -22,10 +22,29 @@ export const routes: Routes = [
     canActivate: [authGuard]
   },
   {
+    path: 'dashboard',
+    loadComponent: () => import('./features/dashboard/pages/dashboard/dashboard.component')
+      .then(modulo => modulo.DashboardComponent),
+    canActivate: [authGuard]
+  },
+  {
+    path: 'calendario',
+    loadComponent: () => import('./features/calendario/pages/calendario/calendario.component')
+      .then(modulo => modulo.CalendarioComponent),
+    canActivate: [authGuard]
+  },
+  {
     path: 'admin/espacios',
     component: AdminEspaciosComponent,
     canActivate: [authGuard, roleGuard],
     data: { roles: ['APROBADOR', 'ADMIN'] }
+  },
+  {
+    path: 'admin/usuarios',
+    loadComponent: () => import('./features/admin/pages/admin-usuarios/admin-usuarios.component')
+      .then(modulo => modulo.AdminUsuariosComponent),
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['ADMIN'] }
   },
   {
     path: 'solicitud-reserva',

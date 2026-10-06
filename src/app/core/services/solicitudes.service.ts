@@ -4,8 +4,12 @@ import { Observable } from 'rxjs';
 
 import { API_BASE_URL } from '../config/api.config';
 import {
+  AprobacionSolicitud,
+  RechazoIn,
+  RechazoSolicitud,
   SolicitudCrear,
   SolicitudCreada,
+  SolicitudDetalle,
   SolicitudPendiente
 } from '../../shared/models/solicitud.model';
 
@@ -26,5 +30,24 @@ export class SolicitudesService {
     return this.http.get<SolicitudPendiente[]>(`${API_BASE_URL}/solicitudes/pendientes`, {
       params
     });
+  }
+
+  obtenerDetalle(solicitudId: number): Observable<SolicitudDetalle> {
+    return this.http.get<SolicitudDetalle>(`${API_BASE_URL}/solicitudes/${solicitudId}`);
+  }
+
+  aprobarSolicitud(solicitudId: number): Observable<AprobacionSolicitud> {
+    return this.http.post<AprobacionSolicitud>(
+      `${API_BASE_URL}/solicitudes/${solicitudId}/aprobar`,
+      null
+    );
+  }
+
+  rechazarSolicitud(solicitudId: number, motivo: string): Observable<RechazoSolicitud> {
+    const body: RechazoIn = { motivo };
+    return this.http.post<RechazoSolicitud>(
+      `${API_BASE_URL}/solicitudes/${solicitudId}/rechazar`,
+      body
+    );
   }
 }
