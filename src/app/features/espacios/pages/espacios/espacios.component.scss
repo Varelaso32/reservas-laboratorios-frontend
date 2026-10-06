@@ -51,6 +51,14 @@
   padding: 0 28px;
 }
 
+.acciones-topbar {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  color: #858791;
+  font-size: 12px;
+}
+
 .buscador {
   width: 300px;
 
@@ -86,7 +94,7 @@
 /* PAGINA */
 
 .pagina {
-  padding: 30px;
+  padding: 22px 24px;
 }
 
 
@@ -110,18 +118,18 @@
 /* GRID */
 
 .grid-espacios {
-  margin-top: 22px;
+  margin-top: 16px;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr));
+  gap: 10px;
 }
 
 
 /* TARJETAS */
 
 .tarjeta {
-  min-height: 174px;
-  padding: 14px;
+  min-height: 148px;
+  padding: 11px;
   border: 1px solid #e8e8eb;
   border-radius: 7px;
   background: #fff;
@@ -135,7 +143,7 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 8px;
-  min-height: 28px;
+  min-height: 23px;
 }
 
 
@@ -145,7 +153,7 @@
   gap: 8px;
   min-width: 0;
   color: #25262d;
-  font-size: 12px;
+  font-size: 10px;
   line-height: 1.3;
 
   strong { font-weight: 600; }
@@ -166,11 +174,11 @@
 
 .tipo-espacio {
   flex: 0 0 auto;
-  padding: 4px 7px;
+  padding: 3px 6px;
   border-radius: 10px;
   color: #696b73;
   background: #f1f1f3;
-  font-size: 8px;
+  font-size: 7px;
   white-space: nowrap;
 }
 
@@ -178,13 +186,13 @@
 /* INFORMACION */
 
 .informacion {
-  margin-top: 11px;
+  margin-top: 7px;
 
   p {
     display: flex;
     align-items: flex-start;
     gap: 7px;
-    margin: 6px 0;
+    margin: 4px 0;
     color: #858791;
     font-size: 10px;
     line-height: 1.35;
@@ -222,13 +230,13 @@
 .tarjeta button {
   margin-top: auto;
   width: 100%;
-  min-height: 32px;
-  padding: 7px 10px;
+  min-height: 26px;
+  padding: 5px 9px;
   border: none;
   border-radius: 5px;
   background: #0b0b11;
   color: #fff;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 600;
   cursor: pointer;
 

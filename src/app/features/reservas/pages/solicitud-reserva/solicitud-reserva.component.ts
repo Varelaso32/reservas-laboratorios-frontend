@@ -14,7 +14,7 @@ import { EspaciosService } from '../../../../core/services/espacios.service';
 import { SolicitudesService } from '../../../../core/services/solicitudes.service';
 import { obtenerMensajeErrorApi } from '../../../../core/utils/api-error.util';
 import { Espacio } from '../../../../shared/models/espacio.model';
-import { SolicitudCrear } from '../../../../shared/models/solicitud.model';
+import { SolicitudCrear, SolicitudCreada } from '../../../../shared/models/solicitud.model';
 import { obtenerColorIdentificadorEspacio } from '../../../../shared/utils/espacio-color.util';
 
 type EstadoDisponibilidad =
@@ -50,6 +50,7 @@ export class SolicitudReservaComponent {
   estadoDisponibilidad: EstadoDisponibilidad = 'neutro';
   cargandoDisponibilidad = false;
   cargandoSolicitud = false;
+  solicitudCreada: SolicitudCreada | null = null;
 
   formReserva = new FormGroup({
     fecha: new FormControl(
@@ -134,6 +135,7 @@ export class SolicitudReservaComponent {
   }
 
   cerrarModal() {
+    this.solicitudCreada = null;
     this.cerrar.emit();
   }
 
@@ -274,17 +276,10 @@ export class SolicitudReservaComponent {
     this.solicitudesService.crearSolicitud(solicitud).subscribe({
       next: respuesta => {
         this.cargandoSolicitud = false;
-        this.notificar(
-          'success',
-          'Solicitud enviada correctamente',
-          respuesta.estado === 'PENDIENTE'
-            ? 'Tu solicitud quedó en estado PENDIENTE.'
-            : respuesta.mensaje
-        );
         this.formReserva.reset();
         this.tipoActividad = 'Clase';
         this.limpiarEstadoDisponibilidad();
-        this.cerrarModal();
+        this.solicitudCreada = respuesta;
       },
       error: error => {
         this.cargandoSolicitud = false;

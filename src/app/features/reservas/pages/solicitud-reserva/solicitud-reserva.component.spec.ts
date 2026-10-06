@@ -122,6 +122,18 @@ describe('SolicitudReservaComponent', () => {
     expect(component).toBeTruthy();
   });
 
+  it('keeps the booking form modal compact and shows the real selected space context', () => {
+    const modal = fixture.nativeElement.querySelector('.modal') as HTMLElement;
+    expect(getComputedStyle(modal).width).toBe('460px');
+    const context = fixture.nativeElement.querySelector('.espacio-seleccionado')?.textContent
+      .replace(/\s+/g, ' ')
+      .trim();
+    expect(context).toContain('Laboratorio de Redes · LABORATORIO · Bloque A, piso 2');
+    expect(fixture.nativeElement.querySelector('.fila-tres')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.modal-footer .confirmar')?.textContent)
+      .toContain('Confirmar reserva');
+  });
+
   it('does not request availability when any query field is incomplete', () => {
     component.formReserva.controls.fecha.setValue('2099-10-05');
     component.formReserva.controls.horaInicio.setValue('08:00');
@@ -281,13 +293,16 @@ describe('SolicitudReservaComponent', () => {
     expect(component.mensajeDisponibilidad).toContain('fecha u hora pasada');
   });
 
-  it('sends only backend fields and uses the real space id after an available response', () => {
+  it('shows the pending success dialog only after the backend creates the request', () => {
     completarFormulario();
     component.seleccionarActividad('Examen');
     const closeSpy = spyOn(component.cerrar, 'emit');
+    expect(fixture.nativeElement.querySelector('.modal-exito')).toBeNull();
 
     component.confirmarReserva();
     responderDisponibilidad(true);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.modal-exito')).toBeNull();
 
     const post = obtenerSolicitudPost();
     expect(post.request.method).toBe('POST');
@@ -306,16 +321,34 @@ describe('SolicitudReservaComponent', () => {
 
     const respuesta = respuestaCreada();
     post.flush(respuesta, { status: 201, statusText: 'Created' });
+    fixture.detectChanges();
 
-    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
-      severity: 'success',
-      summary: 'Solicitud enviada correctamente',
-      detail: 'Tu solicitud quedó en estado PENDIENTE.'
-    }));
+    expect(component.solicitudCreada?.id).toBe(301);
+    expect(component.solicitudCreada?.estado).toBe('PENDIENTE');
+    const dialogo = fixture.nativeElement.querySelector('.modal-exito') as HTMLElement;
+    expect(dialogo).toBeTruthy();
+    expect(dialogo.getAttribute('role')).toBe('dialog');
+    expect(dialogo.textContent).toContain('Solicitud enviada correctamente');
+    expect(dialogo.textContent).toContain(
+      'Tu solicitud está pendiente de aprobación por parte del administrador.'
+    );
+    expect(dialogo.textContent).toContain('Te notificaremos cuando sea revisada.');
+    expect(dialogo.querySelector('.badge-pendiente')?.textContent).toContain('Pendiente de aprobación');
+    expect(dialogo.querySelector('.cerrar-exito')?.textContent).toBe('Cerrar');
+    expect(getComputedStyle(dialogo).width).toBe('292px');
+    expect(getComputedStyle(dialogo.querySelector('.icono-exito') as HTMLElement).width).toBe('34px');
+    expect(getComputedStyle(dialogo.querySelector('.cerrar-exito') as HTMLElement).width).toBe('58px');
+    expect(messageService.add).not.toHaveBeenCalledWith(jasmine.objectContaining({ severity: 'success' }));
     expect(component.formReserva.controls.fecha.value).toBeNull();
     expect(component.estadoDisponibilidad).toBe('neutro');
     expect(component.mensajeDisponibilidad).toBe('');
+    expect(closeSpy).not.toHaveBeenCalled();
+
+    (dialogo.querySelector('.cerrar-exito') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.modal-exito')).toBeNull();
     expect(closeSpy).toHaveBeenCalledOnceWith();
+    httpTestingController.expectNone(`${API_BASE_URL}/solicitudes/`);
   });
 
   it('keeps the modal and form open when creation returns HTTP 409', () => {
@@ -330,6 +363,8 @@ describe('SolicitudReservaComponent', () => {
     );
 
     expect(closeSpy).not.toHaveBeenCalled();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.modal-exito')).toBeNull();
     expect(component.formReserva.controls.fecha.value).toBe('2099-10-05');
     expect(component.mensajeDisponibilidad).toBe('El espacio ya está ocupado en ese horario');
     expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({ severity: 'error' }));

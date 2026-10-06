@@ -14,6 +14,7 @@ describe('DashboardComponent', () => {
   let fixture: ComponentFixture<DashboardComponent>;
   let httpTestingController: HttpTestingController;
   let messageService: MessageService;
+  let relojInstalado = false;
 
   const usuario = {
     id: 4,
@@ -48,6 +49,10 @@ describe('DashboardComponent', () => {
   });
 
   afterEach(() => {
+    if (relojInstalado) {
+      jasmine.clock().uninstall();
+      relojInstalado = false;
+    }
     httpTestingController.verify();
     sessionStorage.clear();
   });
@@ -68,7 +73,7 @@ describe('DashboardComponent', () => {
     );
   }
 
-  it('loads the applicant’s actual agenda and availability, and does not invent the all-day total', () => {
+  it('loads the applicant’s actual agenda, counts active reservations today, and validates availability', () => {
     crearDashboard();
     const reservas = httpTestingController.expectOne(`${API_BASE_URL}/reservas/mias`);
     expect(reservas.request.method).toBe('GET');
@@ -128,13 +133,96 @@ describe('DashboardComponent', () => {
     expect(texto).toContain('Próxima');
     expect(fixture.nativeElement.querySelectorAll('.fila-agenda').length).toBe(1);
     expect(texto).toContain('Total reservas hoy');
-    expect(fixture.nativeElement.querySelector('.tarjeta-resumen strong')?.textContent).toBe('—');
-    expect(fixture.nativeElement.querySelector('.tarjeta-resumen:first-child small')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.tarjeta-resumen strong')?.textContent?.trim()).toBe('1');
+    expect(fixture.nativeElement.querySelector('.tarjeta-resumen:first-child small')?.textContent)
+      .toContain('Reservas activas de tu cuenta');
     expect(texto).toContain('Validado');
     expect(fixture.nativeElement.querySelectorAll('.tarjeta-espacio').length).toBe(1);
     expect(fixture.nativeElement.querySelector('.badge-disponible')?.textContent).toContain('Disponible');
     expect(fixture.nativeElement.querySelector('.boton-reservar')?.getAttribute('href')).toBe('/espacios');
     expect(fixture.nativeElement.querySelector('.tarjeta-espacio button[routerLink="/espacios"]')).toBeTruthy();
+  });
+
+  it('formats a backend reservation with Colombia offset as 20:28–22:28', () => {
+    const fechaReserva = fechaColombia(new Date());
+    jasmine.clock().install();
+    jasmine.clock().mockDate(new Date(`${fechaReserva}T12:00:00-05:00`));
+    relojInstalado = true;
+    crearDashboard();
+    const inicio = `${fechaReserva}T20:28:00`;
+    const fin = `${fechaReserva}T22:28:00`;
+    obtenerDisponibilidad().flush([]);
+    httpTestingController.expectOne(`${API_BASE_URL}/reservas/mias`).flush([{
+      id: 71,
+      estado: 'ACTIVA',
+      espacio,
+      inicio,
+      fin,
+      solicitud_id: 31
+    }]);
+    httpTestingController.expectOne(`${API_BASE_URL}/reservas/71`).flush({
+      id: 71,
+      estado: 'ACTIVA',
+      espacio,
+      inicio,
+      fin,
+      solicitud_id: 31,
+      finalizada: false,
+      titular: usuario.nombre,
+      proposito: 'Prueba de horario',
+      asistentes: 10,
+      equipamiento: null,
+      aprobada_por: 'Coordinación',
+      fecha_aprobacion: null,
+      creada_en: inicio
+    });
+    fixture.detectChanges();
+
+    const horario = fixture.nativeElement.querySelector('.horario-agenda strong')?.textContent;
+    expect(horario).toContain('20:28 – 22:28');
+    expect(fixture.componentInstance.formatearHora(inicio)).toBe('20:28');
+    expect(fixture.componentInstance.formatearHora(fin)).toBe('22:28');
+    expect(fixture.nativeElement.querySelector('.tarjeta-resumen strong')?.textContent?.trim()).toBe('1');
+  });
+
+  it('does not offer cancellation or send a mutation request without a backend cancellation operation', () => {
+    crearDashboard();
+    const inicio = new Date(Date.now() + 60 * 60_000).toISOString();
+    const fin = new Date(Date.now() + 2 * 60 * 60_000).toISOString();
+    obtenerDisponibilidad().flush([]);
+    httpTestingController.expectOne(`${API_BASE_URL}/reservas/mias`).flush([{
+      id: 81,
+      estado: 'ACTIVA',
+      espacio,
+      inicio,
+      fin,
+      solicitud_id: 41
+    }]);
+    httpTestingController.expectOne(`${API_BASE_URL}/reservas/81`).flush({
+      id: 81,
+      estado: 'ACTIVA',
+      espacio,
+      inicio,
+      fin,
+      solicitud_id: 41,
+      finalizada: false,
+      titular: usuario.nombre,
+      proposito: 'Reserva próxima',
+      asistentes: 10,
+      equipamiento: null,
+      aprobada_por: 'Coordinación',
+      fecha_aprobacion: null,
+      creada_en: inicio
+    });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.fila-agenda')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.cancelar-reserva')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.fila-agenda').textContent).not.toContain('Cancelar');
+    httpTestingController.expectNone(request =>
+      request.url.startsWith(`${API_BASE_URL}/reservas/`) &&
+      ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)
+    );
   });
 
   it('keeps Dashboard, Calendar, Spaces and Admin navigation for APROBADOR without requesting a forbidden list', () => {
@@ -162,6 +250,17 @@ describe('DashboardComponent', () => {
     expect(TestBed.inject(Router).url).not.toBe('/reservas-activas');
   });
 
+  it('does not request the applicant reservation list or invent a total for ADMIN', () => {
+    crearDashboard('ADMIN');
+    httpTestingController.expectNone(`${API_BASE_URL}/reservas/mias`);
+    obtenerDisponibilidad().flush([]);
+    fixture.detectChanges();
+
+    const resumenReservas = fixture.nativeElement.querySelector('.tarjeta-resumen:first-child') as HTMLElement;
+    expect(resumenReservas.querySelector('strong')?.textContent?.trim()).toBe('—');
+    expect(resumenReservas.textContent).not.toMatch(/backend|endpoint|api|openapi|admin/i);
+  });
+
   it('protects Dashboard with authentication without adding role restrictions', () => {
     for (const path of ['dashboard', 'calendario']) {
       const route = routes.find(item => item.path === path);
@@ -178,7 +277,7 @@ describe('DashboardComponent', () => {
 
     expect(fixture.nativeElement.textContent).toContain('No tienes reservas activas para hoy.');
     expect(fixture.nativeElement.querySelectorAll('.fila-agenda').length).toBe(0);
-    expect(fixture.nativeElement.querySelector('.tarjeta-resumen strong')?.textContent).toBe('—');
+    expect(fixture.nativeElement.querySelector('.tarjeta-resumen strong')?.textContent?.trim()).toBe('0');
   });
 
   it('shows a real empty agenda for SOLICITANTE and an error Toast on API failure', () => {
@@ -198,5 +297,24 @@ describe('DashboardComponent', () => {
       detail: 'Servicio temporalmente no disponible.'
     }));
     expect(fixture.nativeElement.querySelector('p-toast')?.getAttribute('position')).toBe('bottom-right');
+  });
+
+  it('keeps availability errors out of the product summary while reporting the real detail in Toast', () => {
+    crearDashboard();
+    httpTestingController.expectOne(`${API_BASE_URL}/reservas/mias`).flush([]);
+    obtenerDisponibilidad().flush(
+      { detail: 'Internal endpoint failure' },
+      { status: 500, statusText: 'Internal Server Error' }
+    );
+    fixture.detectChanges();
+
+    const resumen = fixture.nativeElement.querySelector('.tarjeta-resumen:nth-child(2)') as HTMLElement;
+    expect(resumen.textContent).toContain('Sin información disponible');
+    expect(resumen.textContent).not.toContain('Internal endpoint failure');
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      key: 'dashboard',
+      severity: 'error',
+      detail: 'Internal endpoint failure'
+    }));
   });
 });

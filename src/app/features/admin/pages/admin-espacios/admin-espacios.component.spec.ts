@@ -154,11 +154,18 @@ describe('AdminEspaciosComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Bloque A, piso 2');
     expect(fixture.nativeElement.textContent).toContain('25 pers.');
     expect(fixture.nativeElement.textContent).toContain('Ver solicitudes · 2');
+    expect(getComputedStyle(fixture.nativeElement.querySelector('tbody td')).paddingTop)
+      .toBe('8px');
     expect(fixture.nativeElement.querySelector('.menu a[routerLink="/espacios"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.menu a[routerLink="/admin/usuarios"]')).toBeNull();
+    expect(Array.from(fixture.nativeElement.querySelectorAll('.menu .inactivo') as NodeListOf<HTMLElement>)
+      .some(item => item.textContent?.includes('Usuarios'))).toBeTrue();
     expect(fixture.nativeElement.querySelector('.nuevo-espacio').disabled).toBeTrue();
 
     const solicitudes = Array.from(fixture.nativeElement.querySelectorAll('tbody tr')) as HTMLElement[];
     expect(solicitudes[0].querySelectorAll('.sin-dato').length).toBe(2);
+    expect(solicitudes[0].querySelector('td:nth-child(4)')?.textContent?.trim()).toBe('—');
+    expect(solicitudes[0].querySelector('td:nth-child(6)')?.textContent?.trim()).toBe('—');
     expect(solicitudes[0].querySelector('.ver-solicitudes.con-pendientes')?.textContent)
       .toContain('Ver solicitudes · 2');
     expect(solicitudes[1].querySelector('.ver-solicitudes.con-pendientes')).toBeNull();
@@ -179,7 +186,24 @@ describe('AdminEspaciosComponent', () => {
       request.url.startsWith(`${API_BASE_URL}/espacios/`) &&
       ['PUT', 'PATCH', 'DELETE'].includes(request.method)
     );
+    httpTestingController.expectNone(request => request.url.includes('/reservas/'));
     expect(fixture.nativeElement.querySelector('.nuevo-espacio').classList.contains('nuevo-espacio')).toBeTrue();
+  });
+
+  it('refreshes real pending counts from the API when returning to the admin page', () => {
+    crearPagina('APROBADOR');
+    cargarEspacios();
+    httpTestingController.expectOne(`${API_BASE_URL}/solicitudes/pendientes`).flush([]);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.ver-solicitudes')?.textContent)
+      .toContain('Ver solicitudes');
+
+    fixture.componentInstance.cargarConteosPendientes();
+    httpTestingController.expectOne(`${API_BASE_URL}/solicitudes/pendientes`).flush([solicitudPendiente]);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.ver-solicitudes.con-pendientes')?.textContent)
+      .toContain('Ver solicitudes · 1');
   });
 
   it('shows pending requests as inline cards and loads details only for the selected space', () => {
@@ -214,6 +238,8 @@ describe('AdminEspaciosComponent', () => {
     fixture.detectChanges();
 
     const modal = fixture.nativeElement.querySelector('.modal-solicitudes') as HTMLElement;
+    const card = fixture.nativeElement.querySelector('.card-solicitud') as HTMLElement;
+    expect(getComputedStyle(card).padding).toBe('12px 13px 10px');
     expect(router.url).toBe(urlBeforeClick);
     expect(modal.textContent).toContain('Solicitudes · Laboratorio de Redes');
     expect(modal.textContent).toContain('1 pendiente');
@@ -248,6 +274,7 @@ describe('AdminEspaciosComponent', () => {
     expect(fixture.nativeElement.querySelectorAll('.sin-dato').length).toBe(6);
     expect(fixture.nativeElement.querySelectorAll('.accion-espacio').length).toBe(4);
     expect(fixture.nativeElement.querySelector('.menu a[routerLink="/espacios"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.menu a[routerLink="/admin/usuarios"]')).toBeTruthy();
   });
 
   it('shows loading and loads one detail request for each pending card on modal open', () => {
@@ -601,5 +628,7 @@ describe('AdminEspaciosComponent', () => {
     const adminRoute = routes.find(route => route.path === 'admin/espacios');
     expect(adminRoute?.canActivate?.length).toBe(2);
     expect(adminRoute?.data?.['roles']).toEqual(['APROBADOR', 'ADMIN']);
+    const usersRoute = routes.find(route => route.path === 'admin/usuarios');
+    expect(usersRoute?.data?.['roles']).toEqual(['ADMIN']);
   });
 });

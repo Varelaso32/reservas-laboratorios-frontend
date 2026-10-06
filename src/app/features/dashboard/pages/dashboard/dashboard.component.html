@@ -8,7 +8,10 @@
         <i class="pi pi-search" aria-hidden="true"></i>
         <input type="search" placeholder="Buscar espacios, reservas..." aria-label="Buscar espacios y reservas" />
       </label>
-      <div class="perfil-pos" aria-label="Usuario actual">{{ inicialesUsuario }}</div>
+      <div class="acciones-topbar">
+        <i class="pi pi-bell" aria-hidden="true"></i>
+        <div class="perfil-pos" aria-label="Usuario actual">{{ inicialesUsuario }}</div>
+      </div>
     </header>
 
     <section class="pagina-dashboard">
@@ -63,7 +66,16 @@
         <aside class="tarjetas-resumen">
           <section class="tarjeta-resumen">
             <span>Total reservas hoy</span>
-            <strong aria-label="Total no disponible">—</strong>
+            @if (cargandoAgenda) {
+              <strong aria-label="Consultando reservas">…</strong>
+            } @else if (totalReservasHoy !== null) {
+              <strong [attr.aria-label]="'Total de reservas activas hoy: ' + totalReservasHoy">
+                {{ totalReservasHoy }}
+              </strong>
+              <small>Reservas activas de tu cuenta</small>
+            } @else {
+              <strong aria-label="Total no disponible">—</strong>
+            }
           </section>
           <section class="tarjeta-resumen">
             <span>Espacios disponibles</span>
@@ -72,7 +84,7 @@
               <small>Validando disponibilidad</small>
             } @else if (errorDisponibles) {
               <strong aria-label="Disponibilidad no disponible">—</strong>
-              <small>{{ errorDisponibles }}</small>
+              <small>Sin información disponible</small>
             } @else {
               <strong>{{ espaciosDisponibles.length }}</strong>
               <small>Validado {{ intervaloDisponibilidad }} · {{ fechaDisponibilidad }}</small>

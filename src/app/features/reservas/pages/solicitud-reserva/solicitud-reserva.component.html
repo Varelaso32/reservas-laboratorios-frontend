@@ -1,3 +1,34 @@
+@if (solicitudCreada; as solicitud) {
+  <div class="overlay overlay-exito">
+    <section
+      class="modal-exito"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="titulo-solicitud-enviada"
+      aria-describedby="detalle-solicitud-enviada"
+    >
+      <span class="icono-exito" aria-hidden="true">
+        <span class="punto-exito"></span>
+      </span>
+      <h2 id="titulo-solicitud-enviada">Solicitud enviada correctamente</h2>
+      <p id="detalle-solicitud-enviada">
+        @if (solicitud.estado === 'PENDIENTE') {
+          Tu solicitud está pendiente de aprobación por parte del administrador.
+          Te notificaremos cuando sea revisada.
+        } @else {
+          {{ solicitud.mensaje }}
+        }
+      </p>
+      @if (solicitud.estado === 'PENDIENTE') {
+        <span class="badge-pendiente">
+          <span class="punto-pendiente" aria-hidden="true"></span>
+          Pendiente de aprobación
+        </span>
+      }
+      <button type="button" class="cerrar-exito" (click)="cerrarModal()">Cerrar</button>
+    </section>
+  </div>
+} @else {
 <div class="overlay">
 
   <div class="modal">
@@ -302,3 +333,4 @@
   </div>
 
 </div>
+}

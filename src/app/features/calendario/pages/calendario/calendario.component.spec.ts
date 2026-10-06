@@ -99,8 +99,10 @@ describe('CalendarioComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Semana');
     expect(bloque.textContent).toContain('Laboratorio de Redes');
     expect(bloque.getAttribute('aria-label')).toContain('09:00 a 10:00');
-    expect(Number.parseFloat(bloque.style.top)).toBeCloseTo((2 / 12) * 100, 1);
-    expect(Number.parseFloat(bloque.style.height)).toBeCloseTo((1 / 12) * 100, 1);
+    expect(getComputedStyle(bloque.querySelector('strong') as HTMLElement).fontSize).toBe('9px');
+    expect(getComputedStyle(bloque.querySelector('strong') as HTMLElement).webkitLineClamp).toBe('2');
+    expect(Number.parseFloat(bloque.style.top)).toBeCloseTo((9 / 24) * 100, 1);
+    expect(Number.parseFloat(bloque.style.height)).toBeCloseTo((1 / 24) * 100, 1);
     expect(columna.querySelectorAll('.bloque-reserva').length).toBe(1);
 
     (fixture.nativeElement.querySelector('[aria-label="Semana anterior"]') as HTMLButtonElement).click();
@@ -109,6 +111,50 @@ describe('CalendarioComponent', () => {
     (fixture.nativeElement.querySelector('[aria-label="Semana siguiente"]') as HTMLButtonElement).click();
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelectorAll('.bloque-reserva').length).toBe(1);
+  });
+
+  it('keeps Colombia wall-clock times and renders a 20:28–22:28 reservation on the correct day', () => {
+    crearCalendario();
+    const fechaReserva = sumarDiasFecha(component.hoy, 1);
+    const inicio = `${fechaReserva}T20:28:00`;
+    const fin = `${fechaReserva}T22:28:00`;
+    const inicioUtc = `${sumarDiasFecha(fechaReserva, 1)}T01:28:00Z`;
+    httpTestingController.expectOne(`${API_BASE_URL}/reservas/mias`).flush([{
+      id: 71,
+      estado: 'ACTIVA',
+      espacio: { ...espacio, nombre: 'Laboratorio de Electrónica' },
+      inicio,
+      fin,
+      solicitud_id: 31
+    }]);
+    fixture.detectChanges();
+
+    if (!component.diasSemana.some(dia => dia.fecha === fechaReserva)) {
+      component.semanaSiguiente();
+      fixture.detectChanges();
+    }
+    const dia = component.diasSemana.find(item => item.fecha === fechaReserva)!;
+    const columna = Array.from(
+      fixture.nativeElement.querySelectorAll('.columna-dia') as NodeListOf<HTMLElement>
+    ).find(element => element.getAttribute('aria-label') === `${dia.nombre} ${dia.numero}`)!;
+    const bloque = columna.querySelector('.bloque-reserva') as HTMLElement;
+    const inicioEnMinutos = 20 * 60 + 28;
+    const duracionEnMinutos = 2 * 60;
+
+    expect(component.hora(inicio)).toBe('20:28');
+    expect(component.hora(fin)).toBe('22:28');
+    expect(component.hora(inicioUtc)).toBe('20:28');
+    expect(component.reservasDelDia(fechaReserva)).toContain(jasmine.objectContaining({ id: 71 }));
+    expect(bloque.textContent).toContain('Laboratorio de Electrónica');
+    expect(bloque.getAttribute('aria-label')).toContain('20:28 a 22:28');
+    expect(Number.parseFloat(bloque.style.top))
+      .toBeCloseTo(inicioEnMinutos / (24 * 60) * 100, 2);
+    expect(Number.parseFloat(bloque.style.height))
+      .toBeCloseTo(duracionEnMinutos / (24 * 60) * 100, 2);
+    expect(component.horas[0]).toBe(0);
+    expect(component.horas[23]).toBe(23);
+    expect(getComputedStyle(fixture.nativeElement.querySelector('.contenedor-calendario')).overflowY)
+      .toBe('auto');
   });
 
   it('keeps POS navigation for APROBADOR and leaves the calendar clean and empty', () => {
@@ -121,6 +167,8 @@ describe('CalendarioComponent', () => {
     expect(fixture.nativeElement.querySelector('.mensaje-no-disponible')).toBeNull();
     expect(fixture.nativeElement.querySelector('.pagina-calendario').textContent)
       .not.toMatch(/backend|endpoint|api|openapi|aprobador|listado general/i);
+    expect(getComputedStyle(fixture.nativeElement.querySelector('.contenedor-calendario')).overflowX)
+      .toBe('auto');
     expect(fixture.nativeElement.querySelector('.menu a[routerLink="/dashboard"]')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('.menu a[routerLink="/calendario"]')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('.menu a[routerLink="/espacios"]')).toBeTruthy();

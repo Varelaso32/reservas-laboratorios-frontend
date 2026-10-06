@@ -79,6 +79,9 @@ describe('EspaciosComponent', () => {
     expect(fixture.nativeElement.querySelector('.estado-ocupado')).toBeNull();
     expect(fixture.nativeElement.querySelector('.estado-reservado')).toBeNull();
     expect(fixture.nativeElement.querySelector('.amenities')).toBeNull();
+    const tarjeta = fixture.nativeElement.querySelector('.tarjeta') as HTMLElement;
+    expect(getComputedStyle(tarjeta).minHeight).toBe('148px');
+    expect(getComputedStyle(tarjeta.querySelector('button') as HTMLButtonElement).minHeight).toBe('26px');
     expect(fixture.nativeElement.querySelector('.tarjeta')?.textContent).not.toMatch(
       /solicitudes|pendientes/i
     );

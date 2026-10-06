@@ -1,5 +1,10 @@
 const ZONA_HORARIA_COLOMBIA = 'America/Bogota';
 
+function interpretarFechaReserva(valor: string): Date {
+  const contieneZonaHoraria = /(?:z|[+-]\d{2}:?\d{2})$/i.test(valor);
+  return new Date(contieneZonaHoraria ? valor : `${valor}-05:00`);
+}
+
 function obtenerPartesFecha(fecha: Date, zonaHoraria = ZONA_HORARIA_COLOMBIA): Record<string, string> {
   return Object.fromEntries(
     new Intl.DateTimeFormat('en-CA', {
@@ -25,7 +30,7 @@ export function horaColombia(fecha: Date): string {
 }
 
 export function fechaReservaColombia(valor: string): string {
-  return fechaColombia(new Date(valor));
+  return fechaColombia(interpretarFechaReserva(valor));
 }
 
 export function horaReservaColombia(valor: string): string {
@@ -34,7 +39,11 @@ export function horaReservaColombia(valor: string): string {
     minute: '2-digit',
     hourCycle: 'h23',
     timeZone: ZONA_HORARIA_COLOMBIA
-  }).format(new Date(valor));
+  }).format(interpretarFechaReserva(valor));
+}
+
+export function instanteReservaColombia(valor: string): number {
+  return interpretarFechaReserva(valor).getTime();
 }
 
 export function fechaActualLargaColombia(fecha: Date): string {

@@ -34,6 +34,7 @@
   font-size: 10px;
   font-weight: 700;
 }
+.acciones-topbar { display: flex; align-items: center; gap: 15px; color: #858791; font-size: 12px; }
 .pagina-calendario { padding: 26px 28px 36px; }
 .encabezado-calendario {
   display: flex;
@@ -71,8 +72,17 @@
   color: #777984;
   font-size: 10px;
 }
-.contenedor-calendario { overflow: hidden; border: 1px solid #e8e8eb; border-radius: 7px; background: #fff; }
+.contenedor-calendario {
+  max-height: min(760px, calc(100vh - 180px));
+  overflow: auto;
+  border: 1px solid #e8e8eb;
+  border-radius: 7px;
+  background: #fff;
+}
 .toolbar-calendario {
+  position: sticky;
+  z-index: 4;
+  top: 0;
   display: flex;
   min-height: 40px;
   align-items: center;
@@ -103,17 +113,28 @@
   display: grid;
   min-width: 780px;
   grid-template-columns: 42px repeat(7, minmax(0, 1fr));
-  grid-template-rows: 42px repeat(12, 52px);
-  overflow-x: auto;
+  grid-template-rows: 42px repeat(24, 52px);
 }
-.esquina-calendario { grid-column: 1; grid-row: 1; border-bottom: 1px solid #ececef; }
+.esquina-calendario {
+  position: sticky;
+  z-index: 3;
+  left: 0;
+  grid-column: 1;
+  grid-row: 1;
+  border-bottom: 1px solid #ececef;
+  background: #fff;
+}
 .cabecera-dia {
+  position: sticky;
+  z-index: 2;
+  top: 40px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 3px;
   border-bottom: 1px solid #ececef;
+  background: #fff;
   color: #9a9ca3;
 
   span { font-size: 8px; }
@@ -122,11 +143,14 @@
   &.dia-actual strong { background: #0b0b11; color: #fff; }
 }
 .etiqueta-hora {
+  position: sticky;
+  left: 0;
   z-index: 1;
   grid-column: 1;
   padding: 5px 3px 0;
   border-bottom: 1px solid #f0f0f2;
   color: #a0a1a7;
+  background: #fff;
   font-size: 7px;
   text-align: left;
 }
@@ -156,7 +180,15 @@
   background: #0b0b11;
   color: #fff;
 
-  strong { display: block; overflow: hidden; font-size: 7px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+  strong {
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: 9px;
+    font-weight: 600;
+    line-height: 1.25;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
 }
 :host ::ng-deep .p-toast { z-index: 1200; }
 

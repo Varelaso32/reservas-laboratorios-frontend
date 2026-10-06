@@ -14,6 +14,7 @@ import {
   fechaDesdeClaveColombia,
   fechaReservaColombia,
   horaReservaColombia,
+  instanteReservaColombia,
   obtenerInicioSemana,
   sumarDiasFecha
 } from '../../../../shared/utils/fecha-colombia.util';
@@ -41,7 +42,7 @@ export class CalendarioComponent implements OnInit, OnDestroy {
 
   readonly fechaActual = fechaActualLargaColombia(new Date());
   readonly hoy = fechaColombia(new Date());
-  readonly horas = Array.from({ length: 12 }, (_, indice) => indice + 7);
+  readonly horas = Array.from({ length: 24 }, (_, indice) => indice);
   semanaInicio = obtenerInicioSemana(this.hoy);
   reservas: ReservaResumen[] = [];
   cargando = false;
@@ -108,32 +109,31 @@ export class CalendarioComponent implements OnInit, OnDestroy {
   }
 
   reservasDelDia(fecha: string): ReservaResumen[] {
-    return this.reservas.filter(reserva =>
-      reserva.estado === 'ACTIVA' &&
-      fechaReservaColombia(reserva.inicio) === fecha &&
-      this.minutosDelDia(reserva.inicio) < 19 * 60 &&
-      this.minutosDelDia(reserva.fin) > 7 * 60
-    );
+    return this.reservas.filter(reserva => {
+      if (reserva.estado !== 'ACTIVA') {
+        return false;
+      }
+      const inicio = this.minutosEnFecha(reserva.inicio, fecha);
+      const fin = this.minutosEnFecha(reserva.fin, fecha);
+      return inicio < 24 * 60 && fin > 0;
+    });
   }
 
   hora(valor: string): string {
     return horaReservaColombia(valor);
   }
 
-  posicionVertical(valor: string): number {
-    const minutos = this.minutosDelDia(valor);
-    return Math.max(0, Math.min(720, minutos - 7 * 60)) / 720 * 100;
+  posicionVertical(reserva: ReservaResumen, fecha: string): number {
+    const inicio = this.minutosEnFecha(reserva.inicio, fecha);
+    return Math.max(0, Math.min(24 * 60, inicio)) / (24 * 60) * 100;
   }
 
-  alturaVertical(reserva: ReservaResumen): number {
-    let inicio = this.minutosDelDia(reserva.inicio);
-    let fin = this.minutosDelDia(reserva.fin);
-    if (fechaReservaColombia(reserva.fin) > fechaReservaColombia(reserva.inicio)) {
-      fin += 24 * 60;
-    }
-    inicio = Math.max(7 * 60, Math.min(19 * 60, inicio));
-    fin = Math.max(inicio, Math.min(19 * 60, fin));
-    return Math.max(2.2, (fin - inicio) / 720 * 100);
+  alturaVertical(reserva: ReservaResumen, fecha: string): number {
+    const inicio = this.minutosEnFecha(reserva.inicio, fecha);
+    const fin = this.minutosEnFecha(reserva.fin, fecha);
+    const inicioVisible = Math.max(0, Math.min(24 * 60, inicio));
+    const finVisible = Math.max(inicioVisible, Math.min(24 * 60, fin));
+    return Math.max(1, (finVisible - inicioVisible) / (24 * 60) * 100);
   }
 
   private cargarReservas(): void {
@@ -145,7 +145,7 @@ export class CalendarioComponent implements OnInit, OnDestroy {
     this.subscriptions.add(this.reservasService.consultarMias().subscribe({
       next: reservas => {
         this.reservas = reservas.filter(reserva =>
-          reserva.estado === 'ACTIVA' && new Date(reserva.fin).getTime() > Date.now()
+          reserva.estado === 'ACTIVA' && instanteReservaColombia(reserva.fin) > Date.now()
         );
         this.cargando = false;
       },
@@ -166,5 +166,14 @@ export class CalendarioComponent implements OnInit, OnDestroy {
   private minutosDelDia(valor: string): number {
     const [hora, minutos] = horaReservaColombia(valor).split(':').map(Number);
     return hora * 60 + minutos;
+  }
+
+  private minutosEnFecha(valor: string, fecha: string): number {
+    const fechaReserva = fechaReservaColombia(valor);
+    const [year, month, day] = fecha.split('-').map(Number);
+    const [yearReserva, monthReserva, dayReserva] = fechaReserva.split('-').map(Number);
+    const dias = (Date.UTC(yearReserva, monthReserva - 1, dayReserva) -
+      Date.UTC(year, month - 1, day)) / 86_400_000;
+    return dias * 24 * 60 + this.minutosDelDia(valor);
   }
 }

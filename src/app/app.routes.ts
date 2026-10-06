@@ -40,6 +40,13 @@ export const routes: Routes = [
     data: { roles: ['APROBADOR', 'ADMIN'] }
   },
   {
+    path: 'admin/usuarios',
+    loadComponent: () => import('./features/admin/pages/admin-usuarios/admin-usuarios.component')
+      .then(modulo => modulo.AdminUsuariosComponent),
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['ADMIN'] }
+  },
+  {
     path: 'solicitud-reserva',
     component: SolicitudReservaComponent
   }

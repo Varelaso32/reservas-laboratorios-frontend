@@ -17,10 +17,17 @@
         <i class="pi pi-building" aria-hidden="true"></i>
         <span>Espacios</span>
       </a>
-      <span class="menu-item inactivo">
-        <i class="pi pi-users" aria-hidden="true"></i>
-        <span>Usuarios</span>
-      </span>
+      @if (usuarioActual?.rol === 'ADMIN') {
+        <a class="menu-item" routerLink="/admin/usuarios" routerLinkActive="activo" ariaCurrentWhenActive="page">
+          <i class="pi pi-users" aria-hidden="true"></i>
+          <span>Usuarios</span>
+        </a>
+      } @else {
+        <span class="menu-item inactivo" aria-disabled="true">
+          <i class="pi pi-users" aria-hidden="true"></i>
+          <span>Usuarios</span>
+        </span>
+      }
       <span class="menu-item inactivo">
         <i class="pi pi-chart-bar" aria-hidden="true"></i>
         <span>Reportes</span>
@@ -64,7 +71,10 @@
         <i class="pi pi-search" aria-hidden="true"></i>
         <input type="search" placeholder="Buscar espacios..." aria-label="Buscar espacios" />
       </label>
-      <div class="perfil" aria-label="Usuario actual">{{ inicialesUsuario }}</div>
+      <div class="acciones-topbar">
+        <i class="pi pi-bell" aria-hidden="true"></i>
+        <div class="perfil" aria-label="Usuario actual">{{ inicialesUsuario }}</div>
+      </div>
     </header>
 
     <section class="pagina">

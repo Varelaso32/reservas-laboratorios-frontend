@@ -11,7 +11,7 @@ import { obtenerMensajeErrorApi } from '../../../../core/utils/api-error.util';
 import { Espacio } from '../../../../shared/models/espacio.model';
 import { ReservaDetalle, ReservaResumen } from '../../../../shared/models/solicitud.model';
 import { PosSidebarComponent } from '../../../../shared/components/pos-sidebar/pos-sidebar.component';
-import { fechaActualLargaColombia, fechaColombia, fechaReservaColombia, horaReservaColombia, obtenerRangoDisponibilidadActual } from '../../../../shared/utils/fecha-colombia.util';
+import { fechaActualLargaColombia, fechaColombia, fechaReservaColombia, horaReservaColombia, instanteReservaColombia, obtenerRangoDisponibilidadActual } from '../../../../shared/utils/fecha-colombia.util';
 import { obtenerColorIdentificadorEspacio } from '../../../../shared/utils/espacio-color.util';
 
 @Component({
@@ -32,6 +32,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   readonly hoy = fechaColombia(new Date());
   cargandoAgenda = false;
   cargandoDisponibles = false;
+  totalReservasHoy: number | null = null;
   reservasHoy: ReservaResumen[] = [];
   detallesReservas = new Map<number, ReservaDetalle>();
   espaciosDisponibles: Espacio[] = [];
@@ -75,7 +76,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   obtenerEstadoReserva(reserva: ReservaResumen): 'En curso' | 'Próxima' {
     const ahora = Date.now();
-    return new Date(reserva.inicio).getTime() <= ahora && ahora < new Date(reserva.fin).getTime()
+    return instanteReservaColombia(reserva.inicio) <= ahora && ahora < instanteReservaColombia(reserva.fin)
       ? 'En curso'
       : 'Próxima';
   }
@@ -94,11 +95,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.subscriptions.add(this.reservasService.consultarMias().subscribe({
       next: reservas => {
         const ahora = Date.now();
-        this.reservasHoy = reservas.filter(reserva =>
-          reserva.estado === 'ACTIVA' &&
-          fechaReservaColombia(reserva.inicio) <= this.hoy &&
-          fechaReservaColombia(reserva.fin) >= this.hoy &&
-          new Date(reserva.fin).getTime() > ahora
+        const reservasActivasHoy = reservas.filter(reserva =>
+          reserva.estado === 'ACTIVA' && fechaReservaColombia(reserva.inicio) === this.hoy
+        );
+        this.totalReservasHoy = reservasActivasHoy.length;
+        this.reservasHoy = reservasActivasHoy.filter(
+          reserva => instanteReservaColombia(reserva.fin) > ahora
         );
         this.cargandoAgenda = false;
         for (const reserva of this.reservasHoy) {

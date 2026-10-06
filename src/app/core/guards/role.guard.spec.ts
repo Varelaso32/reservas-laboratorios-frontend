@@ -34,8 +34,8 @@ describe('roleGuard', () => {
     });
   });
 
-  function evaluarGuard() {
-    const snapshot = { data: { roles: ['APROBADOR'] } } as unknown as ActivatedRouteSnapshot;
+  function evaluarGuard(roles: string[] = ['APROBADOR']) {
+    const snapshot = { data: { roles } } as unknown as ActivatedRouteSnapshot;
     return TestBed.runInInjectionContext(() =>
       roleGuard(snapshot, {} as RouterStateSnapshot)
     );
@@ -67,5 +67,25 @@ describe('roleGuard', () => {
     expect(adminRoute?.canActivate).toEqual([authGuard, roleGuard]);
     expect(adminRoute?.data?.['roles']).toEqual(['APROBADOR', 'ADMIN']);
     expect(routes.some(item => item.path === 'solicitudes-pendientes')).toBeFalse();
+  });
+
+  it('allows only ADMIN to access user management', () => {
+    const usersRoute = routes.find(item => item.path === 'admin/usuarios');
+    expect(usersRoute?.canActivate).toEqual([authGuard, roleGuard]);
+    expect(usersRoute?.data?.['roles']).toEqual(['ADMIN']);
+
+    rol = 'ADMIN';
+    let result = evaluarGuard(['ADMIN']);
+    expect(result).toBeTrue();
+
+    rol = 'APROBADOR';
+    result = evaluarGuard(['ADMIN']);
+    expect(result instanceof UrlTree).toBeTrue();
+    expect(TestBed.inject(Router).serializeUrl(result as UrlTree)).toBe('/espacios');
+
+    rol = 'SOLICITANTE';
+    result = evaluarGuard(['ADMIN']);
+    expect(result instanceof UrlTree).toBeTrue();
+    expect(TestBed.inject(Router).serializeUrl(result as UrlTree)).toBe('/espacios');
   });
 });
