@@ -100,3 +100,5 @@ jobs:
       # Se usa 'npx' para asegurar la ejecucion del CLI local sin errores de entorno
       - name: Ejecutar Pruebas Unitarias
         run: npx ng test --watch=false --browsers=ChromeHeadless
+
+       
