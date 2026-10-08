@@ -101,6 +101,7 @@ tbody tr:last-child td { border-bottom:0; }
 .accion-editar:focus-visible,.accion-estado:focus-visible,.menu-acciones-boton:focus-visible,.menu-acciones button:focus-visible,.controles-paginacion button:focus-visible,
 .cerrar-modal:focus-visible,.acciones-modal button:focus-visible { outline:2px solid #697093; outline-offset:2px; }
 .filtro { cursor:pointer; }
+
 @media (max-width:800px) {
   .sidebar { flex-basis:190px; padding:18px 12px; }
   .topbar { padding:0 18px; }
@@ -119,3 +120,4 @@ tbody tr:last-child td { border-bottom:0; }
   .modal-fondo { align-items:start; padding:12px; }
   .modal-usuario { margin:auto 0; padding:18px; }
 }
+

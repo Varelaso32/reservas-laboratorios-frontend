@@ -155,11 +155,11 @@
                       >
                         <i class="pi pi-eye" aria-hidden="true"></i>
                         <span>
-                          @if (puedeConsultarSolicitudes && cargandoConteos) {
+                          @if (cargandoConteos) {
                             Ver solicitudes · …
-                          } @else if (puedeConsultarSolicitudes && errorConteos) {
+                          } @else if (errorConteos) {
                             Ver solicitudes
-                          } @else if (puedeConsultarSolicitudes && obtenerConteoPendientes(espacio.id) > 0) {
+                          } @else if (obtenerConteoPendientes(espacio.id) > 0) {
                             Ver solicitudes · {{ obtenerConteoPendientes(espacio.id) }}
                           } @else {
                             Ver solicitudes

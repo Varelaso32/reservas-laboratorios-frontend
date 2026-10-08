@@ -443,44 +443,12 @@ export class AdminEspaciosComponent implements OnDestroy, OnInit {
       return;
     }
 
-    this.creandoEspacio = true;
-    const payload = {
-      nombre,
-      tipo: 'LABORATORIO' as TipoEspacio,
-      capacidad,
-      ubicacion: `Ed. ${this.formularioNuevoEspacio.edificio} - ${this.formularioNuevoEspacio.piso}`
-    };
-
-    this.espaciosService.crear(payload).subscribe({
-      next: espacioCreado => {
-        this.creandoEspacio = false;
-        this.modalCrearEspacioAbierto = false;
-        if (this.formularioNuevoEspacio.estado === 'Mantenimiento' && espacioCreado?.id) {
-          this.estadosPersonalizadosEspacios.set(espacioCreado.id, 'Mantenimiento');
-        }
-        this.messageService.add({
-          key: 'admin-espacios',
-          severity: 'success',
-          summary: 'Espacio creado',
-          detail: 'El espacio fue creado correctamente.',
-          life: 5000
-        });
-        this.recargarDatosAdmin();
-      },
-      error: error => {
-        this.creandoEspacio = false;
-        const mensajeBackend = obtenerMensajeErrorApi(error);
-        const detalle = error.status === 405 || error.status === 404
-          ? 'El backend no soporta la creación de espacios en el contrato actual (POST /api/v1/espacios/).'
-          : mensajeBackend ?? 'No se pudo crear el espacio. Intenta nuevamente.';
-        this.messageService.add({
-          key: 'admin-espacios',
-          severity: error.status === 405 || error.status === 404 ? 'warn' : 'error',
-          summary: error.status === 405 || error.status === 404 ? 'Acción no soportada en backend' : 'Error al crear espacio',
-          detail: detalle,
-          life: 6000
-        });
-      }
+    this.messageService.add({
+      key: 'admin-espacios',
+      severity: 'warn',
+      summary: 'Acción no soportada en backend',
+      detail: 'El backend no soporta la creación de espacios en el contrato actual (POST /api/v1/espacios/).',
+      life: 6000
     });
   }
 
@@ -829,4 +797,4 @@ export class AdminEspaciosComponent implements OnDestroy, OnInit {
     this.authService.logout();
     void this.router.navigateByUrl('/login');
   }
-}
+}

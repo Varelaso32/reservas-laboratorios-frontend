@@ -47,6 +47,7 @@ const PERFILES: Record<PerfilPresentacion, ConfiguracionPerfil> = {
   ADMINISTRADOR: { etiqueta: 'Administrador', rol: 'ADMIN', cargo: 'ADMINISTRADOR_SISTEMA', clase: 'administrador' }
 };
 
+
 @Component({
   selector: 'app-admin-usuarios',
   standalone: true,
@@ -348,6 +349,7 @@ export class AdminUsuariosComponent implements OnInit {
     }
   }
 
+
   cerrarSesion(): void {
     this.authService.logout();
     void this.router.navigateByUrl('/login');
@@ -436,4 +438,5 @@ export class AdminUsuariosComponent implements OnInit {
   private mostrarToast(severity: 'success' | 'error', summary: string, detail: string): void {
     this.messageService.add({ severity, summary, detail });
   }
+
 }

@@ -755,7 +755,7 @@ describe('AdminEspaciosComponent', () => {
     expect(fixture.componentInstance.modalCrearEspacioAbierto).toBeFalse();
   });
 
-  it('submits Nuevo espacio modal, posts to backend, and handles success', () => {
+  it('submits Nuevo espacio modal and notifies that backend action is not supported', () => {
     crearPagina('ADMIN');
     cargarEspacios();
 
@@ -775,31 +775,11 @@ describe('AdminEspaciosComponent', () => {
     (fixture.nativeElement.querySelector('.dialogo-crear-espacio-figma .boton-guardar-figma') as HTMLButtonElement).click();
     fixture.detectChanges();
 
-    const postReq = httpTestingController.expectOne(`${API_BASE_URL}/espacios/`);
-    expect(postReq.request.method).toBe('POST');
-    expect(postReq.request.body).toEqual({
-      nombre: 'Laboratorio de Multimedia',
-      tipo: 'LABORATORIO',
-      capacidad: 25,
-      ubicacion: 'Ed. B - Piso 2'
-    });
-    postReq.flush({
-      id: 55,
-      nombre: 'Laboratorio de Multimedia',
-      tipo: 'LABORATORIO',
-      capacidad: 25,
-      ubicacion: 'Ed. B - Piso 2',
-      activo: true
-    });
-    fixture.detectChanges();
-
-    expect(fixture.componentInstance.modalCrearEspacioAbierto).toBeFalse();
     expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
       key: 'admin-espacios',
-      severity: 'success',
-      summary: 'Espacio creado'
+      severity: 'warn',
+      summary: 'Acción no soportada en backend'
     }));
-    cargarEspacios();
   });
 
   it('confirms deactivation and uses the estado PATCH without deleting spaces', () => {
@@ -900,6 +880,7 @@ describe('AdminEspaciosComponent', () => {
     expect(fixture.nativeElement.querySelector('.encabezado-historial')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('.boton-aprobar')).toBeNull();
     expect(fixture.nativeElement.querySelector('.boton-rechazar')).toBeNull();
+
   });
 
   it('keeps route access limited to the two existing admin roles', () => {

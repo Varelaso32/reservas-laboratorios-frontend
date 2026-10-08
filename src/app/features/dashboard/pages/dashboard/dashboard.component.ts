@@ -155,7 +155,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
       }
     }));
   }
-
   private cargarAgenda(): void {
     if (this.rolUsuario !== 'SOLICITANTE') {
       this.mensajeAgendaNoDisponible = 'No hay reservas disponibles para mostrar.';

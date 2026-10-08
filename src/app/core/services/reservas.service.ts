@@ -16,7 +16,6 @@ export class ReservasService {
   obtenerDetalle(reservaId: number): Observable<ReservaDetalle> {
     return this.http.get<ReservaDetalle>(`${API_BASE_URL}/reservas/${reservaId}`);
   }
-
   cancelarReserva(reservaId: number): Observable<ReservaResumen> {
     return this.http.post<ReservaResumen>(
       `${API_BASE_URL}/reservas/${reservaId}/cancelar`,

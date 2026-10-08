@@ -125,7 +125,6 @@ export class SolicitudesEspacioModalComponent implements OnChanges {
       timeZone: 'America/Bogota'
     }).format(new Date(valor));
   }
-
   cambiarFiltroEstado(event: Event): void {
     this.filtroEstado = (event.target as HTMLSelectElement).value as typeof this.filtroEstado;
     this.emitirFiltrosHistorial();
