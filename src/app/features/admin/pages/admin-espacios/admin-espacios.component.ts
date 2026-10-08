@@ -14,7 +14,7 @@ import { Espacio, EspacioActualizar, EspacioMetrica, TipoEspacio } from '../../.
 import { obtenerColorIdentificadorEspacio } from '../../../../shared/utils/espacio-color.util';
 import { EstadoDetalleSolicitud, SolicitudPendiente, SolicitudResuelta } from '../../../../shared/models/solicitud.model';
 import { SolicitudesEspacioModalComponent } from '../../../solicitudes/components/solicitudes-espacio-modal/solicitudes-espacio-modal.component';
-import { fechaColombia, fechaReservaColombia } from '../../../../shared/utils/fecha-colombia.util';
+import { fechaColombia } from '../../../../shared/utils/fecha-colombia.util';
 
 @Component({
   selector: 'app-admin-espacios',
