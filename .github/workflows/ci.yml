@@ -103,14 +103,11 @@ jobs:
       - name: Ejecutar Pruebas Unitarias
         run: npx ng test --watch=false --browsers=ChromeHeadless --code-coverage
 
-      - name: Debug ubicacion del reporte de cobertura
-        run: ls -la coverage/ && find ./coverage -type f | head -20
-
       - name: Subir reporte de cobertura
         uses: actions/upload-artifact@v4
         with:
           name: coverage
-          path: coverage/lcov.info
+          path: coverage/reservas-laboratorios-frontend/lcov.info
 
   # ============================================================================
   # 4. SONAR: Analiza el codigo en SonarQube Cloud y espera el Quality Gate.
@@ -131,6 +128,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: coverage
+          path: coverage/reservas-laboratorios-frontend
 
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v7
