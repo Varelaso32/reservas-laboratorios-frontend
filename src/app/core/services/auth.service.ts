@@ -3,7 +3,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
 
 import { API_BASE_URL } from '../config/api.config';
-import { RespuestaLogin, Rol, Usuario } from '../models/auth.models';
+import { RegistroCrear, RespuestaLogin, Rol, Usuario, UsuarioDetalleOut } from '../models/auth.models';
 
 const ACCESS_TOKEN_KEY = 'access_token';
 const AUTHENTICATED_USER_KEY = 'usuario';
@@ -17,6 +17,10 @@ export class AuthService {
 
   constructor() {
     this.restaurarSesion();
+  }
+
+  registro(datos: RegistroCrear): Observable<UsuarioDetalleOut> {
+    return this.http.post<UsuarioDetalleOut>(`${API_BASE_URL}/auth/registro`, datos);
   }
 
   login(email: string, password: string): Observable<RespuestaLogin> {

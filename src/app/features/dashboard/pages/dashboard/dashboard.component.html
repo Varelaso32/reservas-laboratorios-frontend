@@ -57,6 +57,16 @@
                     <strong>{{ formatearHora(reserva.inicio) }} – {{ formatearHora(reserva.fin) }}</strong>
                     <span [class]="obtenerClaseEstado(reserva)">{{ obtenerEstadoReserva(reserva) }}</span>
                   </div>
+                  @if (puedeCancelarReserva(reserva)) {
+                    <button
+                      type="button"
+                      class="cancelar-reserva"
+                      [disabled]="cancelandoReservaId !== null"
+                      (click)="abrirConfirmacionCancelacion(reserva)"
+                    >
+                      Cancelar
+                    </button>
+                  }
                 </article>
               }
             </div>
@@ -136,3 +146,35 @@
     </section>
   </main>
 </div>
+
+@if (reservaCancelar) {
+  <div class="dialogo-confirmacion-overlay">
+    <section
+      class="dialogo-confirmacion"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="titulo-cancelar-reserva"
+      aria-describedby="descripcion-cancelar-reserva"
+    >
+      <h2 id="titulo-cancelar-reserva">¿Cancelar esta reserva?</h2>
+      <p id="descripcion-cancelar-reserva">
+        La reserva de {{ reservaCancelar.espacio.nombre }} será cancelada.
+      </p>
+      <footer>
+        <button
+          type="button"
+          class="boton-secundario"
+          [disabled]="cancelandoReservaId !== null"
+          (click)="cerrarConfirmacionCancelacion()"
+        >Volver</button>
+        <button
+          type="button"
+          class="boton-confirmar"
+          [disabled]="cancelandoReservaId !== null"
+          [attr.aria-busy]="cancelandoReservaId === reservaCancelar.id"
+          (click)="confirmarCancelacion()"
+        >{{ cancelandoReservaId === reservaCancelar.id ? 'Cancelando…' : 'Sí, cancelar' }}</button>
+      </footer>
+    </section>
+  </div>
+}

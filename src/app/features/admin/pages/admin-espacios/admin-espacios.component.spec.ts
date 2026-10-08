@@ -12,6 +12,7 @@ describe('AdminEspaciosComponent', () => {
   let fixture: ComponentFixture<AdminEspaciosComponent>;
   let httpTestingController: HttpTestingController;
   let messageService: MessageService;
+  let rolActual: 'APROBADOR' | 'ADMIN' = 'APROBADOR';
 
   const espacios = [
     {
@@ -27,6 +28,28 @@ describe('AdminEspaciosComponent', () => {
       tipo: 'SALA' as const,
       capacidad: 18,
       ubicacion: null
+    }
+  ];
+  const espaciosAdmin = [
+    { ...espacios[0], activo: true },
+    { ...espacios[1], activo: false }
+  ];
+  const metricas = [
+    {
+      ...espaciosAdmin[0],
+      fecha: '2026-10-07',
+      reservas_dia: 6,
+      minutos_reservados: 360,
+      minutos_disponibles: 540,
+      porcentaje_ocupacion: 40
+    },
+    {
+      ...espaciosAdmin[1],
+      fecha: '2026-10-07',
+      reservas_dia: 0,
+      minutos_reservados: 0,
+      minutos_disponibles: 900,
+      porcentaje_ocupacion: null
     }
   ];
 
@@ -72,13 +95,14 @@ describe('AdminEspaciosComponent', () => {
   });
 
   function crearPagina(rol: 'APROBADOR' | 'ADMIN'): void {
+    rolActual = rol;
     sessionStorage.setItem('access_token', 'spec-session-token');
     sessionStorage.setItem('usuario', JSON.stringify({
       id: 2,
       nombre: 'Coordinador de Laboratorios',
       email: 'coordinador@reservas.test',
       rol,
-      cargo: 'COORDINADOR_LABORATORIOS'
+      cargo: rol === 'ADMIN' ? 'ADMINISTRADOR_SISTEMA' : 'COORDINADOR_LABORATORIOS'
     }));
 
     fixture = TestBed.createComponent(AdminEspaciosComponent);
@@ -86,7 +110,25 @@ describe('AdminEspaciosComponent', () => {
   }
 
   function cargarEspacios(): void {
-    httpTestingController.expectOne(`${API_BASE_URL}/espacios/`).flush(espacios);
+    if (rolActual === 'ADMIN') {
+      httpTestingController.expectOne(`${API_BASE_URL}/espacios/admin`).flush(espaciosAdmin);
+      const metricRequest = httpTestingController.expectOne(request =>
+        request.url === `${API_BASE_URL}/espacios/metricas` && request.params.has('fecha')
+      );
+      expect(metricRequest.request.method).toBe('GET');
+      expect(metricRequest.request.params.get('fecha')).toBe(fixture.componentInstance.fechaMetricas);
+      metricRequest.flush(metricas);
+    } else {
+      httpTestingController.expectOne(`${API_BASE_URL}/espacios/`).flush(espacios);
+    }
+    fixture.detectChanges();
+  }
+
+  function cargarHistorialVacio(): void {
+    httpTestingController.expectOne(request =>
+      request.url === `${API_BASE_URL}/solicitudes/resueltas` &&
+      request.params.get('espacio_id') === '42'
+    ).flush([]);
     fixture.detectChanges();
   }
 
@@ -120,6 +162,7 @@ describe('AdminEspaciosComponent', () => {
   function abrirModalConDetalle(): void {
     (fixture.nativeElement.querySelector('.ver-solicitudes') as HTMLButtonElement).click();
     fixture.detectChanges();
+    cargarHistorialVacio();
     httpTestingController.expectOne(request =>
       request.url === `${API_BASE_URL}/solicitudes/pendientes` &&
       request.params.get('espacio_id') === '42'
@@ -159,29 +202,23 @@ describe('AdminEspaciosComponent', () => {
     expect(fixture.nativeElement.querySelector('.menu a[routerLink="/espacios"]')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('.menu a[routerLink="/admin/usuarios"]')).toBeNull();
     expect(Array.from(fixture.nativeElement.querySelectorAll('.menu .inactivo') as NodeListOf<HTMLElement>)
-      .some(item => item.textContent?.includes('Usuarios'))).toBeTrue();
-    expect(fixture.nativeElement.querySelector('.nuevo-espacio').disabled).toBeTrue();
+      .some(item => item.textContent?.includes('Usuarios'))).toBeFalse();
+    expect(fixture.nativeElement.querySelector('.nuevo-espacio').disabled).toBeFalse();
 
     const solicitudes = Array.from(fixture.nativeElement.querySelectorAll('tbody tr')) as HTMLElement[];
-    expect(solicitudes[0].querySelectorAll('.sin-dato').length).toBe(2);
-    expect(solicitudes[0].querySelector('td:nth-child(4)')?.textContent?.trim()).toBe('—');
-    expect(solicitudes[0].querySelector('td:nth-child(6)')?.textContent?.trim()).toBe('—');
+    expect(solicitudes[0].querySelectorAll('.sin-dato')).toHaveSize(0);
+    expect(solicitudes[0].querySelector('td:nth-child(4)')?.textContent?.trim()).toBe('0');
+    expect(solicitudes[0].querySelector('td:nth-child(6)')?.textContent?.trim()).toBe('0%');
     expect(solicitudes[0].querySelector('.ver-solicitudes.con-pendientes')?.textContent)
       .toContain('Ver solicitudes · 2');
     expect(solicitudes[1].querySelector('.ver-solicitudes.con-pendientes')).toBeNull();
     expect(solicitudes[1].querySelector('.ver-solicitudes')?.textContent?.trim())
       .toBe('Ver solicitudes');
-    expect(solicitudes[0].querySelector('.estado-no-disponible')?.textContent?.trim()).toBe('—');
+    expect(solicitudes[0].querySelector('.badge-estado')?.textContent?.trim()).toBe('Activo');
     expect(solicitudes[0].querySelector('.identificador-color')?.getAttribute('style'))
       .toContain('background-color');
     expect(solicitudes[0].querySelector('.codigo-espacio')).toBeNull();
-    expect(solicitudes[0].querySelectorAll('.accion-espacio').length).toBe(2);
-    for (const action of Array.from(solicitudes[0].querySelectorAll('.accion-espacio')) as HTMLButtonElement[]) {
-      expect(action.disabled).toBeTrue();
-      expect(action.getAttribute('aria-disabled')).toBe('true');
-      expect(action.querySelector('.pi-pencil, .pi-trash')).toBeTruthy();
-      action.click();
-    }
+    expect(solicitudes[0].querySelectorAll('.accion-espacio')).toHaveSize(2);
     httpTestingController.expectNone(request =>
       request.url.startsWith(`${API_BASE_URL}/espacios/`) &&
       ['PUT', 'PATCH', 'DELETE'].includes(request.method)
@@ -218,6 +255,7 @@ describe('AdminEspaciosComponent', () => {
     const urlBeforeClick = router.url;
     (fixture.nativeElement.querySelector('.ver-solicitudes') as HTMLButtonElement).click();
     fixture.detectChanges();
+    cargarHistorialVacio();
 
     const request = httpTestingController.expectOne(
       pending => pending.url === `${API_BASE_URL}/solicitudes/pendientes` &&
@@ -262,7 +300,7 @@ describe('AdminEspaciosComponent', () => {
     expect(modal.querySelector('.boton-rechazar')?.textContent).toContain('Rechazar');
   });
 
-  it('shows the admin table for ADMIN without calling pending requests or showing the action', () => {
+  it('loads admin spaces and real occupancy metrics without requesting approval actions', () => {
     crearPagina('ADMIN');
     cargarEspacios();
 
@@ -270,9 +308,16 @@ describe('AdminEspaciosComponent', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('Panel Admin');
-    expect(fixture.nativeElement.querySelector('.ver-solicitudes')).toBeNull();
-    expect(fixture.nativeElement.querySelectorAll('.sin-dato').length).toBe(6);
+    expect(fixture.nativeElement.querySelector('.ver-solicitudes')).toBeTruthy();
+    expect(fixture.nativeElement.querySelectorAll('.sin-dato').length).toBe(0);
+    expect(fixture.nativeElement.querySelectorAll('.ver-solicitudes').length).toBe(2);
     expect(fixture.nativeElement.querySelectorAll('.accion-espacio').length).toBe(4);
+    const filas = fixture.nativeElement.querySelectorAll('tbody tr') as NodeListOf<HTMLElement>;
+    expect(filas[0].querySelector('td:nth-child(4)')?.textContent?.trim()).toBe('6');
+    expect(filas[0].querySelector('td:nth-child(6)')?.textContent).toContain('40%');
+    expect(filas[1].querySelector('td:nth-child(6)')?.textContent?.trim()).toBe('—');
+    expect(filas[0].querySelector('.badge-estado')?.textContent?.trim()).toBe('Activo');
+    expect(filas[1].querySelector('.badge-estado')?.textContent?.trim()).toBe('Inactivo');
     expect(fixture.nativeElement.querySelector('.menu a[routerLink="/espacios"]')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('.menu a[routerLink="/admin/usuarios"]')).toBeTruthy();
   });
@@ -285,7 +330,7 @@ describe('AdminEspaciosComponent', () => {
 
     (fixture.nativeElement.querySelector('.ver-solicitudes') as HTMLButtonElement).click();
     fixture.detectChanges();
-
+    cargarHistorialVacio();
     const pendingRequest = httpTestingController.expectOne(request =>
       request.url === `${API_BASE_URL}/solicitudes/pendientes` &&
       request.params.get('espacio_id') === '42'
@@ -318,6 +363,7 @@ describe('AdminEspaciosComponent', () => {
     httpTestingController.expectOne(`${API_BASE_URL}/solicitudes/pendientes`).flush([solicitudPendiente]);
     (fixture.nativeElement.querySelector('.ver-solicitudes') as HTMLButtonElement).click();
     fixture.detectChanges();
+    cargarHistorialVacio();
     httpTestingController.expectOne(request =>
       request.url === `${API_BASE_URL}/solicitudes/pendientes` &&
       request.params.get('espacio_id') === '42'
@@ -343,6 +389,7 @@ describe('AdminEspaciosComponent', () => {
     httpTestingController.expectOne(`${API_BASE_URL}/solicitudes/pendientes`).flush([solicitudPendiente]);
     (fixture.nativeElement.querySelector('.ver-solicitudes') as HTMLButtonElement).click();
     fixture.detectChanges();
+    cargarHistorialVacio();
     httpTestingController.expectOne(request =>
       request.url === `${API_BASE_URL}/solicitudes/pendientes` &&
       request.params.get('espacio_id') === '42'
@@ -384,12 +431,17 @@ describe('AdminEspaciosComponent', () => {
       request.url === `${API_BASE_URL}/solicitudes/pendientes` &&
       request.params.get('espacio_id') === '42'
     );
+    const historialRefresh = httpTestingController.expectOne(request =>
+      request.url === `${API_BASE_URL}/solicitudes/resueltas` &&
+      request.params.get('espacio_id') === '42'
+    );
     globalRefresh.flush([]);
     spaceRefresh.flush([]);
+    historialRefresh.flush([]);
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('0 pendientes');
     expect(fixture.nativeElement.querySelector('.card-solicitud')).toBeNull();
-    expect(fixture.nativeElement.textContent).not.toContain('Aprobada');
+    expect(fixture.nativeElement.querySelector('.badge-aprobada')).toBeNull();
   });
 
   it('keeps the request pending and shows the backend message when approval returns 409', () => {
@@ -398,6 +450,7 @@ describe('AdminEspaciosComponent', () => {
     httpTestingController.expectOne(`${API_BASE_URL}/solicitudes/pendientes`).flush([solicitudPendiente]);
     (fixture.nativeElement.querySelector('.ver-solicitudes') as HTMLButtonElement).click();
     fixture.detectChanges();
+    cargarHistorialVacio();
     httpTestingController.expectOne(request =>
       request.url === `${API_BASE_URL}/solicitudes/pendientes` &&
       request.params.get('espacio_id') === '42'
@@ -435,6 +488,7 @@ describe('AdminEspaciosComponent', () => {
     httpTestingController.expectOne(`${API_BASE_URL}/solicitudes/pendientes`).flush([solicitudPendiente]);
     (fixture.nativeElement.querySelector('.ver-solicitudes') as HTMLButtonElement).click();
     fixture.detectChanges();
+    cargarHistorialVacio();
     httpTestingController.expectOne(request =>
       request.url === `${API_BASE_URL}/solicitudes/pendientes` &&
       request.params.get('espacio_id') === '42'
@@ -556,12 +610,17 @@ describe('AdminEspaciosComponent', () => {
       request.url === `${API_BASE_URL}/solicitudes/pendientes` &&
       request.params.get('espacio_id') === '42'
     );
+    const historialRefresh = httpTestingController.expectOne(request =>
+      request.url === `${API_BASE_URL}/solicitudes/resueltas` &&
+      request.params.get('espacio_id') === '42'
+    );
     globalRefresh.flush([]);
     spaceRefresh.flush([]);
+    historialRefresh.flush([]);
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('0 pendientes');
     expect(fixture.nativeElement.querySelector('.card-solicitud')).toBeNull();
-    expect(fixture.nativeElement.textContent).not.toContain('Rechazada');
+    expect(fixture.nativeElement.querySelector('.badge-rechazada')).toBeNull();
   });
 
   it('keeps the request and rejection dialog open after a 409 using backend detail', () => {
@@ -622,6 +681,225 @@ describe('AdminEspaciosComponent', () => {
       severity: 'error',
       detail: 'Error de servicio.'
     }));
+  });
+
+  it('edits only changed supported space fields and refreshes admin data', () => {
+    crearPagina('ADMIN');
+    cargarEspacios();
+    const editButton = fixture.nativeElement.querySelector(
+      '[aria-label="Editar Laboratorio de Redes"]'
+    ) as HTMLButtonElement;
+    editButton.click();
+    fixture.detectChanges();
+
+    const nombre = fixture.nativeElement.querySelector('.overlay-admin input[type="text"]') as HTMLInputElement;
+    nombre.value = 'Laboratorio Redes';
+    nombre.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('.boton-principal-admin') as HTMLButtonElement).click();
+
+    const patch = httpTestingController.expectOne(`${API_BASE_URL}/espacios/42`);
+    expect(patch.request.method).toBe('PATCH');
+    expect(patch.request.body).toEqual({ nombre: 'Laboratorio Redes' });
+    patch.flush({ ...espaciosAdmin[0], nombre: 'Laboratorio Redes' });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.overlay-admin')).toBeNull();
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      key: 'admin-espacios',
+      severity: 'success',
+      summary: 'Espacio actualizado'
+    }));
+    cargarEspacios();
+  });
+
+  it('updates space to Mantenimiento in edit modal, calling PATCH /estado with activo: false and displaying Mantenimiento badge', () => {
+    crearPagina('ADMIN');
+    cargarEspacios();
+    const editButton = fixture.nativeElement.querySelector(
+      '[aria-label="Editar Laboratorio de Redes"]'
+    ) as HTMLButtonElement;
+    editButton.click();
+    fixture.detectChanges();
+
+    fixture.componentInstance.estadoEspacioVisual = 'Mantenimiento';
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('.boton-guardar-figma') as HTMLButtonElement).click();
+
+    const patch = httpTestingController.expectOne(`${API_BASE_URL}/espacios/42/estado`);
+    expect(patch.request.method).toBe('PATCH');
+    expect(patch.request.body).toEqual({ activo: false });
+    patch.flush({ ...espaciosAdmin[0], activo: false });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.overlay-admin')).toBeNull();
+    expect(fixture.componentInstance.etiquetaEstadoEspacio(42)).toBe('Mantenimiento');
+    cargarEspacios();
+  });
+
+  it('opens and closes the Nuevo espacio modal for ADMIN', () => {
+    crearPagina('ADMIN');
+    cargarEspacios();
+
+    const nuevoBoton = fixture.nativeElement.querySelector('.nuevo-espacio') as HTMLButtonElement;
+    expect(nuevoBoton.disabled).toBeFalse();
+    nuevoBoton.click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('#titulo-crear-espacio')?.textContent).toContain('Nuevo espacio');
+    expect(fixture.componentInstance.modalCrearEspacioAbierto).toBeTrue();
+
+    const cancelarBoton = fixture.nativeElement.querySelector('.dialogo-crear-espacio-figma .boton-cancelar-figma') as HTMLButtonElement;
+    cancelarBoton.click();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.modalCrearEspacioAbierto).toBeFalse();
+  });
+
+  it('submits Nuevo espacio modal, posts to backend, and handles success', () => {
+    crearPagina('ADMIN');
+    cargarEspacios();
+
+    (fixture.nativeElement.querySelector('.nuevo-espacio') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    fixture.componentInstance.formularioNuevoEspacio = {
+      codigo: 'L105',
+      edificio: 'B',
+      nombre: 'Laboratorio de Multimedia',
+      piso: 'Piso 2',
+      capacidad: 25,
+      estado: 'Activo'
+    };
+    fixture.detectChanges();
+
+    (fixture.nativeElement.querySelector('.dialogo-crear-espacio-figma .boton-guardar-figma') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    const postReq = httpTestingController.expectOne(`${API_BASE_URL}/espacios/`);
+    expect(postReq.request.method).toBe('POST');
+    expect(postReq.request.body).toEqual({
+      nombre: 'Laboratorio de Multimedia',
+      tipo: 'LABORATORIO',
+      capacidad: 25,
+      ubicacion: 'Ed. B - Piso 2'
+    });
+    postReq.flush({
+      id: 55,
+      nombre: 'Laboratorio de Multimedia',
+      tipo: 'LABORATORIO',
+      capacidad: 25,
+      ubicacion: 'Ed. B - Piso 2',
+      activo: true
+    });
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.modalCrearEspacioAbierto).toBeFalse();
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      key: 'admin-espacios',
+      severity: 'success',
+      summary: 'Espacio creado'
+    }));
+    cargarEspacios();
+  });
+
+  it('confirms deactivation and uses the estado PATCH without deleting spaces', () => {
+    crearPagina('ADMIN');
+    cargarEspacios();
+    (fixture.nativeElement.querySelector('[aria-label="Desactivar Laboratorio de Redes"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[role="alertdialog"]')?.textContent)
+      .toContain('no elimina el espacio');
+    (fixture.nativeElement.querySelector('.boton-principal-admin') as HTMLButtonElement).click();
+
+    const patch = httpTestingController.expectOne(`${API_BASE_URL}/espacios/42/estado`);
+    expect(patch.request.method).toBe('PATCH');
+    expect(patch.request.body).toEqual({ activo: false });
+    patch.flush({ ...espaciosAdmin[0], activo: false });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[role="alertdialog"]')).toBeNull();
+    httpTestingController.expectNone(request => request.method === 'DELETE');
+    cargarEspacios();
+  });
+
+  it('loads real resolved request history with filters and shows decision details', () => {
+    crearPagina('APROBADOR');
+    cargarEspacios();
+    httpTestingController.expectOne(`${API_BASE_URL}/solicitudes/pendientes`).flush([solicitudPendiente]);
+    (fixture.nativeElement.querySelector('.ver-solicitudes') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    httpTestingController.expectOne(request =>
+      request.url === `${API_BASE_URL}/solicitudes/pendientes` &&
+      request.params.get('espacio_id') === '42'
+    ).flush([solicitudPendiente]);
+    fixture.detectChanges();
+    httpTestingController.expectOne(`${API_BASE_URL}/solicitudes/51`).flush(respuestaDetalle());
+    fixture.detectChanges();
+
+    const historial = httpTestingController.expectOne(request =>
+      request.url === `${API_BASE_URL}/solicitudes/resueltas` &&
+      request.params.get('espacio_id') === '42'
+    );
+    expect(historial.request.method).toBe('GET');
+    const aprobada = {
+      id: 61,
+      estado: 'APROBADA',
+      solicitante: solicitudPendiente.solicitante,
+      espacio: espacios[0],
+      inicio: '2026-10-08T11:00:00-05:00',
+      fin: '2026-10-08T12:00:00-05:00',
+      asistentes: 10,
+      decidida_por: 'Coordinación',
+      fecha_decision: '2026-10-07T10:00:00-05:00',
+      motivo_rechazo: null
+    };
+    const rechazada = {
+      ...aprobada,
+      id: 62,
+      estado: 'RECHAZADA',
+      decidida_por: 'Coordinación Académica',
+      motivo_rechazo: 'El espacio no está disponible.'
+    };
+    historial.flush([aprobada, rechazada]);
+    fixture.detectChanges();
+
+    const texto = fixture.nativeElement.querySelector('.historial-solicitudes')?.textContent as string;
+    expect(texto).toContain('Estudiante de Prueba');
+    expect(texto).toContain('Laboratorio de Redes');
+    expect(texto).toContain('Coordinación');
+    expect(texto).toContain('El espacio no está disponible.');
+    expect(fixture.nativeElement.querySelector('.badge-aprobada')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.badge-rechazada')).toBeTruthy();
+
+    const filtro = fixture.nativeElement.querySelector('.filtros-historial select') as HTMLSelectElement;
+    filtro.value = 'RECHAZADA';
+    filtro.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    const filtrada = httpTestingController.expectOne(request =>
+      request.url === `${API_BASE_URL}/solicitudes/resueltas` &&
+      request.params.get('espacio_id') === '42' &&
+      request.params.get('estado') === 'RECHAZADA'
+    );
+    filtrada.flush([rechazada]);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('.card-historial').length).toBe(1);
+  });
+
+  it('allows ADMIN to inspect history without loading pending requests or approval controls', () => {
+    crearPagina('ADMIN');
+    cargarEspacios();
+    (fixture.nativeElement.querySelector('.ver-solicitudes') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    const historial = httpTestingController.expectOne(request =>
+      request.url === `${API_BASE_URL}/solicitudes/resueltas` &&
+      request.params.get('espacio_id') === '42'
+    );
+    historial.flush([]);
+    fixture.detectChanges();
+    httpTestingController.expectNone(`${API_BASE_URL}/solicitudes/pendientes`);
+    expect(fixture.nativeElement.querySelector('.encabezado-historial')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.boton-aprobar')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.boton-rechazar')).toBeNull();
   });
 
   it('keeps route access limited to the two existing admin roles', () => {

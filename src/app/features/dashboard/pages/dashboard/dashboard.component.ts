@@ -41,6 +41,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   errorDisponibles: string | null = null;
   intervaloDisponibilidad: string | null = null;
   fechaDisponibilidad: string | null = null;
+  cancelandoReservaId: number | null = null;
+  reservaCancelar: ReservaResumen | null = null;
 
   get rolUsuario(): string | null {
     return this.authService.obtenerUsuarioActual()?.rol ?? null;
@@ -83,6 +85,75 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   obtenerClaseEstado(reserva: ReservaResumen): string {
     return this.obtenerEstadoReserva(reserva) === 'En curso' ? 'estado-en-curso' : 'estado-proxima';
+  }
+
+  puedeCancelarReserva(reserva: ReservaResumen): boolean {
+    return this.rolUsuario === 'SOLICITANTE' &&
+      reserva.estado === 'ACTIVA' &&
+      instanteReservaColombia(reserva.inicio) > Date.now();
+  }
+
+  abrirConfirmacionCancelacion(reserva: ReservaResumen): void {
+    if (this.cancelandoReservaId === null && this.puedeCancelarReserva(reserva)) {
+      this.reservaCancelar = reserva;
+    }
+  }
+
+  cerrarConfirmacionCancelacion(): void {
+    if (this.cancelandoReservaId === null) {
+      this.reservaCancelar = null;
+    }
+  }
+
+  confirmarCancelacion(): void {
+    const reserva = this.reservaCancelar;
+    if (
+      !reserva ||
+      this.cancelandoReservaId !== null ||
+      !this.puedeCancelarReserva(reserva)
+    ) {
+      return;
+    }
+
+    this.cancelandoReservaId = reserva.id;
+    this.subscriptions.add(this.reservasService.cancelarReserva(reserva.id).subscribe({
+      next: () => {
+        this.cancelandoReservaId = null;
+        this.reservaCancelar = null;
+        this.messageService.add({
+          key: 'dashboard',
+          severity: 'success',
+          summary: 'Reserva cancelada',
+          detail: 'La reserva fue cancelada correctamente.',
+          life: 5000
+        });
+        this.cargarAgenda();
+      },
+      error: error => {
+        const noEncontrada = error.status === 404;
+        const conflicto = error.status === 409;
+        const detalle = obtenerMensajeErrorApi(error);
+        let summary = 'Error al cancelar la reserva';
+        let mensaje = detalle ?? 'No se pudo cancelar la reserva. Intenta nuevamente.';
+        let severity: 'warn' | 'error' = 'error';
+        if (noEncontrada) {
+          summary = 'Reserva no encontrada';
+          mensaje = 'La reserva no existe o no pertenece a tu cuenta.';
+        } else if (conflicto) {
+          summary = 'No se puede cancelar la reserva';
+          mensaje = 'La reserva ya inició y no se puede cancelar.';
+          severity = 'warn';
+        }
+        this.messageService.add({
+          key: 'dashboard',
+          severity,
+          summary,
+          detail: mensaje,
+          life: 5000
+        });
+        this.cancelandoReservaId = null;
+      }
+    }));
   }
 
   private cargarAgenda(): void {

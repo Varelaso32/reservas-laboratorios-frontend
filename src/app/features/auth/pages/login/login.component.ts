@@ -69,13 +69,16 @@ export class LoginComponent {
   );
 
   cargando = false;
+  cargandoRegistro = false;
   mensajeError: string | null = null;
   mensajeRegistro: string | null = null;
+  errorRegistro: string | null = null;
 
   cambiarVista(vista: 'login' | 'registro'): void {
     this.vista = vista;
     this.mensajeError = null;
     this.mensajeRegistro = null;
+    this.errorRegistro = null;
   }
 
   iniciarSesion(): void {
@@ -102,11 +105,39 @@ export class LoginComponent {
 
   solicitarAcceso(): void {
     this.mensajeRegistro = null;
+    this.errorRegistro = null;
     if (this.formRegistro.invalid) {
       this.formRegistro.markAllAsTouched();
       return;
     }
 
-    this.mensajeRegistro = 'El registro de cuentas aún no está disponible.';
+    this.cargandoRegistro = true;
+    const { nombre, email, password } = this.formRegistro.getRawValue();
+
+    this.authService.registro({
+      nombre: nombre.trim(),
+      email: email.trim().toLowerCase(),
+      clave: password
+    }).subscribe({
+      next: () => {
+        this.authService.login(email.trim().toLowerCase(), password).subscribe({
+          next: () => {
+            this.cargandoRegistro = false;
+            void this.router.navigateByUrl('/espacios');
+          },
+          error: () => {
+            this.cargandoRegistro = false;
+            this.formLogin.patchValue({ email: email.trim().toLowerCase(), password });
+            this.cambiarVista('login');
+            this.mensajeRegistro = '¡Cuenta creada con éxito! Inicia sesión con tus credenciales.';
+          }
+        });
+      },
+      error: error => {
+        this.cargandoRegistro = false;
+        this.errorRegistro = obtenerMensajeErrorApi(error) ??
+          'No se pudo crear la cuenta. Verifica que el correo pertenezca a @ecci.edu.co.';
+      }
+    });
   }
 }

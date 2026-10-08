@@ -22,11 +22,6 @@
           <i class="pi pi-users" aria-hidden="true"></i>
           <span>Usuarios</span>
         </a>
-      } @else {
-        <span class="menu-item inactivo" aria-disabled="true">
-          <i class="pi pi-users" aria-hidden="true"></i>
-          <span>Usuarios</span>
-        </span>
       }
       <span class="menu-item inactivo">
         <i class="pi pi-chart-bar" aria-hidden="true"></i>
@@ -50,7 +45,7 @@
         <div class="avatar">{{ inicialesUsuario }}</div>
         <div class="usuario-info">
           <strong>{{ usuario.nombre }}</strong>
-          <small>{{ usuario.rol }}</small>
+          <small>{{ usuario.rol === 'ADMIN' ? 'Administrador' : usuario.rol === 'APROBADOR' ? 'Operador' : 'Solicitante' }}</small>
         </div>
         <button
           type="button"
@@ -66,6 +61,7 @@
   </aside>
 
   <main class="contenido">
+    <p-toast key="admin-espacios" position="bottom-right" />
     <header class="topbar">
       <label class="buscador">
         <i class="pi pi-search" aria-hidden="true"></i>
@@ -87,11 +83,23 @@
             <p>{{ espacios.length }} espacios registrados</p>
           }
         </div>
-        <button type="button" class="nuevo-espacio" disabled>
+        <button
+          type="button"
+          class="nuevo-espacio"
+          [disabled]="!tienePermisoAdminPanel"
+          (click)="abrirCrearEspacio()"
+        >
           <i class="pi pi-plus" aria-hidden="true"></i>
           Nuevo espacio
         </button>
       </div>
+
+      @if (errorMetricas) {
+        <div class="aviso-metricas" role="alert">
+          <span>{{ errorMetricas }}</span>
+          <button type="button" (click)="cargarMetricas()">Reintentar</button>
+        </div>
+      }
 
       <div class="tabla-contenedor">
         <table>
@@ -134,24 +142,24 @@
                   </td>
                   <td>{{ espacio.ubicacion ?? '—' }}</td>
                   <td>{{ espacio.capacidad }} pers.</td>
-                  <td class="sin-dato">—</td>
+                  <td>{{ obtenerReservasHoy(espacio.id) }}</td>
                   <td>
-                    @if (puedeConsultarSolicitudes) {
+                    @if (puedeVerHistorial) {
                       <button
                         type="button"
                         class="ver-solicitudes"
                         (click)="verSolicitudes(espacio)"
-                        [attr.aria-label]="'Ver solicitudes pendientes de ' + espacio.nombre"
+                        [attr.aria-label]="'Ver solicitudes de ' + espacio.nombre"
                         [title]="errorConteos ? 'No se pudo cargar el contador' : ''"
                         [class.con-pendientes]="!cargandoConteos && !errorConteos && obtenerConteoPendientes(espacio.id) > 0"
                       >
                         <i class="pi pi-eye" aria-hidden="true"></i>
                         <span>
-                          @if (cargandoConteos) {
+                          @if (puedeConsultarSolicitudes && cargandoConteos) {
                             Ver solicitudes · …
-                          } @else if (errorConteos) {
+                          } @else if (puedeConsultarSolicitudes && errorConteos) {
                             Ver solicitudes
-                          } @else if (obtenerConteoPendientes(espacio.id) > 0) {
+                          } @else if (puedeConsultarSolicitudes && obtenerConteoPendientes(espacio.id) > 0) {
                             Ver solicitudes · {{ obtenerConteoPendientes(espacio.id) }}
                           } @else {
                             Ver solicitudes
@@ -162,27 +170,50 @@
                       <span class="sin-dato">—</span>
                     }
                   </td>
-                  <td class="sin-dato">—</td>
-                  <td class="estado-no-disponible" aria-label="Estado no disponible">—</td>
+                  <td>
+                    <div
+                      class="ocupacion"
+                      [class.ocupacion-neutra]="ocupacionNoDisponible(espacio.id)"
+                      [attr.aria-label]="'Ocupación ' + obtenerOcupacion(espacio.id)"
+                    >
+                      <span>{{ obtenerOcupacion(espacio.id) }}</span>
+                      @if (obtenerAnchoOcupacion(espacio.id); as ancho) {
+                        <span class="barra-ocupacion" aria-hidden="true">
+                          <span [style.width]="ancho"></span>
+                        </span>
+                      }
+                    </div>
+                  </td>
+                  <td>
+                    <span
+                      class="badge-estado"
+                      [class.inactivo]="etiquetaEstadoEspacio(espacio.id) === 'Inactivo'"
+                      [class.mantenimiento]="etiquetaEstadoEspacio(espacio.id) === 'Mantenimiento'"
+                    >
+                      {{ etiquetaEstadoEspacio(espacio.id) }}
+                    </span>
+                  </td>
                   <td class="acciones-espacio">
-                    <button
-                      type="button"
-                      class="accion-espacio"
-                      aria-label="Editar espacio no disponible"
-                      aria-disabled="true"
-                      disabled
-                    >
-                      <i class="pi pi-pencil" aria-hidden="true"></i>
-                    </button>
-                    <button
-                      type="button"
-                      class="accion-espacio"
-                      aria-label="Eliminar espacio no disponible"
-                      aria-disabled="true"
-                      disabled
-                    >
-                      <i class="pi pi-trash" aria-hidden="true"></i>
-                    </button>
+                    @if (tienePermisoAdminPanel) {
+                      <button
+                        type="button"
+                        class="accion-espacio"
+                        [attr.aria-label]="'Editar ' + espacio.nombre"
+                        title="Editar espacio"
+                        (click)="abrirEdicion(espacio)"
+                      >
+                        <i class="pi pi-pencil" aria-hidden="true"></i>
+                      </button>
+                      <button
+                        type="button"
+                        class="accion-espacio"
+                        [attr.aria-label]="(estaActivo(espacio.id) ? 'Desactivar ' : 'Activar ') + espacio.nombre"
+                        [title]="estaActivo(espacio.id) ? 'Desactivar espacio (no elimina)' : 'Activar espacio'"
+                        (click)="abrirConfirmacionEstado(espacio)"
+                      >
+                        <i [class]="estaActivo(espacio.id) ? 'pi pi-ban' : 'pi pi-check-circle'" aria-hidden="true"></i>
+                      </button>
+                    }
                   </td>
                 </tr>
               }
@@ -204,11 +235,261 @@
     [aprobandoSolicitudId]="aprobandoSolicitudId"
     [solicitudRechazoId]="solicitudRechazoId"
     [rechazandoSolicitudId]="rechazandoSolicitudId"
+    [solicitudesResueltas]="solicitudesResueltas"
+    [cargandoResueltas]="cargandoResueltas"
+    [errorResueltas]="errorResueltas"
+    [puedeGestionarPendientes]="puedeConsultarSolicitudes"
+    [puedeVerHistorial]="puedeVerHistorial"
     (cerrar)="cerrarSolicitudes()"
     (reintentar)="verSolicitudes(espacioSeleccionado)"
     (aprobar)="aprobarSolicitud($event)"
     (solicitarRechazo)="abrirDialogoRechazo($event)"
     (cancelarRechazo)="cancelarRechazo()"
     (rechazar)="rechazarSolicitud($event.solicitudId, $event.motivo)"
+    (filtrosHistorialChange)="cambiarFiltrosHistorial($event)"
   />
+}
+
+@if (espacioEnEdicion) {
+  <div class="overlay-admin">
+    <section class="dialogo-admin dialogo-editar-espacio-figma" role="dialog" aria-modal="true" aria-labelledby="titulo-editar-espacio">
+      <header class="header-modal-figma">
+        <h2 id="titulo-editar-espacio">Editar espacio</h2>
+        <button type="button" class="cerrar-dialogo" aria-label="Cerrar" [disabled]="guardandoEspacio" (click)="cancelarEdicion()">×</button>
+      </header>
+
+      <div class="formulario-figma-espacio">
+        <!-- Fila 1: Código y Edificio -->
+        <div class="fila-campos-doble">
+          <label class="campo-espacio">
+            <span>CÓDIGO</span>
+            <div class="codigo-display-figma">{{ codigoEspacioVisual }}</div>
+          </label>
+          <label class="campo-espacio">
+            <span>EDIFICIO</span>
+            <div class="select-wrapper">
+              <select [(ngModel)]="edificioEspacioVisual">
+                <option value="A">A</option>
+                <option value="B">B</option>
+                <option value="C">C</option>
+              </select>
+              <i class="pi pi-chevron-down" aria-hidden="true"></i>
+            </div>
+          </label>
+        </div>
+
+        <!-- Fila 2: Nombre del espacio -->
+        <label class="campo-espacio campo-ancho-completo">
+          <span>NOMBRE DEL ESPACIO</span>
+          <input type="text" [(ngModel)]="formularioEspacio.nombre" maxlength="120" />
+        </label>
+
+        <!-- Fila 3: Piso, Capacidad, Estado -->
+        <div class="fila-campos-triple">
+          <label class="campo-espacio">
+            <span>PISO</span>
+            <div class="select-wrapper">
+              <select [(ngModel)]="pisoEspacioVisual">
+                <option value="Piso 1">Piso 1</option>
+                <option value="Piso 2">Piso 2</option>
+                <option value="Piso 3">Piso 3</option>
+                <option value="Piso 4">Piso 4</option>
+              </select>
+              <i class="pi pi-chevron-down" aria-hidden="true"></i>
+            </div>
+          </label>
+          <label class="campo-espacio">
+            <span>CAPACIDAD</span>
+            <input type="number" [(ngModel)]="formularioEspacio.capacidad" min="1" step="1" />
+          </label>
+          <label class="campo-espacio">
+            <span>ESTADO</span>
+            <div class="select-wrapper">
+              <select [(ngModel)]="estadoEspacioVisual">
+                <option value="Activo">Activo</option>
+                <option value="Mantenimiento">Mantenimiento</option>
+              </select>
+              <i class="pi pi-chevron-down" aria-hidden="true"></i>
+            </div>
+          </label>
+        </div>
+
+        <!-- Fila 4: Color Identificador -->
+        <div class="seccion-colores-figma">
+          <span>COLOR IDENTIFICADOR</span>
+          <div class="paleta-circulos-figma">
+            @for (color of paletaColoresFigma; track color) {
+              <button
+                type="button"
+                class="circulo-color"
+                [class.seleccionado]="colorSeleccionadoVisual === color"
+                [style.background-color]="color"
+                (click)="seleccionarColorVisual(color)"
+                [attr.aria-label]="'Seleccionar color ' + color"
+              ></button>
+            }
+          </div>
+        </div>
+
+        <!-- Fila 5: Amenidades -->
+        <div class="seccion-amenidades-figma">
+          <span>AMENIDADES</span>
+          <div class="lista-pills-amenidades">
+            @for (amenidad of amenidadesFigma; track amenidad) {
+              <button
+                type="button"
+                class="pill-amenidad"
+                [class.activa]="amenidadesSeleccionadasVisual.includes(amenidad)"
+                (click)="alternarAmenidadVisual(amenidad)"
+              >
+                {{ amenidad }}
+              </button>
+            }
+          </div>
+        </div>
+      </div>
+
+      <footer class="footer-modal-figma">
+        <button type="button" class="boton-cancelar-figma boton-secundario-admin" [disabled]="guardandoEspacio" (click)="cancelarEdicion()">Cancelar</button>
+        <button type="button" class="boton-guardar-figma boton-principal-admin" [disabled]="guardandoEspacio" [attr.aria-busy]="guardandoEspacio" (click)="guardarEdicion()">
+          {{ guardandoEspacio ? 'Guardando…' : 'Guardar cambios' }}
+        </button>
+      </footer>
+    </section>
+  </div>
+}
+
+@if (modalCrearEspacioAbierto) {
+  <div class="overlay-admin">
+    <section class="dialogo-admin dialogo-editar-espacio-figma dialogo-crear-espacio-figma" role="dialog" aria-modal="true" aria-labelledby="titulo-crear-espacio">
+      <header class="header-modal-figma">
+        <h2 id="titulo-crear-espacio">Nuevo espacio</h2>
+        <button type="button" class="cerrar-dialogo" aria-label="Cerrar" [disabled]="creandoEspacio" (click)="cerrarCrearEspacio()">×</button>
+      </header>
+
+      <div class="formulario-figma-espacio">
+        <!-- Fila 1: Código y Edificio -->
+        <div class="fila-campos-doble">
+          <label class="campo-espacio">
+            <span>CÓDIGO</span>
+            <input type="text" [(ngModel)]="formularioNuevoEspacio.codigo" placeholder="Ej. L103" />
+          </label>
+          <label class="campo-espacio">
+            <span>EDIFICIO</span>
+            <div class="select-wrapper">
+              <select [(ngModel)]="formularioNuevoEspacio.edificio">
+                <option value="A">A</option>
+                <option value="B">B</option>
+                <option value="C">C</option>
+              </select>
+              <i class="pi pi-chevron-down" aria-hidden="true"></i>
+            </div>
+          </label>
+        </div>
+
+        <!-- Fila 2: Nombre del espacio -->
+        <label class="campo-espacio campo-ancho-completo">
+          <span>NOMBRE DEL ESPACIO</span>
+          <input type="text" [(ngModel)]="formularioNuevoEspacio.nombre" placeholder="Ej. Lab. Programación III" maxlength="120" />
+        </label>
+
+        <!-- Fila 3: Piso, Capacidad, Estado -->
+        <div class="fila-campos-triple">
+          <label class="campo-espacio">
+            <span>PISO</span>
+            <div class="select-wrapper">
+              <select [(ngModel)]="formularioNuevoEspacio.piso">
+                <option value="Piso 1">Piso 1</option>
+                <option value="Piso 2">Piso 2</option>
+                <option value="Piso 3">Piso 3</option>
+                <option value="Piso 4">Piso 4</option>
+              </select>
+              <i class="pi pi-chevron-down" aria-hidden="true"></i>
+            </div>
+          </label>
+          <label class="campo-espacio">
+            <span>CAPACIDAD</span>
+            <input type="number" [(ngModel)]="formularioNuevoEspacio.capacidad" min="1" step="1" />
+          </label>
+          <label class="campo-espacio">
+            <span>ESTADO</span>
+            <div class="select-wrapper">
+              <select [(ngModel)]="formularioNuevoEspacio.estado">
+                <option value="Activo">Activo</option>
+                <option value="Mantenimiento">Mantenimiento</option>
+              </select>
+              <i class="pi pi-chevron-down" aria-hidden="true"></i>
+            </div>
+          </label>
+        </div>
+
+        <!-- Fila 4: Color Identificador -->
+        <div class="seccion-colores-figma">
+          <span>COLOR IDENTIFICADOR</span>
+          <div class="paleta-circulos-figma">
+            @for (color of paletaColoresFigma; track color) {
+              <button
+                type="button"
+                class="circulo-color"
+                [class.seleccionado]="colorNuevoEspacioVisual === color"
+                [style.background-color]="color"
+                (click)="seleccionarColorNuevoEspacio(color)"
+                [attr.aria-label]="'Seleccionar color ' + color"
+              ></button>
+            }
+          </div>
+        </div>
+
+        <!-- Fila 5: Amenidades -->
+        <div class="seccion-amenidades-figma">
+          <span>AMENIDADES</span>
+          <div class="lista-pills-amenidades">
+            @for (amenidad of amenidadesFigma; track amenidad) {
+              <button
+                type="button"
+                class="pill-amenidad"
+                [class.activa]="amenidadesNuevoEspacioVisual.includes(amenidad)"
+                (click)="alternarAmenidadNuevoEspacio(amenidad)"
+              >
+                {{ amenidad }}
+              </button>
+            }
+          </div>
+        </div>
+      </div>
+
+      <footer class="footer-modal-figma">
+        <button type="button" class="boton-cancelar-figma boton-secundario-admin" [disabled]="creandoEspacio" (click)="cerrarCrearEspacio()">Cancelar</button>
+        <button type="button" class="boton-guardar-figma boton-principal-admin" [disabled]="creandoEspacio" [attr.aria-busy]="creandoEspacio" (click)="guardarNuevoEspacio()">
+          {{ creandoEspacio ? 'Creando…' : 'Crear espacio' }}
+        </button>
+      </footer>
+    </section>
+  </div>
+}
+
+@if (espacioCambioEstado) {
+  <div class="overlay-admin">
+    <section class="dialogo-admin dialogo-confirmacion-estado dialogo-confirmacion-figma" role="alertdialog" aria-modal="true" aria-labelledby="titulo-estado-espacio">
+      <div class="contenido-alerta-figma">
+        <div class="icono-alerta-triangulo" aria-hidden="true">
+          <i class="pi pi-exclamation-triangle"></i>
+        </div>
+        <div class="textos-alerta-figma">
+          <h2 id="titulo-estado-espacio">
+            ¿Eliminar el espacio "{{ espacioCambioEstado.nombre }}"? Esta acción no se puede deshacer.
+          </h2>
+          <p class="aclaracion-tecnica-estado" style="display: none;">
+            La desactivación impide nuevas solicitudes y aprobaciones, conserva las reservas futuras y no elimina el espacio.
+          </p>
+        </div>
+      </div>
+      <footer class="footer-alerta-figma">
+        <button type="button" class="boton-cancelar-alerta boton-secundario-admin" [disabled]="actualizandoEstadoId !== null" (click)="cerrarConfirmacionEstado()">Cancelar</button>
+        <button type="button" class="boton-eliminar-alerta boton-principal-admin" [disabled]="actualizandoEstadoId !== null" [attr.aria-busy]="actualizandoEstadoId === espacioCambioEstado.id" (click)="confirmarCambioEstado()">
+          {{ actualizandoEstadoId === espacioCambioEstado.id ? 'Eliminando…' : 'Eliminar' }}
+        </button>
+      </footer>
+    </section>
+  </div>
 }

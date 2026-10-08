@@ -185,7 +185,7 @@ describe('DashboardComponent', () => {
     expect(fixture.nativeElement.querySelector('.tarjeta-resumen strong')?.textContent?.trim()).toBe('1');
   });
 
-  it('does not offer cancellation or send a mutation request without a backend cancellation operation', () => {
+  it('confirms cancellation, posts without a body and refreshes the agenda and counter', () => {
     crearDashboard();
     const inicio = new Date(Date.now() + 60 * 60_000).toISOString();
     const fin = new Date(Date.now() + 2 * 60 * 60_000).toISOString();
@@ -217,12 +217,125 @@ describe('DashboardComponent', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('.fila-agenda')).toBeTruthy();
+    const cancelar = fixture.nativeElement.querySelector('.cancelar-reserva') as HTMLButtonElement;
+    expect(cancelar).toBeTruthy();
+    cancelar.click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[role="alertdialog"]')).toBeTruthy();
+
+    (fixture.nativeElement.querySelector('.boton-confirmar') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const request = httpTestingController.expectOne(`${API_BASE_URL}/reservas/81/cancelar`);
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toBeNull();
+    expect((fixture.nativeElement.querySelector('.boton-confirmar') as HTMLButtonElement).disabled).toBeTrue();
+    request.flush({
+      id: 81,
+      estado: 'CANCELADA',
+      espacio,
+      inicio,
+      fin,
+      solicitud_id: 41
+    });
+    const refresh = httpTestingController.expectOne(`${API_BASE_URL}/reservas/mias`);
+    expect(refresh.request.method).toBe('GET');
+    refresh.flush([]);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[role="alertdialog"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.fila-agenda')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.tarjeta-resumen strong')?.textContent?.trim()).toBe('0');
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      key: 'dashboard',
+      severity: 'success',
+      summary: 'Reserva cancelada'
+    }));
+  });
+
+  it('does not offer cancellation for a reservation that has already started', () => {
+    crearDashboard();
+    const inicio = new Date(Date.now() - 10 * 60_000).toISOString();
+    const fin = new Date(Date.now() + 20 * 60_000).toISOString();
+    obtenerDisponibilidad().flush([]);
+    httpTestingController.expectOne(`${API_BASE_URL}/reservas/mias`).flush([{
+      id: 82,
+      estado: 'ACTIVA',
+      espacio,
+      inicio,
+      fin,
+      solicitud_id: 42
+    }]);
+    httpTestingController.expectOne(`${API_BASE_URL}/reservas/82`).flush({
+      id: 82,
+      estado: 'ACTIVA',
+      espacio,
+      inicio,
+      fin,
+      solicitud_id: 42,
+      finalizada: false,
+      titular: usuario.nombre,
+      proposito: 'Reserva en curso',
+      asistentes: 10,
+      equipamiento: null,
+      aprobada_por: 'Coordinación',
+      fecha_aprobacion: null,
+      creada_en: inicio
+    });
+    fixture.detectChanges();
+
     expect(fixture.nativeElement.querySelector('.cancelar-reserva')).toBeNull();
     expect(fixture.nativeElement.querySelector('.fila-agenda').textContent).not.toContain('Cancelar');
-    httpTestingController.expectNone(request =>
-      request.url.startsWith(`${API_BASE_URL}/reservas/`) &&
-      ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)
+  });
+
+  it('shows the HTTP 409 cancellation conflict without changing the reservation locally', () => {
+    crearDashboard();
+    const inicio = new Date(Date.now() + 30 * 60_000).toISOString();
+    const fin = new Date(Date.now() + 60 * 60_000).toISOString();
+    obtenerDisponibilidad().flush([]);
+    httpTestingController.expectOne(`${API_BASE_URL}/reservas/mias`).flush([{
+      id: 83,
+      estado: 'ACTIVA',
+      espacio,
+      inicio,
+      fin,
+      solicitud_id: 43
+    }]);
+    httpTestingController.expectOne(`${API_BASE_URL}/reservas/83`).flush({
+      id: 83,
+      estado: 'ACTIVA',
+      espacio,
+      inicio,
+      fin,
+      solicitud_id: 43,
+      finalizada: false,
+      titular: usuario.nombre,
+      proposito: 'Reserva próxima',
+      asistentes: 10,
+      equipamiento: null,
+      aprobada_por: 'Coordinación',
+      fecha_aprobacion: null,
+      creada_en: inicio
+    });
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('.cancelar-reserva') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('.boton-confirmar') as HTMLButtonElement).click();
+
+    httpTestingController.expectOne(`${API_BASE_URL}/reservas/83/cancelar`).flush(
+      { detail: 'La reserva ya inició.' },
+      { status: 409, statusText: 'Conflict' }
     );
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.fila-agenda')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.cancelar-reserva')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.dialogo-confirmacion')).toBeTruthy();
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      key: 'dashboard',
+      severity: 'warn',
+      summary: 'No se puede cancelar la reserva',
+      detail: 'La reserva ya inició y no se puede cancelar.'
+    }));
+    httpTestingController.expectNone(`${API_BASE_URL}/reservas/mias`);
   });
 
   it('keeps Dashboard, Calendar, Spaces and Admin navigation for APROBADOR without requesting a forbidden list', () => {

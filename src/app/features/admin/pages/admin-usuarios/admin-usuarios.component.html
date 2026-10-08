@@ -1,3 +1,5 @@
+<p-toast position="bottom-right"></p-toast>
+
 <div class="admin-app">
   <aside class="sidebar">
     <div class="logo">
@@ -43,7 +45,7 @@
         <div class="avatar">{{ inicialesUsuario }}</div>
         <div class="usuario-info">
           <strong>{{ usuario.nombre }}</strong>
-          <small>{{ usuario.rol }}</small>
+          <small>{{ usuario.rol === 'ADMIN' ? 'Administrador' : usuario.rol === 'APROBADOR' ? 'Operador' : 'Solicitante' }}</small>
         </div>
         <button
           type="button"
@@ -74,29 +76,29 @@
       <div class="encabezado">
         <div>
           <h1>Usuarios</h1>
-          <p>— usuarios registrados</p>
+          <p>{{ totalUsuarios }} usuarios registrados</p>
         </div>
-        <button type="button" class="nuevo-usuario" aria-disabled="true" disabled>
+        <button type="button" class="nuevo-usuario" (click)="abrirCrear()">
           <i class="pi pi-plus" aria-hidden="true"></i>
           Nuevo usuario
         </button>
       </div>
 
       <nav class="filtros" aria-label="Filtrar usuarios">
-        @for (filtro of filtros; track filtro) {
+        @for (filtro of filtros; track filtro.id) {
           <button
             type="button"
             class="filtro"
-            [class.activo]="filtro === 'Todos'"
-            aria-disabled="true"
-            disabled
+            [class.activo]="filtroActual === filtro.id"
+            [attr.aria-pressed]="filtroActual === filtro.id"
+            (click)="seleccionarFiltro(filtro.id)"
           >
-            {{ filtro }}
+            {{ filtro.etiqueta }}
           </button>
         }
       </nav>
 
-      <div class="tabla-contenedor">
+      <div class="tabla-contenedor" [attr.aria-busy]="cargando">
         <table>
           <thead>
             <tr>
@@ -108,14 +110,204 @@
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td colspan="5" class="estado-tabla" role="status">
-                La información de usuarios no está disponible.
-              </td>
-            </tr>
+            @if (cargando) {
+              <tr>
+                <td colspan="5" class="estado-tabla" role="status">Cargando usuarios...</td>
+              </tr>
+            } @else if (errorCarga) {
+              <tr>
+                <td colspan="5" class="estado-tabla error-tabla" role="alert">{{ errorCarga }}</td>
+              </tr>
+            } @else if (usuarios.length === 0) {
+              <tr>
+                <td colspan="5" class="estado-tabla" role="status">No hay usuarios para este filtro.</td>
+              </tr>
+            } @else {
+              @for (usuario of usuarios; track usuario.id) {
+                <tr>
+                  <td>
+                    <div class="identidad-usuario">
+                      <div class="avatar avatar-tabla" aria-hidden="true">{{ inicialesNombre(usuario.nombre) }}</div>
+                      <div class="datos-usuario">
+                        <strong>{{ usuario.nombre }}</strong>
+                        <small>{{ usuario.email }}</small>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <span class="badge-rol" [class]="clasePerfil(usuario.rol, usuario.cargo)">
+                      {{ etiquetaPerfil(usuario.rol, usuario.cargo) }}
+                    </span>
+                  </td>
+                  <td class="reservas-mes">{{ usuario.reservas_mes }}</td>
+                  <td>
+                    <span class="estado" [class.estado-inactivo]="!usuario.activo">
+                      <i [class]="usuario.activo ? 'pi pi-check-circle' : 'pi pi-times-circle'" aria-hidden="true"></i>
+                      {{ usuario.activo ? 'Activo' : 'Inactivo' }}
+                    </span>
+                  </td>
+                  <td>
+                    <div class="acciones-usuario">
+                      <button
+                        type="button"
+                        class="menu-acciones-boton"
+                        [attr.aria-label]="'Acciones para ' + usuario.nombre"
+                        [attr.aria-expanded]="menuUsuarioAbiertoId === usuario.id"
+                        (click)="alternarMenu(usuario.id)"
+                      >
+                        <i class="pi pi-ellipsis-h" aria-hidden="true"></i>
+                      </button>
+                      @if (menuUsuarioAbiertoId === usuario.id) {
+                        <div class="menu-acciones" role="menu">
+                          <button
+                            type="button"
+                            class="accion-editar"
+                            role="menuitem"
+                            [disabled]="cargandoDetalle"
+                            (click)="abrirEditar(usuario)"
+                          >Editar</button>
+                          <button
+                            type="button"
+                            class="accion-estado"
+                            [class.accion-activar]="!usuario.activo"
+                            role="menuitem"
+                            (click)="cambiarEstado(usuario)"
+                          >{{ usuario.activo ? 'Suspender' : 'Activar' }}</button>
+                          <button
+                            type="button"
+                            class="accion-eliminar-usuario"
+                            role="menuitem"
+                            (click)="cambiarEstado(usuario)"
+                          >Eliminar</button>
+                        </div>
+                      }
+                    </div>
+                  </td>
+                </tr>
+              }
+            }
           </tbody>
         </table>
+      </div>
+
+      <div class="paginacion" aria-label="Paginación de usuarios">
+        <span>Mostrando {{ primeraFila }}–{{ ultimaFila }} de {{ totalUsuarios }}</span>
+        <div class="controles-paginacion">
+          <button type="button" aria-label="Página anterior" [disabled]="!hayPaginaAnterior || cargando" (click)="irPaginaAnterior()">
+            <i class="pi pi-chevron-left" aria-hidden="true"></i>
+          </button>
+          <button type="button" aria-label="Página siguiente" [disabled]="!hayPaginaSiguiente || cargando" (click)="irPaginaSiguiente()">
+            <i class="pi pi-chevron-right" aria-hidden="true"></i>
+          </button>
+        </div>
       </div>
     </section>
   </main>
 </div>
+
+@if (modalAbierto) {
+  <div class="modal-fondo">
+    <section
+      class="modal-usuario"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="titulo-modal-usuario"
+    >
+      <header class="encabezado-modal">
+        <div>
+          <h2 id="titulo-modal-usuario">{{ usuarioEditandoId === null ? 'Nuevo usuario' : 'Editar usuario' }}</h2>
+          <p>Completa los datos de la cuenta.</p>
+        </div>
+        <button type="button" class="cerrar-modal" aria-label="Cerrar" [disabled]="guardando" (click)="cerrarModal()">×</button>
+      </header>
+
+      <form #form="ngForm" (ngSubmit)="guardar(form)">
+        <label class="campo">
+          <span>NOMBRE COMPLETO</span>
+          <input
+            type="text"
+            name="nombre"
+            [(ngModel)]="formulario.nombre"
+            required
+            maxlength="120"
+            autocomplete="name"
+            placeholder="Ej. Juan Pérez"
+          />
+        </label>
+        <label class="campo">
+          <span>CORREO INSTITUCIONAL</span>
+          <input
+            type="email"
+            name="email"
+            [(ngModel)]="formulario.email"
+            required
+            maxlength="254"
+            autocomplete="email"
+            placeholder="usuario@ecci.edu.co"
+          />
+        </label>
+        @if (usuarioEditandoId === null) {
+          <label class="campo">
+            <span>CONTRASEÑA</span>
+            <input
+              type="password"
+              name="password"
+              [(ngModel)]="formulario.password"
+              required
+              minlength="8"
+              autocomplete="new-password"
+              placeholder="Mínimo 8 caracteres"
+            />
+          </label>
+        }
+        @if (usuarioEditandoId !== null) {
+          <div class="fila-campos-doble-usuario">
+            <label class="campo">
+              <span>ROL</span>
+              <select
+                name="perfil"
+                [ngModel]="formulario.perfil"
+                (ngModelChange)="actualizarPerfil($event)"
+                required
+              >
+                @for (perfil of perfiles; track perfil) {
+                  <option [ngValue]="perfil">{{ etiquetaPerfilDePresentacion(perfil) }}</option>
+                }
+              </select>
+            </label>
+            <label class="campo">
+              <span>ESTADO</span>
+              <select
+                name="estadoVisual"
+                [(ngModel)]="estadoUsuarioVisual"
+              >
+                <option value="Activo">Activo</option>
+                <option value="Inactivo">Inactivo</option>
+              </select>
+            </label>
+          </div>
+        } @else {
+          <label class="campo">
+            <span>ROL</span>
+            <select
+              name="perfil"
+              [ngModel]="formulario.perfil"
+              (ngModelChange)="actualizarPerfil($event)"
+              required
+            >
+              @for (perfil of perfiles; track perfil) {
+                <option [ngValue]="perfil">{{ etiquetaPerfilDePresentacion(perfil) }}</option>
+              }
+            </select>
+          </label>
+        }
+        <footer class="acciones-modal">
+          <button type="button" class="cancelar" [disabled]="guardando" (click)="cerrarModal()">Cancelar</button>
+          <button type="submit" class="guardar" [disabled]="guardando">
+            {{ guardando ? 'Guardando...' : (usuarioEditandoId === null ? 'Guardar usuario' : 'Guardar cambios') }}
+          </button>
+        </footer>
+      </form>
+    </section>
+  </div>
+}

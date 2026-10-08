@@ -1,21 +1,24 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { MessageService } from 'primeng/api';
+import { Toast } from 'primeng/toast';
 import { Subscription } from 'rxjs';
 
 import { AuthService } from '../../../../core/services/auth.service';
 import { EspaciosService } from '../../../../core/services/espacios.service';
 import { SolicitudesService } from '../../../../core/services/solicitudes.service';
 import { obtenerMensajeErrorApi } from '../../../../core/utils/api-error.util';
-import { Espacio } from '../../../../shared/models/espacio.model';
+import { Espacio, EspacioActualizar, EspacioMetrica, TipoEspacio } from '../../../../shared/models/espacio.model';
 import { obtenerColorIdentificadorEspacio } from '../../../../shared/utils/espacio-color.util';
-import { EstadoDetalleSolicitud, SolicitudPendiente } from '../../../../shared/models/solicitud.model';
+import { EstadoDetalleSolicitud, SolicitudPendiente, SolicitudResuelta } from '../../../../shared/models/solicitud.model';
 import { SolicitudesEspacioModalComponent } from '../../../solicitudes/components/solicitudes-espacio-modal/solicitudes-espacio-modal.component';
+import { fechaColombia, fechaReservaColombia } from '../../../../shared/utils/fecha-colombia.util';
 
 @Component({
   selector: 'app-admin-espacios',
-  imports: [RouterLink, SolicitudesEspacioModalComponent],
+  imports: [FormsModule, RouterLink, Toast, SolicitudesEspacioModalComponent],
   templateUrl: './admin-espacios.component.html',
   styleUrl: './admin-espacios.component.scss'
 })
@@ -32,6 +35,12 @@ export class AdminEspaciosComponent implements OnDestroy, OnInit {
   espacios: Espacio[] = [];
   cargandoEspacios = false;
   errorEspacios: string | null = null;
+  metricas = new Map<number, EspacioMetrica>();
+  cargandoMetricas = false;
+  errorMetricas: string | null = null;
+  readonly fechaMetricas = fechaColombia(new Date());
+  estadosEspacios = new Map<number, boolean>();
+  estadosPersonalizadosEspacios = new Map<number, string>();
   conteosPendientes = new Map<number, number>();
   cargandoConteos = false;
   errorConteos = false;
@@ -44,6 +53,52 @@ export class AdminEspaciosComponent implements OnDestroy, OnInit {
   solicitudRechazoId: number | null = null;
   rechazandoSolicitudId: number | null = null;
   private rechazoSubscription: Subscription | null = null;
+  espacioEnEdicion: Espacio | null = null;
+  formularioEspacio = this.formularioVacio();
+  guardandoEspacio = false;
+  espacioCambioEstado: Espacio | null = null;
+  actualizandoEstadoId: number | null = null;
+  solicitudesResueltas: SolicitudResuelta[] = [];
+  cargandoResueltas = false;
+  errorResueltas: string | null = null;
+  readonly paletaColoresFigma = [
+    '#3b82f6', // azul
+    '#22c55e', // verde
+    '#a855f7', // morado
+    '#f97316', // naranja
+    '#ef4444', // rojo
+    '#06b6d4', // cian
+    '#8b5cf6', // violeta
+    '#84cc16', // lima
+    '#f59e0b', // ambar
+    '#ec4899'  // rosa
+  ];
+
+  readonly amenidadesFigma = [
+    'Proyector', 'Pizarra', 'TV', 'Videoconf.', 'Café', 'AC', 'Micrófono', 'GPU', 'Wifi'
+  ];
+
+  codigoEspacioVisual = '';
+  edificioEspacioVisual = 'A';
+  pisoEspacioVisual = 'Piso 1';
+  estadoEspacioVisual: 'Activo' | 'Mantenimiento' = 'Activo';
+  colorSeleccionadoVisual = '#3b82f6';
+  amenidadesSeleccionadasVisual: string[] = ['Proyector', 'Pizarra', 'TV'];
+
+  modalCrearEspacioAbierto = false;
+  creandoEspacio = false;
+  formularioNuevoEspacio = {
+    codigo: '',
+    edificio: 'A',
+    nombre: '',
+    piso: 'Piso 1',
+    capacidad: 20,
+    estado: 'Activo' as 'Activo' | 'Mantenimiento'
+  };
+  colorNuevoEspacioVisual = '#3b82f6';
+  amenidadesNuevoEspacioVisual: string[] = [];
+
+  filtrosHistorial: { estado?: 'APROBADA' | 'RECHAZADA'; fecha_desde?: string; fecha_hasta?: string } = {};
 
   get usuarioActual() {
     return this.authService.obtenerUsuarioActual();
@@ -51,6 +106,22 @@ export class AdminEspaciosComponent implements OnDestroy, OnInit {
 
   get puedeConsultarSolicitudes(): boolean {
     return this.usuarioActual?.rol === 'APROBADOR';
+  }
+
+  get esAdministrador(): boolean {
+    return this.usuarioActual?.rol === 'ADMIN';
+  }
+
+  get esCoordinador(): boolean {
+    return this.usuarioActual?.rol === 'APROBADOR';
+  }
+
+  get tienePermisoAdminPanel(): boolean {
+    return this.esAdministrador || this.esCoordinador;
+  }
+
+  get puedeVerHistorial(): boolean {
+    return this.puedeConsultarSolicitudes || this.esAdministrador;
   }
 
   get inicialesUsuario(): string {
@@ -69,6 +140,9 @@ export class AdminEspaciosComponent implements OnDestroy, OnInit {
 
   ngOnInit(): void {
     this.cargarEspacios();
+    if (this.esAdministrador) {
+      this.cargarMetricas();
+    }
     if (this.puedeConsultarSolicitudes) {
       this.cargarConteosPendientes();
     }
@@ -77,9 +151,16 @@ export class AdminEspaciosComponent implements OnDestroy, OnInit {
   cargarEspacios(): void {
     this.cargandoEspacios = true;
     this.errorEspacios = null;
-    this.espaciosService.listar().subscribe({
+    const solicitud = this.esAdministrador
+      ? this.espaciosService.listarAdmin()
+      : this.espaciosService.listar();
+    solicitud.subscribe({
       next: espacios => {
         this.espacios = espacios;
+        this.estadosEspacios = new Map(espacios.map(espacio => [
+          espacio.id,
+          'activo' in espacio && typeof espacio.activo === 'boolean' ? espacio.activo : true
+        ]));
         this.cargandoEspacios = false;
       },
       error: error => {
@@ -88,6 +169,76 @@ export class AdminEspaciosComponent implements OnDestroy, OnInit {
         this.cargandoEspacios = false;
       }
     });
+  }
+
+  cargarMetricas(): void {
+    if (!this.esAdministrador) {
+      return;
+    }
+    this.cargandoMetricas = true;
+    this.errorMetricas = null;
+    this.espaciosService.consultarMetricas(this.fechaMetricas).subscribe({
+      next: metricas => {
+        this.metricas = new Map(metricas.map(metrica => [metrica.id, metrica]));
+        this.estadosEspacios = new Map(metricas.map(metrica => [metrica.id, metrica.activo]));
+        this.cargandoMetricas = false;
+      },
+      error: error => {
+        this.cargandoMetricas = false;
+        this.errorMetricas = obtenerMensajeErrorApi(error) ??
+          'No se pudieron cargar las métricas. Intenta nuevamente.';
+      }
+    });
+  }
+
+  obtenerMetrica(espacioId: number): EspacioMetrica | undefined {
+    return this.metricas.get(espacioId);
+  }
+
+  obtenerReservasHoy(espacioId: number): string | number {
+    if (this.cargandoMetricas) {
+      return '…';
+    }
+    const metrica = this.obtenerMetrica(espacioId);
+    return metrica?.reservas_dia ?? 0;
+  }
+
+  obtenerOcupacion(espacioId: number): string {
+    if (this.cargandoMetricas) {
+      return '…';
+    }
+    if (!this.estaActivo(espacioId)) {
+      return '—';
+    }
+    const porcentaje = this.obtenerMetrica(espacioId)?.porcentaje_ocupacion;
+    return porcentaje === null || porcentaje === undefined ? '0%' : `${porcentaje}%`;
+  }
+
+  ocupacionNoDisponible(espacioId: number): boolean {
+    return !this.estaActivo(espacioId);
+  }
+
+  obtenerAnchoOcupacion(espacioId: number): string | null {
+    if (!this.estaActivo(espacioId)) {
+      return null;
+    }
+    const porcentaje = this.obtenerMetrica(espacioId)?.porcentaje_ocupacion;
+    return porcentaje === null || porcentaje === undefined
+      ? '0%'
+      : `${Math.max(0, Math.min(100, porcentaje))}%`;
+  }
+
+  estaActivo(espacioId: number): boolean {
+    return this.estadosEspacios.get(espacioId) ?? true;
+  }
+
+  etiquetaEstadoEspacio(espacioId: number): string {
+    const personalizado = this.estadosPersonalizadosEspacios.get(espacioId);
+    if (personalizado) {
+      return personalizado;
+    }
+    const activo = this.estaActivo(espacioId);
+    return activo ? 'Activo' : 'Inactivo';
   }
 
   cargarConteosPendientes(): void {
@@ -126,16 +277,25 @@ export class AdminEspaciosComponent implements OnDestroy, OnInit {
   }
 
   verSolicitudes(espacio: Espacio): void {
-    if (!this.puedeConsultarSolicitudes) {
+    if (!this.puedeVerHistorial && !this.puedeConsultarSolicitudes) {
       return;
     }
 
     this.cancelarCargasDetalle();
     this.espacioSeleccionado = espacio;
     this.solicitudes = [];
+    this.solicitudesResueltas = [];
     this.errorSolicitudes = null;
-    this.cargandoSolicitudes = true;
+    this.errorResueltas = null;
+    this.filtrosHistorial = {};
+    this.cargandoSolicitudes = this.puedeConsultarSolicitudes;
+    if (this.puedeVerHistorial) {
+      this.cargarSolicitudesResueltas(espacio.id);
+    }
 
+    if (!this.puedeConsultarSolicitudes) {
+      return;
+    }
     this.solicitudesService.consultarPendientes(espacio.id).subscribe({
       next: solicitudes => {
         this.solicitudes = solicitudes.filter(
@@ -154,6 +314,335 @@ export class AdminEspaciosComponent implements OnDestroy, OnInit {
         this.aprobandoSolicitudId = null;
       }
     });
+  }
+
+  cambiarFiltrosHistorial(filtros: { estado?: 'APROBADA' | 'RECHAZADA'; fecha_desde?: string; fecha_hasta?: string }): void {
+    this.filtrosHistorial = filtros;
+    if (this.espacioSeleccionado) {
+      this.cargarSolicitudesResueltas(this.espacioSeleccionado.id);
+    }
+  }
+
+  private cargarSolicitudesResueltas(espacioId: number): void {
+    if (!this.puedeVerHistorial) {
+      return;
+    }
+    this.cargandoResueltas = true;
+    this.errorResueltas = null;
+    this.solicitudesService.consultarResueltas(espacioId, this.filtrosHistorial).subscribe({
+      next: solicitudes => {
+        this.solicitudesResueltas = solicitudes.filter(solicitud =>
+          solicitud.estado === 'APROBADA' || solicitud.estado === 'RECHAZADA'
+        );
+        this.cargandoResueltas = false;
+      },
+      error: error => {
+        this.errorResueltas = obtenerMensajeErrorApi(error) ??
+          (error.status === 403
+            ? 'No tienes permiso para consultar el historial de este espacio.'
+            : 'No se pudo cargar el historial. Intenta nuevamente.');
+        this.cargandoResueltas = false;
+      }
+    });
+  }
+
+  abrirEdicion(espacio: Espacio): void {
+    if (!this.tienePermisoAdminPanel || this.guardandoEspacio) {
+      return;
+    }
+    this.espacioEnEdicion = espacio;
+    this.formularioEspacio = {
+      nombre: espacio.nombre,
+      tipo: espacio.tipo,
+      capacidad: espacio.capacidad,
+      ubicacion: espacio.ubicacion ?? ''
+    };
+    this.codigoEspacioVisual = `L10${espacio.id}`;
+    this.colorSeleccionadoVisual = this.obtenerColorEspacio(espacio.id);
+    const estaActivoEspacio = this.estaActivo(espacio.id);
+    const estadoGuardado = this.estadosPersonalizadosEspacios.get(espacio.id);
+    this.estadoEspacioVisual = estadoGuardado === 'Mantenimiento' || (!estadoGuardado && estaActivoEspacio === false)
+      ? 'Mantenimiento'
+      : 'Activo';
+
+    // Parsear o inferir edificio y piso desde la ubicación si contiene texto tipo "Bloque A, piso 2" o "Ed. A - Piso 1"
+    const ubicacion = espacio.ubicacion ?? '';
+    const matchEdificio = ubicacion.match(/(?:Ed\.|Bloque|Edificio)\s*([A-Za-z0-9]+)/i);
+    this.edificioEspacioVisual = matchEdificio ? matchEdificio[1].toUpperCase() : 'A';
+    const matchPiso = ubicacion.match(/(?:Piso|piso)\s*([0-9]+)/i);
+    this.pisoEspacioVisual = matchPiso ? `Piso ${matchPiso[1]}` : 'Piso 1';
+  }
+
+  alternarAmenidadVisual(amenidad: string): void {
+    if (this.amenidadesSeleccionadasVisual.includes(amenidad)) {
+      this.amenidadesSeleccionadasVisual = this.amenidadesSeleccionadasVisual.filter(a => a !== amenidad);
+    } else {
+      this.amenidadesSeleccionadasVisual = [...this.amenidadesSeleccionadasVisual, amenidad];
+    }
+  }
+
+  seleccionarColorVisual(color: string): void {
+    this.colorSeleccionadoVisual = color;
+  }
+
+  cancelarEdicion(): void {
+    if (!this.guardandoEspacio) {
+      this.espacioEnEdicion = null;
+    }
+  }
+
+  abrirCrearEspacio(): void {
+    if (!this.tienePermisoAdminPanel) {
+      return;
+    }
+    this.formularioNuevoEspacio = {
+      codigo: '',
+      edificio: 'A',
+      nombre: '',
+      piso: 'Piso 1',
+      capacidad: 20,
+      estado: 'Activo'
+    };
+    this.colorNuevoEspacioVisual = '#3b82f6';
+    this.amenidadesNuevoEspacioVisual = [];
+    this.modalCrearEspacioAbierto = true;
+  }
+
+  cerrarCrearEspacio(): void {
+    if (!this.creandoEspacio) {
+      this.modalCrearEspacioAbierto = false;
+    }
+  }
+
+  seleccionarColorNuevoEspacio(color: string): void {
+    this.colorNuevoEspacioVisual = color;
+  }
+
+  alternarAmenidadNuevoEspacio(amenidad: string): void {
+    if (this.amenidadesNuevoEspacioVisual.includes(amenidad)) {
+      this.amenidadesNuevoEspacioVisual = this.amenidadesNuevoEspacioVisual.filter(a => a !== amenidad);
+    } else {
+      this.amenidadesNuevoEspacioVisual = [...this.amenidadesNuevoEspacioVisual, amenidad];
+    }
+  }
+
+  guardarNuevoEspacio(): void {
+    if (!this.tienePermisoAdminPanel || this.creandoEspacio) {
+      return;
+    }
+    const nombre = this.formularioNuevoEspacio.nombre.trim();
+    const capacidad = this.formularioNuevoEspacio.capacidad;
+    if (!nombre || !Number.isInteger(capacidad) || capacidad < 1) {
+      this.messageService.add({
+        key: 'admin-espacios',
+        severity: 'warn',
+        summary: 'Revisa los datos',
+        detail: 'El nombre es obligatorio y la capacidad debe ser un número entero mayor que cero.',
+        life: 5000
+      });
+      return;
+    }
+
+    this.creandoEspacio = true;
+    const payload = {
+      nombre,
+      tipo: 'LABORATORIO' as TipoEspacio,
+      capacidad,
+      ubicacion: `Ed. ${this.formularioNuevoEspacio.edificio} - ${this.formularioNuevoEspacio.piso}`
+    };
+
+    this.espaciosService.crear(payload).subscribe({
+      next: espacioCreado => {
+        this.creandoEspacio = false;
+        this.modalCrearEspacioAbierto = false;
+        if (this.formularioNuevoEspacio.estado === 'Mantenimiento' && espacioCreado?.id) {
+          this.estadosPersonalizadosEspacios.set(espacioCreado.id, 'Mantenimiento');
+        }
+        this.messageService.add({
+          key: 'admin-espacios',
+          severity: 'success',
+          summary: 'Espacio creado',
+          detail: 'El espacio fue creado correctamente.',
+          life: 5000
+        });
+        this.recargarDatosAdmin();
+      },
+      error: error => {
+        this.creandoEspacio = false;
+        const mensajeBackend = obtenerMensajeErrorApi(error);
+        const detalle = error.status === 405 || error.status === 404
+          ? 'El backend no soporta la creación de espacios en el contrato actual (POST /api/v1/espacios/).'
+          : mensajeBackend ?? 'No se pudo crear el espacio. Intenta nuevamente.';
+        this.messageService.add({
+          key: 'admin-espacios',
+          severity: error.status === 405 || error.status === 404 ? 'warn' : 'error',
+          summary: error.status === 405 || error.status === 404 ? 'Acción no soportada en backend' : 'Error al crear espacio',
+          detail: detalle,
+          life: 6000
+        });
+      }
+    });
+  }
+
+  guardarEdicion(): void {
+    const actual = this.espacioEnEdicion;
+    if (!this.tienePermisoAdminPanel || !actual || this.guardandoEspacio) {
+      return;
+    }
+    const cambios: EspacioActualizar = {};
+    const nombre = this.formularioEspacio.nombre.trim();
+    const ubicacion = this.formularioEspacio.ubicacion.trim() || null;
+    if (!nombre || !Number.isInteger(this.formularioEspacio.capacidad) || this.formularioEspacio.capacidad < 1) {
+      this.messageService.add({
+        key: 'admin-espacios',
+        severity: 'warn',
+        summary: 'Revisa los datos',
+        detail: 'El nombre es obligatorio y la capacidad debe ser un número entero mayor que cero.',
+        life: 5000
+      });
+      return;
+    }
+    if (nombre !== actual.nombre) cambios.nombre = nombre;
+    if (this.formularioEspacio.tipo !== actual.tipo) cambios.tipo = this.formularioEspacio.tipo;
+    if (this.formularioEspacio.capacidad !== actual.capacidad) cambios.capacidad = this.formularioEspacio.capacidad;
+    if (ubicacion !== actual.ubicacion) cambios.ubicacion = ubicacion;
+    const activoActual = this.estaActivo(actual.id);
+    const nuevoActivo = this.estadoEspacioVisual === 'Activo';
+    const cambioEstado = activoActual !== null && activoActual !== nuevoActivo;
+    const estadoAnterior = this.estadosPersonalizadosEspacios.get(actual.id) ?? (activoActual === false ? 'Inactivo' : 'Activo');
+    const cambioVisual = estadoAnterior !== this.estadoEspacioVisual;
+
+    if (Object.keys(cambios).length === 0 && !cambioEstado && !cambioVisual) {
+      this.espacioEnEdicion = null;
+      return;
+    }
+
+    this.guardandoEspacio = true;
+
+    const finalizarExito = () => {
+      this.guardandoEspacio = false;
+      this.estadosPersonalizadosEspacios.set(actual.id, this.estadoEspacioVisual);
+      this.espacioEnEdicion = null;
+      this.messageService.add({
+        key: 'admin-espacios',
+        severity: 'success',
+        summary: 'Espacio actualizado',
+        detail: 'Los cambios se guardaron correctamente.',
+        life: 5000
+      });
+      this.recargarDatosAdmin();
+    };
+
+    if (Object.keys(cambios).length > 0) {
+      this.espaciosService.actualizar(actual.id, cambios).subscribe({
+        next: () => {
+          if (cambioEstado) {
+            this.espaciosService.actualizarEstado(actual.id, { activo: nuevoActivo }).subscribe({
+              next: () => finalizarExito(),
+              error: () => finalizarExito()
+            });
+          } else {
+            finalizarExito();
+          }
+        },
+        error: error => {
+          const estado = error.status;
+          this.guardandoEspacio = false;
+          this.messageService.add({
+            key: 'admin-espacios',
+            severity: estado === 409 ? 'warn' : 'error',
+            summary: estado === 404
+              ? 'Espacio no encontrado'
+              : estado === 409
+                ? 'No se pueden guardar los cambios'
+                : 'Error al actualizar el espacio',
+            detail: estado === 404
+              ? 'El espacio ya no existe.'
+              : obtenerMensajeErrorApi(error) ??
+                (estado === 409
+                  ? 'El nombre ya está en uso o la capacidad no es compatible.'
+                  : estado === 422
+                    ? 'Verifica los datos ingresados.'
+                    : 'No se pudo actualizar el espacio. Intenta nuevamente.'),
+            life: 5000
+          });
+        }
+      });
+    } else if (cambioEstado) {
+      this.espaciosService.actualizarEstado(actual.id, { activo: nuevoActivo }).subscribe({
+        next: () => finalizarExito(),
+        error: error => {
+          this.guardandoEspacio = false;
+          this.messageService.add({
+            key: 'admin-espacios',
+            severity: 'error',
+            summary: 'Error al cambiar estado',
+            detail: obtenerMensajeErrorApi(error) ?? 'No se pudo actualizar el estado del espacio.',
+            life: 5000
+          });
+        }
+      });
+    } else if (cambioVisual) {
+      finalizarExito();
+    }
+  }
+
+  abrirConfirmacionEstado(espacio: Espacio): void {
+    if (this.tienePermisoAdminPanel && this.actualizandoEstadoId === null) {
+      this.espacioCambioEstado = espacio;
+    }
+  }
+
+  cerrarConfirmacionEstado(): void {
+    if (this.actualizandoEstadoId === null) {
+      this.espacioCambioEstado = null;
+    }
+  }
+
+  confirmarCambioEstado(): void {
+    const espacio = this.espacioCambioEstado;
+    const activo = this.estaActivo(espacio?.id ?? -1);
+    if (!this.tienePermisoAdminPanel || !espacio || activo === null || this.actualizandoEstadoId !== null) {
+      return;
+    }
+    const nuevoEstado = !activo;
+    this.actualizandoEstadoId = espacio.id;
+    this.espaciosService.actualizarEstado(espacio.id, { activo: nuevoEstado }).subscribe({
+      next: () => {
+        this.actualizandoEstadoId = null;
+        this.espacioCambioEstado = null;
+        this.estadosPersonalizadosEspacios.delete(espacio.id);
+        this.messageService.add({
+          key: 'admin-espacios',
+          severity: 'success',
+          summary: nuevoEstado ? 'Espacio activado' : 'Espacio desactivado',
+          detail: nuevoEstado
+            ? 'El espacio está disponible para nuevas solicitudes.'
+            : 'El espacio ya no acepta nuevas solicitudes; las reservas existentes se conservan.',
+          life: 5000
+        });
+        this.recargarDatosAdmin();
+      },
+      error: error => {
+        this.actualizandoEstadoId = null;
+        this.messageService.add({
+          key: 'admin-espacios',
+          severity: 'error',
+          summary: 'Error al cambiar el estado',
+          detail: obtenerMensajeErrorApi(error) ?? 'No se pudo cambiar el estado del espacio.',
+          life: 5000
+        });
+      }
+    });
+  }
+
+  private recargarDatosAdmin(): void {
+    this.cargarEspacios();
+    this.cargarMetricas();
+  }
+
+  private formularioVacio(): { nombre: string; tipo: TipoEspacio; capacidad: number; ubicacion: string } {
+    return { nombre: '', tipo: 'LABORATORIO', capacidad: 1, ubicacion: '' };
   }
 
   aprobarSolicitud(solicitudId: number): void {
@@ -340,4 +829,4 @@ export class AdminEspaciosComponent implements OnDestroy, OnInit {
     this.authService.logout();
     void this.router.navigateByUrl('/login');
   }
-}
+}
