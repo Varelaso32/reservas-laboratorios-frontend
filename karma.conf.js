@@ -4,6 +4,7 @@
 //   - coverage/reservas-laboratorios-frontend/lcov.info (lo consume SonarQube en CI)
 //   - coverage/reservas-laboratorios-frontend/lcov-report/ (reporte HTML navegable)
 module.exports = function (config) {
+  console.log('>>> KARMA.CONF.CARGADO desde', __dirname);
   config.set({
     coverageReporter: {
       dir: 'coverage/reservas-laboratorios-frontend',
