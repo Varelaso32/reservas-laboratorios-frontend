@@ -1,61 +1,6 @@
 <div class="aplicacion">
 
-  <aside class="sidebar">
-
-    <div class="logo">
-      <div class="logo-icon">R</div>
-
-      <div>
-        <strong>ReservaECCI</strong>
-        <small>Sistema de Reservas</small>
-      </div>
-    </div>
-
-    <nav class="menu">
-
-      <a>
-        <i class="pi pi-th-large"></i>
-        <span>Dashboard</span>
-      </a>
-
-      <a>
-        <i class="pi pi-calendar"></i>
-        <span>Calendario</span>
-      </a>
-
-      <a class="activo">
-        <i class="pi pi-building"></i>
-        <span>Espacios</span>
-      </a>
-
-      <a>
-        <i class="pi pi-cog"></i>
-        <span>Configuración</span>
-      </a>
-
-      <div class="separador"></div>
-
-      <a>
-        <i class="pi pi-shield"></i>
-        <span>Panel Admin</span>
-      </a>
-
-    </nav>
-
-    <div class="usuario">
-
-      <div class="avatar">
-        JR
-      </div>
-
-      <div>
-        <strong>Juan Rodríguez</strong>
-        <small>Operador · Recepción</small>
-      </div>
-
-    </div>
-
-  </aside>
+  <app-pos-sidebar seccionActiva="espacios" />
 
 
   <main class="contenido">
@@ -71,8 +16,11 @@
         />
       </div>
 
-      <div class="perfil">
-        JR
+      <div class="acciones-topbar">
+        <i class="pi pi-bell" aria-hidden="true"></i>
+        <div class="perfil">
+          {{ inicialesUsuario }}
+        </div>
       </div>
 
     </header>
@@ -84,7 +32,11 @@
 
         <div>
           <h1>Espacios</h1>
-          <p>{{ espacios.length }} espacios registrados</p>
+          @if (cargando) {
+            <p>Cargando espacios...</p>
+          } @else if (!errorCarga) {
+            <p>{{ espacios.length }} espacios registrados</p>
+          }
         </div>
 
       </div>
@@ -92,7 +44,17 @@
 
       <div class="grid-espacios">
 
-        @for (espacio of espacios; track espacio.nombre) {
+        @if (cargando) {
+          <p class="estado-lista" role="status">Cargando espacios...</p>
+        } @else if (errorCarga) {
+          <div class="estado-lista error-carga" role="alert">
+            <p>{{ errorCarga }}</p>
+            <button type="button" (click)="cargarEspacios()">Reintentar</button>
+          </div>
+        } @else if (espacios.length === 0) {
+          <p class="estado-lista">No hay espacios registrados.</p>
+        } @else {
+          @for (espacio of espacios; track espacio.id) {
 
           <article class="tarjeta">
 
@@ -100,7 +62,11 @@
 
               <div class="nombre">
 
-                <span class="punto"></span>
+                <span
+                  class="punto"
+                  aria-hidden="true"
+                  [style.background-color]="obtenerColorEspacio(espacio.id)"
+                ></span>
 
                 <strong>
                   {{ espacio.nombre }}
@@ -108,13 +74,8 @@
 
               </div>
 
-              <span
-                class="estado"
-                [class.disponible]="espacio.estado === 'Disponible'"
-                [class.ocupado]="espacio.estado === 'Ocupado'"
-                [class.reservado]="espacio.estado === 'Reservado'"
-              >
-                {{ espacio.estado }}
+              <span class="tipo-espacio">
+                {{ espacio.tipo }}
               </span>
 
             </div>
@@ -122,10 +83,12 @@
 
             <div class="informacion">
 
-              <p>
-                <i class="pi pi-map-marker"></i>
-                Piso {{ espacio.piso }}
-              </p>
+              @if (espacio.ubicacion) {
+                <p>
+                  <i class="pi pi-map-marker"></i>
+                  {{ espacio.ubicacion }}
+                </p>
+              }
 
               <p>
                 <i class="pi pi-users"></i>
@@ -135,40 +98,13 @@
             </div>
 
 
-            <div class="equipamiento">
-
-              @for (equipo of espacio.equipos; track equipo) {
-
-                <span>
-                  {{ equipo }}
-                </span>
-
-              }
-
-            </div>
-
-
-          <button
-  [disabled]="espacio.estado !== 'Disponible'"
-  (click)="abrirReserva(espacio)"
->
-
-              @if (espacio.estado === 'Disponible') {
-                Reservar ahora
-              }
-
-              @if (espacio.estado === 'Ocupado') {
-                Ocupado
-              }
-
-              @if (espacio.estado === 'Reservado') {
-                Reservado
-              }
-
+            <button type="button" (click)="abrirReserva(espacio)">
+              Reservar ahora
             </button>
 
           </article>
 
+          }
         }
 
       </div>
@@ -182,13 +118,8 @@
 @if (modalReservaAbierto && espacioSeleccionado) {
 
   <app-solicitud-reserva
-
-    [espacioNombre]="espacioSeleccionado.nombre"
-
-    [piso]="espacioSeleccionado.piso"
-
+    [espacio]="espacioSeleccionado"
     (cerrar)="cerrarReserva()"
-
   />
 
 }

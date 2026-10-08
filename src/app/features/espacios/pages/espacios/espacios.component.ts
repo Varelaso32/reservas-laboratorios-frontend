@@ -1,100 +1,81 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { SolicitudReservaComponent } from '../../../reservas/pages/solicitud-reserva/solicitud-reserva.component';
-
-interface Espacio {
-  nombre: string;
-  piso: number;
-  capacidad: number;
-  estado: 'Disponible' | 'Ocupado' | 'Reservado';
-  equipos: string[];
-}
+import { Espacio } from '../../../../shared/models/espacio.model';
+import { EspaciosService } from '../../../../core/services/espacios.service';
+import { AuthService } from '../../../../core/services/auth.service';
+import { obtenerMensajeErrorApi } from '../../../../core/utils/api-error.util';
+import { obtenerColorIdentificadorEspacio } from '../../../../shared/utils/espacio-color.util';
+import { PosSidebarComponent } from '../../../../shared/components/pos-sidebar/pos-sidebar.component';
 
 @Component({
   selector: 'app-espacios',
-  imports: [SolicitudReservaComponent],
+  imports: [SolicitudReservaComponent, PosSidebarComponent],
   templateUrl: './espacios.component.html',
   styleUrl: './espacios.component.scss'
 })
-export class EspaciosComponent {
+export class EspaciosComponent implements OnInit {
+  private readonly authService = inject(AuthService);
+  private readonly espaciosService = inject(EspaciosService);
 
-modalReservaAbierto = false;
+  modalReservaAbierto = false;
+  cargando = false;
+  errorCarga: string | null = null;
+  espacios: Espacio[] = [];
+  espacioSeleccionado: Espacio | null = null;
 
-espacioSeleccionado: Espacio | null = null;
+  get usuarioActual() {
+    return this.authService.tieneSesionActiva()
+      ? this.authService.obtenerUsuarioActual()
+      : null;
+  }
 
-abrirReserva(espacio: Espacio) {
-  this.espacioSeleccionado = espacio;
-  this.modalReservaAbierto = true;
-}
-
-cerrarReserva() {
-  this.modalReservaAbierto = false;
-  this.espacioSeleccionado = null;
-}
-
-
-  espacios: Espacio[] = [
-    {
-      nombre: 'Lab. Programación I',
-      piso: 1,
-      capacidad: 30,
-      estado: 'Disponible',
-      equipos: ['Proyector', 'Pizarra', 'TV']
-    },
-    {
-      nombre: 'Lab. Redes',
-      piso: 1,
-      capacidad: 25,
-      estado: 'Disponible',
-      equipos: ['Proyector', 'TV', 'Videoconf.']
-    },
-    {
-      nombre: 'Lab. Bases de Datos',
-      piso: 2,
-      capacidad: 28,
-      estado: 'Disponible',
-      equipos: ['Proyector', 'Pizarra']
-    },
-    {
-      nombre: 'Sala de Reuniones A',
-      piso: 3,
-      capacidad: 12,
-      estado: 'Disponible',
-      equipos: ['TV', 'Videoconf.', 'Café']
-    },
-    {
-      nombre: 'Sala de Reuniones B',
-      piso: 3,
-      capacidad: 10,
-      estado: 'Ocupado',
-      equipos: ['TV', 'Pizarra']
-    },
-    {
-      nombre: 'Lab. Inteligencia Art.',
-      piso: 2,
-      capacidad: 24,
-      estado: 'Disponible',
-      equipos: ['Proyector', 'GPU', 'AC']
-    },
-    {
-      nombre: 'Aula Magna',
-      piso: 4,
-      capacidad: 80,
-      estado: 'Ocupado',
-      equipos: ['Proyector', 'Micrófono', 'AC']
-    },
-    {
-      nombre: 'Sala de Estudio 1',
-      piso: 1,
-      capacidad: 8,
-      estado: 'Disponible',
-      equipos: ['TV', 'Pizarra']
-    },
-    {
-      nombre: 'Lab. Seguridad',
-      piso: 3,
-      capacidad: 20,
-      estado: 'Reservado',
-      equipos: ['Proyector', 'Pizarra']
+  get inicialesUsuario(): string {
+    const nombre = this.usuarioActual?.nombre.trim();
+    if (!nombre) {
+      return '';
     }
-  ];
+
+    const partes = nombre.split(/\s+/).filter(Boolean);
+    if (partes.length === 1) {
+      return partes[0].slice(0, 2).toLocaleUpperCase();
+    }
+
+    return `${partes[0][0]}${partes[partes.length - 1][0]}`.toLocaleUpperCase();
+  }
+
+  obtenerColorEspacio(espacioId: number): string {
+    return obtenerColorIdentificadorEspacio(espacioId);
+  }
+
+  ngOnInit(): void {
+    this.cargarEspacios();
+  }
+
+  cargarEspacios(): void {
+    this.cargando = true;
+    this.errorCarga = null;
+
+    this.espaciosService.listar().subscribe({
+      next: espacios => {
+        this.espacios = espacios;
+        this.cargando = false;
+      },
+      error: error => {
+        this.errorCarga =
+          obtenerMensajeErrorApi(error) ?? 'No se pudieron cargar los espacios. Intenta nuevamente.';
+        this.cargando = false;
+      }
+    });
+  }
+
+  abrirReserva(espacio: Espacio): void {
+    this.espacioSeleccionado = espacio;
+    this.modalReservaAbierto = true;
+  }
+
+  cerrarReserva(): void {
+    this.modalReservaAbierto = false;
+    this.espacioSeleccionado = null;
+  }
+
 }

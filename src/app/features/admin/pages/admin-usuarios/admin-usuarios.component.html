@@ -1,0 +1,121 @@
+<div class="admin-app">
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-icon">R</div>
+      <div>
+        <strong>ReservaECCI</strong>
+        <small>Panel Admin</small>
+      </div>
+    </div>
+
+    <nav class="menu" aria-label="Panel Admin">
+      <span class="menu-item inactivo" aria-disabled="true">
+        <i class="pi pi-th-large" aria-hidden="true"></i>
+        <span>Resumen</span>
+      </span>
+      <a class="menu-item" routerLink="/admin/espacios">
+        <i class="pi pi-building" aria-hidden="true"></i>
+        <span>Espacios</span>
+      </a>
+      <a class="menu-item activo" routerLink="/admin/usuarios" aria-current="page">
+        <i class="pi pi-users" aria-hidden="true"></i>
+        <span>Usuarios</span>
+      </a>
+      <span class="menu-item inactivo" aria-disabled="true">
+        <i class="pi pi-chart-bar" aria-hidden="true"></i>
+        <span>Reportes</span>
+      </span>
+      <span class="menu-item inactivo" aria-disabled="true">
+        <i class="pi pi-cog" aria-hidden="true"></i>
+        <span>Configuración</span>
+      </span>
+
+      <div class="separador"></div>
+
+      <a class="menu-item vista-operador" routerLink="/espacios">
+        <i class="pi pi-arrow-left" aria-hidden="true"></i>
+        <span>Vista Operador</span>
+      </a>
+    </nav>
+
+    @if (usuarioActual; as usuario) {
+      <div class="usuario">
+        <div class="avatar">{{ inicialesUsuario }}</div>
+        <div class="usuario-info">
+          <strong>{{ usuario.nombre }}</strong>
+          <small>{{ usuario.rol }}</small>
+        </div>
+        <button
+          type="button"
+          class="logout"
+          aria-label="Cerrar sesión"
+          title="Cerrar sesión"
+          (click)="cerrarSesion()"
+        >
+          <i class="pi pi-sign-out" aria-hidden="true"></i>
+        </button>
+      </div>
+    }
+  </aside>
+
+  <main class="contenido">
+    <header class="topbar">
+      <label class="buscador">
+        <i class="pi pi-search" aria-hidden="true"></i>
+        <input type="search" placeholder="Buscar usuarios..." aria-label="Buscar usuarios" disabled />
+      </label>
+      <div class="acciones-topbar">
+        <i class="pi pi-bell" aria-hidden="true"></i>
+        <div class="perfil" aria-label="Usuario actual">{{ inicialesUsuario }}</div>
+      </div>
+    </header>
+
+    <section class="pagina">
+      <div class="encabezado">
+        <div>
+          <h1>Usuarios</h1>
+          <p>— usuarios registrados</p>
+        </div>
+        <button type="button" class="nuevo-usuario" aria-disabled="true" disabled>
+          <i class="pi pi-plus" aria-hidden="true"></i>
+          Nuevo usuario
+        </button>
+      </div>
+
+      <nav class="filtros" aria-label="Filtrar usuarios">
+        @for (filtro of filtros; track filtro) {
+          <button
+            type="button"
+            class="filtro"
+            [class.activo]="filtro === 'Todos'"
+            aria-disabled="true"
+            disabled
+          >
+            {{ filtro }}
+          </button>
+        }
+      </nav>
+
+      <div class="tabla-contenedor">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">USUARIO</th>
+              <th scope="col">ROL</th>
+              <th scope="col">RESERVAS ESTE MES</th>
+              <th scope="col">ESTADO</th>
+              <th scope="col">ACCIONES</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td colspan="5" class="estado-tabla" role="status">
+                La información de usuarios no está disponible.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
