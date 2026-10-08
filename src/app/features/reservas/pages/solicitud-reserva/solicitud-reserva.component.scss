@@ -95,7 +95,8 @@
   flex-direction: column;
   gap: 8px;
 
-  label {
+  label,
+  .titulo-campo {
     font-size: 12px;
     font-weight: 700;
 

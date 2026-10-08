@@ -29,9 +29,10 @@
 
         <!-- SOLICITANTE -->
         <div class="campo">
-          <label>SOLICITANTE</label>
+          <label for="solicitante">SOLICITANTE</label>
 
           <input
+            id="solicitante"
             type="text"
             placeholder="Ej. Prof. María González"
             formControlName="solicitante"
@@ -52,9 +53,10 @@
         <div class="fila-tres">
 
           <div class="campo">
-            <label>FECHA</label>
+            <label for="fecha">FECHA</label>
 
             <input
+              id="fecha"
               type="date"
               formControlName="fecha"
               (change)="validarDisponibilidad()"
@@ -72,9 +74,10 @@
 
 
           <div class="campo">
-            <label>INICIO</label>
+            <label for="horaInicio">INICIO</label>
 
             <input
+              id="horaInicio"
               type="time"
               formControlName="horaInicio"
               (change)="validarDisponibilidad()"
@@ -92,9 +95,10 @@
 
 
           <div class="campo">
-            <label>FIN</label>
+            <label for="horaFin">FIN</label>
 
             <input
+              id="horaFin"
               type="time"
               formControlName="horaFin"
               (change)="validarDisponibilidad()"
@@ -124,9 +128,10 @@
 
         <!-- ASISTENTES -->
         <div class="campo">
-          <label>CANTIDAD DE ASISTENTES</label>
+          <label for="asistentes">CANTIDAD DE ASISTENTES</label>
 
           <input
+            id="asistentes"
             type="number"
             min="1"
             placeholder="Ej. 20"
@@ -147,7 +152,7 @@
         <!-- TIPO DE ACTIVIDAD -->
         <div class="campo">
 
-          <label>TIPO DE ACTIVIDAD</label>
+          <span class="titulo-campo">TIPO DE ACTIVIDAD</span>
 
           <div class="actividades">
 
@@ -207,9 +212,10 @@
         <!-- PROPÓSITO -->
         <div class="campo">
 
-          <label>PROPÓSITO</label>
+          <label for="proposito">PROPÓSITO</label>
 
           <textarea
+            id="proposito"
             rows="3"
             placeholder="Describe brevemente el motivo de la reserva"
             formControlName="proposito"
