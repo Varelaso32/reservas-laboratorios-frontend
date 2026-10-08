@@ -98,7 +98,41 @@ jobs:
 
       # Paso 3.5: Lanza Karma y ejecuta la suite de pruebas en modo Headless
       # Se usa 'npx' para asegurar la ejecucion del CLI local sin errores de entorno
+      # --code-coverage genera coverage/lcov.info que SonarQube usa para medir
+      # la cobertura (el Quality Gate exige >=80% en codigo nuevo)
       - name: Ejecutar Pruebas Unitarias
-        run: npx ng test --watch=false --browsers=ChromeHeadless
+        run: npx ng test --watch=false --browsers=ChromeHeadless --code-coverage
 
-       
+      - name: Subir reporte de cobertura
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/reservas-laboratorios-frontend/lcov.info
+
+  # ============================================================================
+  # 4. SONAR: Analiza el codigo en SonarQube Cloud y espera el Quality Gate.
+  # Si el gate no pasa, este job falla y deja el PR en rojo.
+  # ============================================================================
+  sonar:
+    name: sonar
+    needs: [build, lint, test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout del codigo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Descargar reporte de cobertura
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage
+          path: coverage/reservas-laboratorios-frontend
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v7
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: -Dsonar.qualitygate.wait=true
