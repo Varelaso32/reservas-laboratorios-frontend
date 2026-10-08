@@ -10,7 +10,7 @@ import { AuthService } from '../../../../core/services/auth.service';
 import { EspaciosService } from '../../../../core/services/espacios.service';
 import { SolicitudesService } from '../../../../core/services/solicitudes.service';
 import { obtenerMensajeErrorApi } from '../../../../core/utils/api-error.util';
-import { Espacio, EspacioActualizar, EspacioMetrica, TipoEspacio } from '../../../../shared/models/espacio.model';
+import { Espacio, EspacioActualizar, EspacioCrear, EspacioMetrica, TipoEspacio } from '../../../../shared/models/espacio.model';
 import { obtenerColorIdentificadorEspacio } from '../../../../shared/utils/espacio-color.util';
 import { EstadoDetalleSolicitud, SolicitudPendiente, SolicitudResuelta } from '../../../../shared/models/solicitud.model';
 import { SolicitudesEspacioModalComponent } from '../../../solicitudes/components/solicitudes-espacio-modal/solicitudes-espacio-modal.component';
@@ -105,7 +105,7 @@ export class AdminEspaciosComponent implements OnDestroy, OnInit {
   }
 
   get puedeConsultarSolicitudes(): boolean {
-    return this.usuarioActual?.rol === 'APROBADOR';
+    return this.usuarioActual?.rol === 'APROBADOR' || this.usuarioActual?.rol === 'ADMIN';
   }
 
   get esAdministrador(): boolean {
@@ -140,7 +140,7 @@ export class AdminEspaciosComponent implements OnDestroy, OnInit {
 
   ngOnInit(): void {
     this.cargarEspacios();
-    if (this.esAdministrador) {
+    if (this.tienePermisoAdminPanel) {
       this.cargarMetricas();
     }
     if (this.puedeConsultarSolicitudes) {
@@ -151,7 +151,7 @@ export class AdminEspaciosComponent implements OnDestroy, OnInit {
   cargarEspacios(): void {
     this.cargandoEspacios = true;
     this.errorEspacios = null;
-    const solicitud = this.esAdministrador
+    const solicitud = this.tienePermisoAdminPanel
       ? this.espaciosService.listarAdmin()
       : this.espaciosService.listar();
     solicitud.subscribe({
@@ -172,7 +172,7 @@ export class AdminEspaciosComponent implements OnDestroy, OnInit {
   }
 
   cargarMetricas(): void {
-    if (!this.esAdministrador) {
+    if (!this.tienePermisoAdminPanel) {
       return;
     }
     this.cargandoMetricas = true;
@@ -443,12 +443,50 @@ export class AdminEspaciosComponent implements OnDestroy, OnInit {
       return;
     }
 
-    this.messageService.add({
-      key: 'admin-espacios',
-      severity: 'warn',
-      summary: 'Acción no soportada en backend',
-      detail: 'El backend no soporta la creación de espacios en el contrato actual (POST /api/v1/espacios/).',
-      life: 6000
+    this.creandoEspacio = true;
+    const edificio = this.formularioNuevoEspacio.edificio?.trim();
+    const piso = this.formularioNuevoEspacio.piso?.trim();
+    const ubicacion = edificio && piso ? `Edificio ${edificio}, ${piso}` : edificio ? `Edificio ${edificio}` : null;
+    const tipo: TipoEspacio = nombre.toLowerCase().includes('sala') ? 'SALA' : 'LABORATORIO';
+
+    const payload: EspacioCrear = {
+      nombre,
+      tipo,
+      capacidad,
+      ubicacion
+    };
+
+    this.espaciosService.crear(payload).subscribe({
+      next: espacioCreado => {
+        this.creandoEspacio = false;
+        this.modalCrearEspacioAbierto = false;
+
+        if (this.formularioNuevoEspacio.estado === 'Mantenimiento') {
+          this.estadosPersonalizadosEspacios.set(espacioCreado.id, 'Mantenimiento');
+          this.espaciosService.actualizarEstado(espacioCreado.id, { activo: false }).subscribe();
+        }
+
+        this.messageService.add({
+          key: 'admin-espacios',
+          severity: 'success',
+          summary: 'Espacio creado',
+          detail: `El espacio "${espacioCreado.nombre}" se creó correctamente.`,
+          life: 5000
+        });
+
+        this.recargarDatosAdmin();
+      },
+      error: error => {
+        this.creandoEspacio = false;
+        const mensaje = obtenerMensajeErrorApi(error) ?? 'No se pudo crear el espacio. Intenta nuevamente.';
+        this.messageService.add({
+          key: 'admin-espacios',
+          severity: 'error',
+          summary: 'Error al crear espacio',
+          detail: mensaje,
+          life: 6000
+        });
+      }
     });
   }
 
@@ -606,7 +644,12 @@ export class AdminEspaciosComponent implements OnDestroy, OnInit {
 
   private recargarDatosAdmin(): void {
     this.cargarEspacios();
-    this.cargarMetricas();
+    if (this.tienePermisoAdminPanel) {
+      this.cargarMetricas();
+    }
+    if (this.puedeConsultarSolicitudes) {
+      this.cargarConteosPendientes();
+    }
   }
 
   private formularioVacio(): { nombre: string; tipo: TipoEspacio; capacidad: number; ubicacion: string } {
@@ -638,6 +681,9 @@ export class AdminEspaciosComponent implements OnDestroy, OnInit {
           life: 5000
         });
         this.cargarConteosPendientes();
+        if (this.tienePermisoAdminPanel) {
+          this.cargarMetricas();
+        }
         if (this.espacioSeleccionado?.id === espacio.id) {
           this.verSolicitudes(espacio);
         } else {

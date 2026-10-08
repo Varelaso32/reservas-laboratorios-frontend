@@ -76,7 +76,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return horaReservaColombia(valor);
   }
 
-  obtenerEstadoReserva(reserva: ReservaResumen): 'En curso' | 'Próxima' {
+  obtenerEstadoReserva(reserva: ReservaResumen): 'En curso' | 'Próxima' | 'Cancelada' {
+    if (reserva.estado === 'CANCELADA') {
+      return 'Cancelada';
+    }
     const ahora = Date.now();
     return instanteReservaColombia(reserva.inicio) <= ahora && ahora < instanteReservaColombia(reserva.fin)
       ? 'En curso'
@@ -84,7 +87,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   obtenerClaseEstado(reserva: ReservaResumen): string {
-    return this.obtenerEstadoReserva(reserva) === 'En curso' ? 'estado-en-curso' : 'estado-proxima';
+    const estado = this.obtenerEstadoReserva(reserva);
+    if (estado === 'Cancelada') {
+      return 'estado-cancelada';
+    }
+    return estado === 'En curso' ? 'estado-en-curso' : 'estado-proxima';
   }
 
   puedeCancelarReserva(reserva: ReservaResumen): boolean {
@@ -156,22 +163,28 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }));
   }
   private cargarAgenda(): void {
-    if (this.rolUsuario !== 'SOLICITANTE') {
+    const rol = this.rolUsuario;
+    if (rol !== 'SOLICITANTE' && rol !== 'ADMIN' && rol !== 'APROBADOR') {
       this.mensajeAgendaNoDisponible = 'No hay reservas disponibles para mostrar.';
       return;
     }
 
     this.cargandoAgenda = true;
-    this.subscriptions.add(this.reservasService.consultarMias().subscribe({
+    const peticion$ = rol === 'SOLICITANTE'
+      ? this.reservasService.consultarMias()
+      : this.reservasService.consultarAgenda({ fecha: this.hoy });
+
+    this.subscriptions.add(peticion$.subscribe({
       next: reservas => {
         const ahora = Date.now();
-        const reservasActivasHoy = reservas.filter(reserva =>
-          reserva.estado === 'ACTIVA' && fechaReservaColombia(reserva.inicio) === this.hoy
+        const reservasHoy = reservas.filter(reserva =>
+          fechaReservaColombia(reserva.inicio) === this.hoy
         );
-        this.totalReservasHoy = reservasActivasHoy.length;
+        const reservasActivasHoy = reservasHoy.filter(r => r.estado === 'ACTIVA');
         this.reservasHoy = reservasActivasHoy.filter(
           reserva => instanteReservaColombia(reserva.fin) > ahora
         );
+        this.totalReservasHoy = this.reservasHoy.length;
         this.cargandoAgenda = false;
         for (const reserva of this.reservasHoy) {
           this.subscriptions.add(this.reservasService.obtenerDetalle(reserva.id).subscribe({

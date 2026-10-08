@@ -338,10 +338,41 @@ describe('DashboardComponent', () => {
     httpTestingController.expectNone(`${API_BASE_URL}/reservas/mias`);
   });
 
-  it('keeps Dashboard, Calendar, Spaces and Admin navigation for APROBADOR without requesting a forbidden list', () => {
+  it('loads today’s reservations for APROBADOR using agenda endpoint and preserves navigation', () => {
     crearDashboard('APROBADOR');
     httpTestingController.expectNone(`${API_BASE_URL}/reservas/mias`);
+    const reqAgenda = httpTestingController.expectOne(req =>
+      req.url === `${API_BASE_URL}/reservas/` && req.params.get('fecha') === fechaColombia(new Date())
+    );
+    expect(reqAgenda.request.method).toBe('GET');
     obtenerDisponibilidad().flush([]);
+
+    const inicio = new Date(Date.now() + 10 * 60_000).toISOString();
+    const fin = new Date(Date.now() + 40 * 60_000).toISOString();
+    reqAgenda.flush([
+      {
+        id: 70,
+        estado: 'ACTIVA',
+        espacio,
+        inicio,
+        fin,
+        solicitud_id: 30,
+        titular: 'Coordinación Labs',
+        proposito: 'Práctica redes'
+      }
+    ]);
+    const reqDetalle = httpTestingController.expectOne(`${API_BASE_URL}/reservas/70`);
+    reqDetalle.flush({
+      id: 70,
+      estado: 'ACTIVA',
+      espacio,
+      inicio,
+      fin,
+      solicitud_id: 30,
+      titular: 'Coordinación Labs',
+      proposito: 'Práctica redes',
+      finalizada: false
+    });
     fixture.detectChanges();
 
     const links = fixture.nativeElement.querySelectorAll('.menu a') as NodeListOf<HTMLAnchorElement>;
@@ -354,24 +385,54 @@ describe('DashboardComponent', () => {
     expect(routesByText).toContain(jasmine.objectContaining({ text: 'Espacios', href: '/espacios' }));
     expect(routesByText).toContain(jasmine.objectContaining({ text: 'Panel Admin', href: '/admin/espacios' }));
     expect(fixture.nativeElement.querySelector('.menu').textContent).toContain('Configuración');
-    expect(fixture.nativeElement.textContent).toContain('No hay reservas disponibles para mostrar.');
-    expect(fixture.nativeElement.querySelector('.panel-agenda').textContent)
-      .not.toMatch(/backend|endpoint|api|openapi|aprobador/i);
-    expect(fixture.nativeElement.querySelector('.tarjeta-resumen:first-child').textContent)
-      .not.toMatch(/backend|endpoint|api|openapi|aprobador/i);
-    expect(fixture.nativeElement.textContent).not.toContain('No tienes reservas activas para hoy.');
-    expect(TestBed.inject(Router).url).not.toBe('/reservas-activas');
+    expect(fixture.nativeElement.textContent).toContain('Laboratorio de Redes');
+    expect(fixture.nativeElement.textContent).toContain('Coordinación Labs · Práctica redes');
+    expect(fixture.nativeElement.querySelector('.tarjeta-resumen:first-child strong')?.textContent?.trim()).toBe('1');
+    expect(fixture.nativeElement.querySelector('.tarjeta-resumen:first-child small')?.textContent?.trim()).toBe('Reservas activas hoy');
   });
 
-  it('does not request the applicant reservation list or invent a total for ADMIN', () => {
+  it('loads today’s reservations for ADMIN using agenda endpoint and displays total', () => {
     crearDashboard('ADMIN');
     httpTestingController.expectNone(`${API_BASE_URL}/reservas/mias`);
+    const reqAgenda = httpTestingController.expectOne(req =>
+      req.url === `${API_BASE_URL}/reservas/` && req.params.get('fecha') === fechaColombia(new Date())
+    );
+    expect(reqAgenda.request.method).toBe('GET');
     obtenerDisponibilidad().flush([]);
+
+    const inicio = new Date(Date.now() + 15 * 60_000).toISOString();
+    const fin = new Date(Date.now() + 45 * 60_000).toISOString();
+    reqAgenda.flush([
+      {
+        id: 80,
+        estado: 'ACTIVA',
+        espacio,
+        inicio,
+        fin,
+        solicitud_id: 40,
+        titular: 'Admin Sistema',
+        proposito: 'Mantenimiento'
+      }
+    ]);
+    const reqDetalle = httpTestingController.expectOne(`${API_BASE_URL}/reservas/80`);
+    reqDetalle.flush({
+      id: 80,
+      estado: 'ACTIVA',
+      espacio,
+      inicio,
+      fin,
+      solicitud_id: 40,
+      titular: 'Admin Sistema',
+      proposito: 'Mantenimiento',
+      finalizada: false
+    });
     fixture.detectChanges();
 
     const resumenReservas = fixture.nativeElement.querySelector('.tarjeta-resumen:first-child') as HTMLElement;
-    expect(resumenReservas.querySelector('strong')?.textContent?.trim()).toBe('—');
-    expect(resumenReservas.textContent).not.toMatch(/backend|endpoint|api|openapi|admin/i);
+    expect(resumenReservas.querySelector('strong')?.textContent?.trim()).toBe('1');
+    expect(resumenReservas.querySelector('small')?.textContent?.trim()).toBe('Reservas activas hoy');
+    expect(fixture.nativeElement.textContent).toContain('Laboratorio de Redes');
+    expect(fixture.nativeElement.textContent).toContain('Admin Sistema · Mantenimiento');
   });
 
   it('protects Dashboard with authentication without adding role restrictions', () => {

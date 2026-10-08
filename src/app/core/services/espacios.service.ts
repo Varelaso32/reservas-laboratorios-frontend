@@ -8,6 +8,7 @@ import {
   Espacio,
   EspacioActualizar,
   EspacioAdmin,
+  EspacioCrear,
   EspacioEstadoActualizar,
   EspacioMetrica,
   TipoEspacio
@@ -16,6 +17,10 @@ import {
 @Injectable({ providedIn: 'root' })
 export class EspaciosService {
   private readonly http = inject(HttpClient);
+
+  crear(espacio: EspacioCrear): Observable<EspacioAdmin> {
+    return this.http.post<EspacioAdmin>(`${API_BASE_URL}/espacios/`, espacio);
+  }
 
   listar(tipo?: TipoEspacio): Observable<Espacio[]> {
     let params = new HttpParams();

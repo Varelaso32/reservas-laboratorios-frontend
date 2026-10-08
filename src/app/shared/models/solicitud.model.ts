@@ -71,6 +71,9 @@ export interface ReservaResumen {
   inicio: string;
   fin: string;
   solicitud_id: number;
+  titular?: string;
+  proposito?: string;
+  asistentes?: number;
 }
 
 export interface SolicitudResuelta {

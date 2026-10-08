@@ -92,20 +92,29 @@ export class CalendarioComponent implements OnInit, OnDestroy {
     return `${inicioTexto} – ${finTexto}`;
   }
 
+  private reservaSubscription?: Subscription;
+
   ngOnInit(): void {
     this.cargarReservas();
   }
 
   ngOnDestroy(): void {
+    this.reservaSubscription?.unsubscribe();
     this.subscriptions.unsubscribe();
   }
 
   semanaAnterior(): void {
     this.semanaInicio = sumarDiasFecha(this.semanaInicio, -7);
+    if (this.rolUsuario === 'ADMIN' || this.rolUsuario === 'APROBADOR') {
+      this.cargarReservas();
+    }
   }
 
   semanaSiguiente(): void {
     this.semanaInicio = sumarDiasFecha(this.semanaInicio, 7);
+    if (this.rolUsuario === 'ADMIN' || this.rolUsuario === 'APROBADOR') {
+      this.cargarReservas();
+    }
   }
 
   reservasDelDia(fecha: string): ReservaResumen[] {
@@ -137,15 +146,25 @@ export class CalendarioComponent implements OnInit, OnDestroy {
   }
 
   private cargarReservas(): void {
-    if (this.rolUsuario !== 'SOLICITANTE') {
+    const rol = this.rolUsuario;
+    if (rol !== 'SOLICITANTE' && rol !== 'ADMIN' && rol !== 'APROBADOR') {
       return;
     }
 
+    this.reservaSubscription?.unsubscribe();
     this.cargando = true;
-    this.subscriptions.add(this.reservasService.consultarMias().subscribe({
+    const peticion$ = rol === 'SOLICITANTE'
+      ? this.reservasService.consultarMias()
+      : this.reservasService.consultarAgenda({
+          fecha_inicio: this.semanaInicio,
+          fecha_fin: sumarDiasFecha(this.semanaInicio, 6)
+        });
+
+    this.reservaSubscription = peticion$.subscribe({
       next: reservas => {
         this.reservas = reservas.filter(reserva =>
-          reserva.estado === 'ACTIVA' && instanteReservaColombia(reserva.fin) > Date.now()
+          reserva.estado === 'ACTIVA' &&
+          (rol === 'SOLICITANTE' ? instanteReservaColombia(reserva.fin) > Date.now() : true)
         );
         this.cargando = false;
       },
@@ -160,7 +179,8 @@ export class CalendarioComponent implements OnInit, OnDestroy {
           life: 5000
         });
       }
-    }));
+    });
+    this.subscriptions.add(this.reservaSubscription);
   }
 
   private minutosDelDia(valor: string): number {
