@@ -103,6 +103,9 @@ jobs:
       - name: Ejecutar Pruebas Unitarias
         run: npx ng test --watch=false --browsers=ChromeHeadless --code-coverage
 
+      - name: Debug ubicacion del reporte de cobertura
+        run: find . \( -name "*.info" -o -name "coverage" \) -not -path "*node_modules*" | head -20
+
       - name: Subir reporte de cobertura
         uses: actions/upload-artifact@v4
         with:
