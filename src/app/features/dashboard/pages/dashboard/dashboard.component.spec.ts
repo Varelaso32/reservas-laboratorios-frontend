@@ -7,7 +7,7 @@ import { MessageService } from 'primeng/api';
 import { API_BASE_URL } from '../../../../core/config/api.config';
 import { authGuard } from '../../../../core/guards/auth.guard';
 import { routes } from '../../../../app.routes';
-import { fechaColombia, horaColombia } from '../../../../shared/utils/fecha-colombia.util';
+import { fechaColombia } from '../../../../shared/utils/fecha-colombia.util';
 import { DashboardComponent } from './dashboard.component';
 
 describe('DashboardComponent', () => {

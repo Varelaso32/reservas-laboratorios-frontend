@@ -20,7 +20,7 @@
     "@angular/platform-browser-dynamic": "^19.1.0",
     "@angular/router": "^19.1.0",
     "@primeng/themes": "^19.1.4",
-    "primeicons": "^8.0.0",
+    "primeicons": "^8.0.2",
     "primeng": "^19.1.4",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
@@ -37,8 +37,10 @@
     "@angular/compiler-cli": "^19.1.0",
     "@types/jasmine": "~5.1.0",
     "angular-eslint": "^19.8.1",
+
     "eslint": "^9.39.5",
     "eslint-plugin-sonarjs": "^4.2.0",
+
     "jasmine-core": "~5.5.0",
     "karma": "~6.4.0",
     "karma-chrome-launcher": "~3.2.0",
