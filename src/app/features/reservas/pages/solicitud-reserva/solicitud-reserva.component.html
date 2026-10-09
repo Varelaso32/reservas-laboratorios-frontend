@@ -1,0 +1,341 @@
+@if (solicitudCreada; as solicitud) {
+  <div class="overlay overlay-exito">
+    <section
+      class="modal-exito"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="titulo-solicitud-enviada"
+      aria-describedby="detalle-solicitud-enviada"
+    >
+      <span class="icono-exito" aria-hidden="true">
+        <span class="punto-exito"></span>
+      </span>
+      <h2 id="titulo-solicitud-enviada">Solicitud enviada correctamente</h2>
+      <p id="detalle-solicitud-enviada">
+        @if (solicitud.estado === 'PENDIENTE') {
+          Tu solicitud está pendiente de aprobación por parte del administrador.
+          Te notificaremos cuando sea revisada.
+        } @else {
+          {{ solicitud.mensaje }}
+        }
+      </p>
+      @if (solicitud.estado === 'PENDIENTE') {
+        <span class="badge-pendiente">
+          <span class="punto-pendiente" aria-hidden="true"></span>
+          Pendiente de aprobación
+        </span>
+      }
+      <button type="button" class="cerrar-exito" (click)="cerrarModal()">Cerrar</button>
+    </section>
+  </div>
+} @else {
+<div class="overlay">
+
+  <div class="modal">
+
+    <div class="modal-header">
+
+      <div>
+        <h2>Reservar espacio</h2>
+
+        <p class="espacio-seleccionado">
+          @if (espacio; as espacioActual) {
+            <span
+              class="punto"
+              aria-hidden="true"
+              [style.background-color]="colorIdentificadorEspacio"
+            ></span>
+            {{ espacioActual.nombre }} · {{ espacioActual.tipo }}
+            @if (espacioActual.ubicacion) {
+              · {{ espacioActual.ubicacion }}
+            }
+          }
+        </p>
+      </div>
+
+      <button
+        type="button"
+        class="cerrar"
+        (click)="cerrarModal()"
+      >
+        ×
+      </button>
+
+    </div>
+
+    <form [formGroup]="formReserva">
+
+      <div class="modal-body">
+
+        <!-- SOLICITANTE -->
+        <div class="campo">
+          <label for="solicitante">SOLICITANTE</label>
+
+          <input
+            id="solicitante"
+            type="text"
+            [value]="usuarioActual?.nombre ?? ''"
+            [placeholder]="usuarioActual ? '' : 'Inicia sesión para solicitar'"
+            readonly
+          />
+        </div>
+
+        @if (!puedeCrearSolicitud) {
+          <p class="aviso-restriccion" role="alert">
+            <i class="pi pi-info-circle" aria-hidden="true"></i>
+            @if (usuarioActual) {
+              Solo una cuenta SOLICITANTE puede enviar esta solicitud.
+            } @else {
+              Inicia sesión para enviar una solicitud.
+              <a routerLink="/login">Iniciar sesión</a>
+            }
+          </p>
+        }
+
+        <!-- FECHA / INICIO / FIN -->
+        <div class="fila-tres">
+
+          <div class="campo">
+            <label for="fecha">FECHA</label>
+
+            <input
+              id="fecha"
+              type="date"
+              formControlName="fecha"
+              (change)="validarDisponibilidad()"
+            />
+
+            @if (
+              formReserva.controls.fecha.invalid &&
+              formReserva.controls.fecha.touched
+            ) {
+              <small class="error-campo">
+                La fecha es obligatoria.
+              </small>
+            }
+          </div>
+
+
+          <div class="campo">
+            <label for="horaInicio">INICIO</label>
+
+            <input
+              id="horaInicio"
+              type="time"
+              formControlName="horaInicio"
+              (change)="validarDisponibilidad()"
+            />
+
+            @if (
+              formReserva.controls.horaInicio.invalid &&
+              formReserva.controls.horaInicio.touched
+            ) {
+              <small class="error-campo">
+                La hora de inicio es obligatoria.
+              </small>
+            }
+          </div>
+
+
+          <div class="campo">
+            <label for="horaFin">FIN</label>
+
+            <input
+              id="horaFin"
+              type="time"
+              formControlName="horaFin"
+              (change)="validarDisponibilidad()"
+            />
+
+            @if (
+              formReserva.controls.horaFin.invalid &&
+              formReserva.controls.horaFin.touched
+            ) {
+              <small class="error-campo">
+                La hora de fin es obligatoria.
+              </small>
+            }
+          </div>
+
+        </div>
+
+        @if (estadoDisponibilidad !== 'neutro') {
+          <div
+            class="aviso-disponibilidad"
+            [class.disponible]="estadoDisponibilidad === 'disponible'"
+            [class.no-disponible]="estadoDisponibilidad === 'no-disponible' || estadoDisponibilidad === 'hora-invalida'"
+            [class.consultando]="estadoDisponibilidad === 'consultando'"
+            [class.error-disponibilidad]="estadoDisponibilidad === 'error'"
+            [attr.role]="estadoDisponibilidad === 'error' || estadoDisponibilidad === 'no-disponible' || estadoDisponibilidad === 'hora-invalida' ? 'alert' : 'status'"
+            aria-live="polite"
+          >
+            @if (estadoDisponibilidad === 'disponible') {
+              <i class="pi pi-check-circle" aria-hidden="true"></i>
+            } @else if (estadoDisponibilidad === 'consultando') {
+              <i class="pi pi-spin pi-spinner" aria-hidden="true"></i>
+            } @else if (estadoDisponibilidad === 'error' || estadoDisponibilidad === 'no-disponible' || estadoDisponibilidad === 'hora-invalida') {
+              <i class="pi pi-exclamation-circle" aria-hidden="true"></i>
+            }
+            <span>{{ mensajeDisponibilidad }}</span>
+          </div>
+        }
+
+        <!-- ASISTENTES -->
+        <div class="campo campo-asistentes">
+          <label for="asistentes">CANTIDAD DE ASISTENTES</label>
+
+          <p-inputnumber
+            inputId="asistentes"
+            formControlName="asistentes"
+            mode="decimal"
+            [min]="1"
+            [max]="espacio?.capacidad ?? undefined"
+            [step]="1"
+            [minFractionDigits]="0"
+            [maxFractionDigits]="0"
+            [useGrouping]="false"
+            [allowEmpty]="true"
+            [required]="true"
+            placeholder="Ej. 20"
+            styleClass="asistentes-input"
+            (keydown)="filtrarTeclasAsistentes($event)"
+            (paste)="validarPegadoAsistentes($event)"
+          />
+
+          @if (formReserva.controls.asistentes.hasError('enteroPositivo')) {
+            <small class="error-campo">Debe ingresar un número entero positivo.</small>
+          } @else if (
+            formReserva.controls.asistentes.invalid &&
+            formReserva.controls.asistentes.touched
+          ) {
+            <small class="error-campo">
+              Debe ingresar al menos 1 asistente.
+            </small>
+          } @else if (formReserva.controls.asistentes.hasError('capacidadExcedida')) {
+            <small class="error-campo">
+              La cantidad de asistentes supera la capacidad del espacio ({{ espacio?.capacidad }}).
+            </small>
+          }
+        </div>
+
+
+        <!-- TIPO DE ACTIVIDAD -->
+        <div class="campo">
+
+          <span class="titulo-campo">TIPO DE ACTIVIDAD</span>
+
+          <div class="actividades">
+
+            <button
+              type="button"
+              [class.activo]="tipoActividad === 'Clase'"
+              (click)="seleccionarActividad('Clase')"
+            >
+              Clase
+            </button>
+
+            <button
+              type="button"
+              [class.activo]="tipoActividad === 'Reunión'"
+              (click)="seleccionarActividad('Reunión')"
+            >
+              Reunión
+            </button>
+
+            <button
+              type="button"
+              [class.activo]="tipoActividad === 'Tesis'"
+              (click)="seleccionarActividad('Tesis')"
+            >
+              Tesis
+            </button>
+
+            <button
+              type="button"
+              [class.activo]="tipoActividad === 'Evento'"
+              (click)="seleccionarActividad('Evento')"
+            >
+              Evento
+            </button>
+
+            <button
+              type="button"
+              [class.activo]="tipoActividad === 'Práctica'"
+              (click)="seleccionarActividad('Práctica')"
+            >
+              Práctica
+            </button>
+
+            <button
+              type="button"
+              [class.activo]="tipoActividad === 'Examen'"
+              (click)="seleccionarActividad('Examen')"
+            >
+              Examen
+            </button>
+
+          </div>
+
+        </div>
+
+
+        <!-- PROPÓSITO -->
+        <div class="campo">
+
+          <label for="proposito">PROPÓSITO</label>
+
+          <textarea
+            id="proposito"
+            rows="3"
+            placeholder="Describe brevemente el motivo de la reserva"
+            formControlName="proposito"
+          ></textarea>
+
+          @if (
+            formReserva.controls.proposito.invalid &&
+            formReserva.controls.proposito.touched
+          ) {
+            <small class="error-campo">
+              El propósito es obligatorio y debe contener hasta 500 caracteres.
+            </small>
+          }
+
+        </div>
+
+      </div>
+
+
+      <!-- BOTONES -->
+      <div class="modal-footer">
+
+        <button
+          type="button"
+          class="cancelar"
+          (click)="cerrarModal()"
+        >
+          Cancelar
+        </button>
+
+        <button
+          type="button"
+          class="confirmar"
+          [disabled]="cargandoDisponibilidad || cargandoSolicitud || !puedeCrearSolicitud"
+          (click)="confirmarReserva()"
+        >
+          @if (cargandoDisponibilidad) {
+            Validando...
+          } @else if (cargandoSolicitud) {
+            Enviando...
+          } @else {
+            Confirmar reserva
+          }
+        </button>
+
+      </div>
+
+    </form>
+
+  </div>
+
+</div>
+}

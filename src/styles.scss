@@ -1,1 +1,23 @@
-/* You can add global styles to this file, and also import other style files */
+body {
+	margin: 0;
+	font-family: Arial, Helvetica, sans-serif;
+}
+
+.p-toast {
+	z-index: 1200;
+	width: min(360px, calc(100vw - 32px));
+	font-family: inherit;
+}
+
+.p-toast .p-toast-message {
+	border: 1px solid #e5e5e8;
+	border-radius: 8px;
+	background: #fff;
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.p-toast .p-toast-message-success .p-toast-message-icon { color: #27833d; }
+.p-toast .p-toast-summary { font-weight: 600; }
+.p-toast .p-toast-detail { color: #696b73; }
+.p-toast .p-toast-close-button { color: #777984; }
+.p-toast .p-toast-close-button:hover { background: #f1f1f3; color: #17181c; }

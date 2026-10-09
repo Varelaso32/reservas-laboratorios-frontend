@@ -1,0 +1,33 @@
+.pagina {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #f5f7fa;
+}
+
+.bienvenida {
+  width: 420px;
+  padding: 40px;
+  background: white;
+  border-radius: 16px;
+  text-align: center;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+
+  h1 {
+    margin-bottom: 12px;
+    font-size: 32px;
+  }
+
+  p {
+    margin-bottom: 24px;
+    color: #667085;
+  }
+
+  button {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+}
