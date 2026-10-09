@@ -9,7 +9,11 @@
     <header class="modal-solicitudes-header">
       <div>
         <h2 id="titulo-solicitudes">Solicitudes · {{ espacio?.nombre }}</h2>
-        <p>{{ solicitudes.length }} {{ solicitudes.length === 1 ? 'pendiente' : 'pendientes' }}</p>
+        @if (puedeGestionarPendientes) {
+          <p>{{ solicitudes.length }} {{ solicitudes.length === 1 ? 'pendiente' : 'pendientes' }}</p>
+        } @else {
+          <p>Historial de solicitudes resueltas</p>
+        }
       </div>
       <button
         type="button"
@@ -22,22 +26,23 @@
       </button>
     </header>
 
-    @if (cargando) {
-      <p class="feedback-solicitudes" role="status">Cargando solicitudes pendientes...</p>
-    } @else if (error) {
-      <div class="feedback-solicitudes error-solicitudes" role="alert">
-        <p>{{ error }}</p>
-        <button type="button" (click)="reintentarCarga()">Reintentar</button>
-      </div>
-    } @else if (solicitudes.length === 0) {
-      <p class="feedback-solicitudes" role="status">No hay solicitudes pendientes para este espacio.</p>
-    } @else {
+    @if (puedeGestionarPendientes) {
       <section class="lista-solicitudes" aria-labelledby="titulo-pendientes">
         <h3 id="titulo-pendientes">PENDIENTES DE REVISIÓN</h3>
-        <div class="cards-solicitudes">
-          @for (solicitud of solicitudes; track solicitud.id) {
-            @let estadoDetalle = obtenerEstadoDetalle(solicitud.id);
-            <article class="card-solicitud" [class.card-vencida]="solicitud.vencida">
+        @if (cargando) {
+          <p class="feedback-solicitudes" role="status">Cargando solicitudes pendientes...</p>
+        } @else if (error) {
+          <div class="feedback-solicitudes error-solicitudes" role="alert">
+            <p>{{ error }}</p>
+            <button type="button" (click)="reintentarCarga()">Reintentar</button>
+          </div>
+        } @else if (solicitudes.length === 0) {
+          <p class="feedback-solicitudes" role="status">No hay solicitudes pendientes para este espacio.</p>
+        } @else {
+          <div class="cards-solicitudes">
+            @for (solicitud of solicitudes; track solicitud.id) {
+              @let estadoDetalle = obtenerEstadoDetalle(solicitud.id);
+              <article class="card-solicitud" [class.card-vencida]="solicitud.vencida">
               <header class="card-solicitud-header">
                 <div class="solicitante">
                   <h4>{{ solicitud.solicitante.nombre }}</h4>
@@ -115,9 +120,77 @@
                   </button>
                 </div>
               </footer>
+              </article>
+            }
+          </div>
+        }
+      </section>
+    }
+
+    @if (puedeVerHistorial) {
+      <section class="lista-solicitudes historial-solicitudes" aria-labelledby="titulo-historial">
+        <h3 id="titulo-historial" class="encabezado-historial">HISTORIAL</h3>
+        <div class="filtros-historial" aria-label="Filtros de historial">
+          <label>Estado
+            <select [value]="filtroEstado" (change)="cambiarFiltroEstado($event)">
+              <option value="">Todos</option>
+              <option value="APROBADA">Aprobadas</option>
+              <option value="RECHAZADA">Rechazadas</option>
+            </select>
+          </label>
+          <label>Desde
+            <input type="date" [value]="filtroFechaDesde" (change)="cambiarFiltroFechaDesde($event)" />
+          </label>
+          <label>Hasta
+            <input type="date" [value]="filtroFechaHasta" (change)="cambiarFiltroFechaHasta($event)" />
+          </label>
+        </div>
+      @if (cargandoResueltas) {
+        <p class="feedback-solicitudes" role="status">Cargando historial...</p>
+      } @else if (errorResueltas) {
+        <div class="feedback-solicitudes error-solicitudes" role="alert">
+          <p>{{ errorResueltas }}</p>
+          <button type="button" (click)="reintentarHistorial()">Reintentar</button>
+        </div>
+      } @else if (solicitudesResueltas.length === 0) {
+        <p class="feedback-solicitudes" role="status">No hay solicitudes resueltas para los filtros seleccionados.</p>
+      } @else {
+        <div class="cards-solicitudes">
+          @for (solicitud of solicitudesResueltas; track solicitud.id) {
+            <article class="card-solicitud card-historial">
+              <header class="card-solicitud-header">
+                <div class="solicitante">
+                  <h4>{{ solicitud.solicitante.nombre }}</h4>
+                  <p>{{ solicitud.solicitante.email }}</p>
+                </div>
+                <span
+                  class="badge-resuelta"
+                  [class.badge-aprobada]="solicitud.estado === 'APROBADA'"
+                  [class.badge-rechazada]="solicitud.estado === 'RECHAZADA'"
+                >{{ solicitud.estado === 'APROBADA' ? 'Aprobada' : 'Rechazada' }}</span>
+              </header>
+              <div class="datos-horario">
+                <div><span>Espacio</span><strong>{{ solicitud.espacio.nombre }}</strong></div>
+                <div><span>Inicio</span><strong>{{ formatearFechaHora(solicitud.inicio) }}</strong></div>
+                <div><span>Fin</span><strong>{{ formatearFechaHora(solicitud.fin) }}</strong></div>
+                <div><span>Asistentes</span><strong>{{ solicitud.asistentes }}</strong></div>
+              </div>
+              <div class="datos-descripcion datos-decision">
+                <div><span>Decidida por</span><p>{{ solicitud.decidida_por ?? '—' }}</p></div>
+                <div><span>Fecha de decisión</span><p>
+                  {{ solicitud.fecha_decision ? formatearFechaHora(solicitud.fecha_decision) : '—' }}
+                </p></div>
+              </div>
+              @if (solicitud.estado === 'RECHAZADA' && solicitud.motivo_rechazo) {
+                <div class="motivo-rechazo-historial">
+                  <span>Motivo del rechazo</span>
+                  <p>{{ solicitud.motivo_rechazo }}</p>
+                </div>
+              }
             </article>
           }
         </div>
+      }
       </section>
     }
   </section>

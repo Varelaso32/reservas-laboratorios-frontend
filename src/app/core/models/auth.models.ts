@@ -22,3 +22,19 @@ export interface RespuestaLogin {
   expira_en: number;
   usuario: Usuario;
 }
+
+export interface RegistroCrear {
+  nombre: string;
+  email: string;
+  clave: string;
+}
+
+export interface UsuarioDetalleOut {
+  id: number;
+  nombre: string;
+  email: string;
+  rol: Rol;
+  cargo: Cargo | null;
+  activo: boolean;
+  creado_en: string;
+}

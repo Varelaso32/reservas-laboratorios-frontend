@@ -300,6 +300,7 @@ export class SolicitudReservaComponent {
   }
 
   private notificar(severity: 'success' | 'info' | 'warn' | 'error', summary: string, detail: string): void {
+    this.messageService.clear?.();
     this.messageService.add({ severity, summary, detail, life: 5000 });
   }
 
