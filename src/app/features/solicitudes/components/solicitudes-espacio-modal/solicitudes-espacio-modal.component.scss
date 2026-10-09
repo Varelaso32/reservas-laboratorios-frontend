@@ -54,6 +54,17 @@
 }
 
 .lista-solicitudes { padding: 14px 18px 18px; }
+.historial-solicitudes { border-top: 1px solid #e8e8eb; }
+.filtros-historial { display: flex; flex-wrap: wrap; align-items: end; gap: 9px; margin-bottom: 12px; }
+.filtros-historial label { display: grid; gap: 4px; color: #858791; font-size: 9px; }
+.filtros-historial input,.filtros-historial select { min-height: 29px; padding: 5px 8px; border: 1px solid #dedee2; border-radius: 5px; background: #fff; color: #454751; font: inherit; font-size: 10px; }
+.filtros-historial :focus-visible { outline: 2px solid #697093; outline-offset: 2px; }
+.badge-resuelta { padding: 4px 8px; border-radius: 10px; font-size: 9px; font-weight: 600; white-space: nowrap; }
+.badge-aprobada { background: #e4f5e9; color: #348052; }
+.badge-rechazada { background: #fdecec; color: #b33737; }
+.motivo-rechazo-historial { margin-top: 10px; padding-top: 9px; border-top: 1px solid #eeeeef; }
+.motivo-rechazo-historial span { color: #858791; font-size: 9px; }
+.motivo-rechazo-historial p { margin: 4px 0 0; color: #454751; font-size: 10px; line-height: 1.45; }
 .lista-solicitudes > h3 {
   margin: 0 0 12px;
   color: #777984;

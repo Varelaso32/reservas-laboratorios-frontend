@@ -141,7 +141,7 @@
 }
 
 .campo { display: flex; flex-direction: column; gap: 4px; }
-.campo label {
+.campo label, .campo .titulo-campo {
   color: #696b73;
   font-size: 9px;
   font-weight: 700;

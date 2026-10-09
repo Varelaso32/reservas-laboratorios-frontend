@@ -7,14 +7,16 @@
 
     <header class="topbar">
 
-      <div class="buscador">
-        <i class="pi pi-search"></i>
+      <label class="buscador" for="busqueda-espacios">
+        <i class="pi pi-search" aria-hidden="true"></i>
 
         <input
-          type="text"
+          id="busqueda-espacios"
+          type="search"
           placeholder="Buscar espacios, reservas..."
+          aria-label="Buscar espacios, reservas..."
         />
-      </div>
+      </label>
 
       <div class="acciones-topbar">
         <i class="pi pi-bell" aria-hidden="true"></i>

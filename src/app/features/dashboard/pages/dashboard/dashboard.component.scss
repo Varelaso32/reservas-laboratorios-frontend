@@ -87,7 +87,7 @@
 .fila-agenda {
   display: grid;
   min-height: 47px;
-  grid-template-columns: 16px minmax(0, 1fr) auto;
+  grid-template-columns: 16px minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 8px;
   border-top: 1px solid #f0f0f2;
@@ -101,6 +101,18 @@
 .horario-agenda span { font-size: 8px; }
 .estado-en-curso { color: #31915d; }
 .estado-proxima { color: #bd7d21; }
+.estado-cancelada { color: #a12d2d; opacity: .8; }
+.cancelar-reserva { padding: 5px 7px; border: 1px solid #e5e5e8; border-radius: 4px; background: #fff; color: #696b73; cursor: pointer; font: inherit; font-size: 8px; }
+.cancelar-reserva:hover:not(:disabled) { border-color: #d9aaaa; background: #fff6f6; color: #a12d2d; }
+.cancelar-reserva:disabled { cursor: wait; opacity: .6; }
+.dialogo-confirmacion-overlay { position: fixed; z-index: 1100; inset: 0; display: grid; place-items: center; padding: 18px; background: rgb(18 19 24 / 42%); }
+.dialogo-confirmacion { width: min(390px, 100%); padding: 20px; border: 1px solid #ececef; border-radius: 8px; background: #fff; box-shadow: 0 16px 44px rgb(18 19 24 / 18%); }
+.dialogo-confirmacion h2 { margin: 0; color: #25262d; font-size: 15px; }
+.dialogo-confirmacion p { margin: 10px 0 18px; color: #777984; font-size: 11px; line-height: 1.5; }
+.dialogo-confirmacion footer { display: flex; justify-content: flex-end; gap: 8px; }
+.dialogo-confirmacion button { min-height: 30px; padding: 0 11px; border: 1px solid #e5e5e8; border-radius: 5px; font: inherit; font-size: 10px; cursor: pointer; }
+.boton-secundario { background: #fff; color: #696b73; }
+.boton-confirmar { border-color: #a12d2d !important; background: #a12d2d; color: #fff; }
 .tarjetas-resumen { display: grid; gap: 10px; }
 .tarjeta-resumen { display: grid; min-height: 86px; align-content: center; gap: 5px; padding: 12px; }
 .tarjeta-resumen > span { color: #858791; font-size: 9px; }
@@ -152,5 +164,5 @@
   .encabezado-dashboard { align-items: flex-start; }
   .encabezado-dashboard h1 { font-size: 20px; }
   .grid-disponibles { grid-template-columns: 1fr; }
-  .fila-agenda { grid-template-columns: 12px minmax(0, 1fr) auto; gap: 5px; }
+  .fila-agenda { grid-template-columns: 12px minmax(0, 1fr) auto auto; gap: 5px; }
 }

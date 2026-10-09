@@ -10,7 +10,8 @@ import {
   SolicitudCrear,
   SolicitudCreada,
   SolicitudDetalle,
-  SolicitudPendiente
+  SolicitudPendiente,
+  SolicitudResuelta
 } from '../../shared/models/solicitud.model';
 
 @Injectable({ providedIn: 'root' })
@@ -26,10 +27,27 @@ export class SolicitudesService {
     if (espacioId !== undefined) {
       params = params.set('espacio_id', espacioId);
     }
-
     return this.http.get<SolicitudPendiente[]>(`${API_BASE_URL}/solicitudes/pendientes`, {
       params
     });
+  }
+
+  consultarResueltas(
+    espacioId: number,
+    filtros: { estado?: 'APROBADA' | 'RECHAZADA'; fecha_desde?: string; fecha_hasta?: string } = {}
+  ): Observable<SolicitudResuelta[]> {
+    let params = new HttpParams().set('espacio_id', espacioId);
+    if (filtros.estado) {
+      params = params.set('estado', filtros.estado);
+    }
+    if (filtros.fecha_desde) {
+      params = params.set('fecha_desde', filtros.fecha_desde);
+    }
+    if (filtros.fecha_hasta) {
+      params = params.set('fecha_hasta', filtros.fecha_hasta);
+    }
+
+    return this.http.get<SolicitudResuelta[]>(`${API_BASE_URL}/solicitudes/resueltas`, { params });
   }
 
   obtenerDetalle(solicitudId: number): Observable<SolicitudDetalle> {

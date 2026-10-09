@@ -1,0 +1,138 @@
+# Nombre del Flujo: CI Frontend
+# Descripcion: Pipeline de Integracion Continua para el proyecto de reservas
+# de laboratorios (Angular 19). Valida automaticamente la compilacion,
+# estandares de codigo y pruebas unitarias.
+# ==============================================================================
+name: CI Frontend
+
+# ------------------------------------------------------------------------------
+# DISPARADORES (Triggers)
+# Define en que momentos se ejecutara este flujo de trabajo de forma automatica.
+# ------------------------------------------------------------------------------
+on:
+  # Se ejecuta al hacer un push directo a las ramas principales
+  push:
+    branches: [ main, develop, qa ]
+  # Se ejecuta al crear o actualizar un Pull Request hacia las ramas principales
+  pull_request:
+    branches: [ main, develop, qa ]
+
+# ------------------------------------------------------------------------------
+# TRABAJOS (Jobs)
+# Tareas independientes que se ejecutan en paralelo en contenedores separados.
+# ------------------------------------------------------------------------------
+jobs:
+
+  # ============================================================================
+  # 1. BUILD: Verifica que la aplicacion compila correctamente para produccion.
+  # ============================================================================
+  build:
+    name: build
+    runs-on: ubuntu-latest # Entorno de ejecucion (Linux)
+    steps:
+      # Paso 1.1: Descarga el codigo del repositorio al entorno virtual
+      - name: Checkout del codigo
+        uses: actions/checkout@v4
+
+      # Paso 1.2: Configura el entorno de Node.js (version 20 LTS) y habilita cache
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      # Paso 1.3: Instala las dependencias de forma limpia y determinista
+      - name: Instalar dependencias
+        run: npm ci
+
+      # Paso 1.4: Compila el proyecto generando los artefactos en /dist
+      - name: Compilar proyecto
+        run: npm run build
+
+  # ============================================================================
+  # 2. LINT: Analiza el codigo fuente para asegurar buenas practicas y estilo.  enpoint
+  # ============================================================================
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del codigo
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      # Paso 2.4: Ejecuta el linter (ej. ESLint) para detectar "code smells" o errores
+      - name: Ejecutar Linter
+        run: npm run lint
+
+    # ============================================================================
+  # 3. TEST: Ejecuta las pruebas unitarias del frontend.
+  # ============================================================================
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del codigo
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      # Paso 3.4: Instala y configura Google Chrome en el contenedor
+      # (Necesario para ejecutar pruebas de UI en servidores sin pantalla grafica)
+      - name: Configurar Chrome para Headless
+        uses: browser-actions/setup-chrome@v1
+
+      # Paso 3.5: Lanza Karma y ejecuta la suite de pruebas en modo Headless
+      # Se usa 'npx' para asegurar la ejecucion del CLI local sin errores de entorno
+      # --code-coverage genera coverage/lcov.info que SonarQube usa para medir
+      # la cobertura (el Quality Gate exige >=80% en codigo nuevo)
+      - name: Ejecutar Pruebas Unitarias
+        run: npx ng test --watch=false --browsers=ChromeHeadless --code-coverage
+
+      - name: Subir reporte de cobertura
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/reservas-laboratorios-frontend/lcov.info
+
+  # ============================================================================
+  # 4. SONAR: Analiza el codigo en SonarQube Cloud y espera el Quality Gate.
+  # Si el gate no pasa, este job falla y deja el PR en rojo.
+  # ============================================================================
+  sonar:
+    name: sonar
+    needs: [build, lint, test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout del codigo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Descargar reporte de cobertura
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage
+          path: coverage/reservas-laboratorios-frontend
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v7
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: -Dsonar.qualitygate.wait=true
