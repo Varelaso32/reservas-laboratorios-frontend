@@ -1,3 +1,4 @@
+/// <reference types="jasmine" />
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -5,6 +6,7 @@ import { Router, provideRouter } from '@angular/router';
 import { MessageService } from 'primeng/api';
 
 import { API_BASE_URL } from '../../../../core/config/api.config';
+import { AuthService } from '../../../../core/services/auth.service';
 import { routes } from '../../../../app.routes';
 import { AdminEspaciosComponent } from './admin-espacios.component';
 
@@ -12,6 +14,7 @@ describe('AdminEspaciosComponent', () => {
   let fixture: ComponentFixture<AdminEspaciosComponent>;
   let httpTestingController: HttpTestingController;
   let messageService: MessageService;
+  let rolActual: 'APROBADOR' | 'ADMIN' = 'APROBADOR';
 
   const espacios = [
     {
@@ -27,6 +30,28 @@ describe('AdminEspaciosComponent', () => {
       tipo: 'SALA' as const,
       capacidad: 18,
       ubicacion: null
+    }
+  ];
+  const espaciosAdmin = [
+    { ...espacios[0], activo: true },
+    { ...espacios[1], activo: false }
+  ];
+  const metricas = [
+    {
+      ...espaciosAdmin[0],
+      fecha: '2026-10-07',
+      reservas_dia: 6,
+      minutos_reservados: 360,
+      minutos_disponibles: 540,
+      porcentaje_ocupacion: 40
+    },
+    {
+      ...espaciosAdmin[1],
+      fecha: '2026-10-07',
+      reservas_dia: 0,
+      minutos_reservados: 0,
+      minutos_disponibles: 900,
+      porcentaje_ocupacion: null
     }
   ];
 
@@ -72,13 +97,14 @@ describe('AdminEspaciosComponent', () => {
   });
 
   function crearPagina(rol: 'APROBADOR' | 'ADMIN'): void {
+    rolActual = rol;
     sessionStorage.setItem('access_token', 'spec-session-token');
     sessionStorage.setItem('usuario', JSON.stringify({
       id: 2,
       nombre: 'Coordinador de Laboratorios',
       email: 'coordinador@reservas.test',
       rol,
-      cargo: 'COORDINADOR_LABORATORIOS'
+      cargo: rol === 'ADMIN' ? 'ADMINISTRADOR_SISTEMA' : 'COORDINADOR_LABORATORIOS'
     }));
 
     fixture = TestBed.createComponent(AdminEspaciosComponent);
@@ -86,7 +112,29 @@ describe('AdminEspaciosComponent', () => {
   }
 
   function cargarEspacios(): void {
-    httpTestingController.expectOne(`${API_BASE_URL}/espacios/`).flush(espacios);
+    if (rolActual === 'ADMIN' || rolActual === 'APROBADOR') {
+      httpTestingController.expectOne(`${API_BASE_URL}/espacios/admin`).flush(espaciosAdmin);
+      const metricRequest = httpTestingController.expectOne(request =>
+        request.url === `${API_BASE_URL}/espacios/metricas` && request.params.has('fecha')
+      );
+      expect(metricRequest.request.method).toBe('GET');
+      expect(metricRequest.request.params.get('fecha')).toBe(fixture.componentInstance.fechaMetricas);
+      metricRequest.flush(metricas);
+      if (rolActual === 'ADMIN') {
+        const pendientes = httpTestingController.match(`${API_BASE_URL}/solicitudes/pendientes`);
+        pendientes.forEach(r => r.flush([]));
+      }
+    } else {
+      httpTestingController.expectOne(`${API_BASE_URL}/espacios/`).flush(espacios);
+    }
+    fixture.detectChanges();
+  }
+
+  function cargarHistorialVacio(): void {
+    httpTestingController.expectOne(request =>
+      request.url === `${API_BASE_URL}/solicitudes/resueltas` &&
+      request.params.get('espacio_id') === '42'
+    ).flush([]);
     fixture.detectChanges();
   }
 
@@ -120,6 +168,7 @@ describe('AdminEspaciosComponent', () => {
   function abrirModalConDetalle(): void {
     (fixture.nativeElement.querySelector('.ver-solicitudes') as HTMLButtonElement).click();
     fixture.detectChanges();
+    cargarHistorialVacio();
     httpTestingController.expectOne(request =>
       request.url === `${API_BASE_URL}/solicitudes/pendientes` &&
       request.params.get('espacio_id') === '42'
@@ -159,29 +208,23 @@ describe('AdminEspaciosComponent', () => {
     expect(fixture.nativeElement.querySelector('.menu a[routerLink="/espacios"]')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('.menu a[routerLink="/admin/usuarios"]')).toBeNull();
     expect(Array.from(fixture.nativeElement.querySelectorAll('.menu .inactivo') as NodeListOf<HTMLElement>)
-      .some(item => item.textContent?.includes('Usuarios'))).toBeTrue();
-    expect(fixture.nativeElement.querySelector('.nuevo-espacio').disabled).toBeTrue();
+      .some(item => item.textContent?.includes('Usuarios'))).toBeFalse();
+    expect(fixture.nativeElement.querySelector('.nuevo-espacio').disabled).toBeFalse();
 
     const solicitudes = Array.from(fixture.nativeElement.querySelectorAll('tbody tr')) as HTMLElement[];
-    expect(solicitudes[0].querySelectorAll('.sin-dato').length).toBe(2);
-    expect(solicitudes[0].querySelector('td:nth-child(4)')?.textContent?.trim()).toBe('—');
-    expect(solicitudes[0].querySelector('td:nth-child(6)')?.textContent?.trim()).toBe('—');
+    expect(solicitudes[0].querySelectorAll('.sin-dato')).toHaveSize(0);
+    expect(solicitudes[0].querySelector('td:nth-child(4)')?.textContent?.trim()).toBe('6');
+    expect(solicitudes[0].querySelector('td:nth-child(6)')?.textContent?.trim()).toBe('40%');
     expect(solicitudes[0].querySelector('.ver-solicitudes.con-pendientes')?.textContent)
       .toContain('Ver solicitudes · 2');
     expect(solicitudes[1].querySelector('.ver-solicitudes.con-pendientes')).toBeNull();
     expect(solicitudes[1].querySelector('.ver-solicitudes')?.textContent?.trim())
       .toBe('Ver solicitudes');
-    expect(solicitudes[0].querySelector('.estado-no-disponible')?.textContent?.trim()).toBe('—');
+    expect(solicitudes[0].querySelector('.badge-estado')?.textContent?.trim()).toBe('Activo');
     expect(solicitudes[0].querySelector('.identificador-color')?.getAttribute('style'))
       .toContain('background-color');
     expect(solicitudes[0].querySelector('.codigo-espacio')).toBeNull();
-    expect(solicitudes[0].querySelectorAll('.accion-espacio').length).toBe(2);
-    for (const action of Array.from(solicitudes[0].querySelectorAll('.accion-espacio')) as HTMLButtonElement[]) {
-      expect(action.disabled).toBeTrue();
-      expect(action.getAttribute('aria-disabled')).toBe('true');
-      expect(action.querySelector('.pi-pencil, .pi-trash')).toBeTruthy();
-      action.click();
-    }
+    expect(solicitudes[0].querySelectorAll('.accion-espacio')).toHaveSize(2);
     httpTestingController.expectNone(request =>
       request.url.startsWith(`${API_BASE_URL}/espacios/`) &&
       ['PUT', 'PATCH', 'DELETE'].includes(request.method)
@@ -218,6 +261,7 @@ describe('AdminEspaciosComponent', () => {
     const urlBeforeClick = router.url;
     (fixture.nativeElement.querySelector('.ver-solicitudes') as HTMLButtonElement).click();
     fixture.detectChanges();
+    cargarHistorialVacio();
 
     const request = httpTestingController.expectOne(
       pending => pending.url === `${API_BASE_URL}/solicitudes/pendientes` &&
@@ -262,7 +306,7 @@ describe('AdminEspaciosComponent', () => {
     expect(modal.querySelector('.boton-rechazar')?.textContent).toContain('Rechazar');
   });
 
-  it('shows the admin table for ADMIN without calling pending requests or showing the action', () => {
+  it('loads admin spaces and real occupancy metrics without requesting approval actions', () => {
     crearPagina('ADMIN');
     cargarEspacios();
 
@@ -270,9 +314,16 @@ describe('AdminEspaciosComponent', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('Panel Admin');
-    expect(fixture.nativeElement.querySelector('.ver-solicitudes')).toBeNull();
-    expect(fixture.nativeElement.querySelectorAll('.sin-dato').length).toBe(6);
+    expect(fixture.nativeElement.querySelector('.ver-solicitudes')).toBeTruthy();
+    expect(fixture.nativeElement.querySelectorAll('.sin-dato').length).toBe(0);
+    expect(fixture.nativeElement.querySelectorAll('.ver-solicitudes').length).toBe(2);
     expect(fixture.nativeElement.querySelectorAll('.accion-espacio').length).toBe(4);
+    const filas = fixture.nativeElement.querySelectorAll('tbody tr') as NodeListOf<HTMLElement>;
+    expect(filas[0].querySelector('td:nth-child(4)')?.textContent?.trim()).toBe('6');
+    expect(filas[0].querySelector('td:nth-child(6)')?.textContent).toContain('40%');
+    expect(filas[1].querySelector('td:nth-child(6)')?.textContent?.trim()).toBe('—');
+    expect(filas[0].querySelector('.badge-estado')?.textContent?.trim()).toBe('Activo');
+    expect(filas[1].querySelector('.badge-estado')?.textContent?.trim()).toBe('Inactivo');
     expect(fixture.nativeElement.querySelector('.menu a[routerLink="/espacios"]')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('.menu a[routerLink="/admin/usuarios"]')).toBeTruthy();
   });
@@ -285,7 +336,7 @@ describe('AdminEspaciosComponent', () => {
 
     (fixture.nativeElement.querySelector('.ver-solicitudes') as HTMLButtonElement).click();
     fixture.detectChanges();
-
+    cargarHistorialVacio();
     const pendingRequest = httpTestingController.expectOne(request =>
       request.url === `${API_BASE_URL}/solicitudes/pendientes` &&
       request.params.get('espacio_id') === '42'
@@ -318,6 +369,7 @@ describe('AdminEspaciosComponent', () => {
     httpTestingController.expectOne(`${API_BASE_URL}/solicitudes/pendientes`).flush([solicitudPendiente]);
     (fixture.nativeElement.querySelector('.ver-solicitudes') as HTMLButtonElement).click();
     fixture.detectChanges();
+    cargarHistorialVacio();
     httpTestingController.expectOne(request =>
       request.url === `${API_BASE_URL}/solicitudes/pendientes` &&
       request.params.get('espacio_id') === '42'
@@ -343,6 +395,7 @@ describe('AdminEspaciosComponent', () => {
     httpTestingController.expectOne(`${API_BASE_URL}/solicitudes/pendientes`).flush([solicitudPendiente]);
     (fixture.nativeElement.querySelector('.ver-solicitudes') as HTMLButtonElement).click();
     fixture.detectChanges();
+    cargarHistorialVacio();
     httpTestingController.expectOne(request =>
       request.url === `${API_BASE_URL}/solicitudes/pendientes` &&
       request.params.get('espacio_id') === '42'
@@ -384,12 +437,22 @@ describe('AdminEspaciosComponent', () => {
       request.url === `${API_BASE_URL}/solicitudes/pendientes` &&
       request.params.get('espacio_id') === '42'
     );
+    const historialRefresh = httpTestingController.expectOne(request =>
+      request.url === `${API_BASE_URL}/solicitudes/resueltas` &&
+      request.params.get('espacio_id') === '42'
+    );
+    const metricRefresh = httpTestingController.expectOne(request =>
+      request.url === `${API_BASE_URL}/espacios/metricas` &&
+      request.params.has('fecha')
+    );
     globalRefresh.flush([]);
     spaceRefresh.flush([]);
+    historialRefresh.flush([]);
+    metricRefresh.flush(metricas);
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('0 pendientes');
     expect(fixture.nativeElement.querySelector('.card-solicitud')).toBeNull();
-    expect(fixture.nativeElement.textContent).not.toContain('Aprobada');
+    expect(fixture.nativeElement.querySelector('.badge-aprobada')).toBeNull();
   });
 
   it('keeps the request pending and shows the backend message when approval returns 409', () => {
@@ -398,6 +461,7 @@ describe('AdminEspaciosComponent', () => {
     httpTestingController.expectOne(`${API_BASE_URL}/solicitudes/pendientes`).flush([solicitudPendiente]);
     (fixture.nativeElement.querySelector('.ver-solicitudes') as HTMLButtonElement).click();
     fixture.detectChanges();
+    cargarHistorialVacio();
     httpTestingController.expectOne(request =>
       request.url === `${API_BASE_URL}/solicitudes/pendientes` &&
       request.params.get('espacio_id') === '42'
@@ -435,6 +499,7 @@ describe('AdminEspaciosComponent', () => {
     httpTestingController.expectOne(`${API_BASE_URL}/solicitudes/pendientes`).flush([solicitudPendiente]);
     (fixture.nativeElement.querySelector('.ver-solicitudes') as HTMLButtonElement).click();
     fixture.detectChanges();
+    cargarHistorialVacio();
     httpTestingController.expectOne(request =>
       request.url === `${API_BASE_URL}/solicitudes/pendientes` &&
       request.params.get('espacio_id') === '42'
@@ -556,12 +621,17 @@ describe('AdminEspaciosComponent', () => {
       request.url === `${API_BASE_URL}/solicitudes/pendientes` &&
       request.params.get('espacio_id') === '42'
     );
+    const historialRefresh = httpTestingController.expectOne(request =>
+      request.url === `${API_BASE_URL}/solicitudes/resueltas` &&
+      request.params.get('espacio_id') === '42'
+    );
     globalRefresh.flush([]);
     spaceRefresh.flush([]);
+    historialRefresh.flush([]);
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('0 pendientes');
     expect(fixture.nativeElement.querySelector('.card-solicitud')).toBeNull();
-    expect(fixture.nativeElement.textContent).not.toContain('Rechazada');
+    expect(fixture.nativeElement.querySelector('.badge-rechazada')).toBeNull();
   });
 
   it('keeps the request and rejection dialog open after a 409 using backend detail', () => {
@@ -624,11 +694,589 @@ describe('AdminEspaciosComponent', () => {
     }));
   });
 
+  it('edits only changed supported space fields and refreshes admin data', () => {
+    crearPagina('ADMIN');
+    cargarEspacios();
+    const editButton = fixture.nativeElement.querySelector(
+      '[aria-label="Editar Laboratorio de Redes"]'
+    ) as HTMLButtonElement;
+    editButton.click();
+    fixture.detectChanges();
+
+    const nombre = fixture.nativeElement.querySelector('.overlay-admin input[type="text"]') as HTMLInputElement;
+    nombre.value = 'Laboratorio Redes';
+    nombre.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('.boton-principal-admin') as HTMLButtonElement).click();
+
+    const patch = httpTestingController.expectOne(`${API_BASE_URL}/espacios/42`);
+    expect(patch.request.method).toBe('PATCH');
+    expect(patch.request.body).toEqual({ nombre: 'Laboratorio Redes' });
+    patch.flush({ ...espaciosAdmin[0], nombre: 'Laboratorio Redes' });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.overlay-admin')).toBeNull();
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      key: 'admin-espacios',
+      severity: 'success',
+      summary: 'Espacio actualizado'
+    }));
+    cargarEspacios();
+  });
+
+  it('updates space to Mantenimiento in edit modal, calling PATCH /estado with activo: false and displaying Mantenimiento badge', () => {
+    crearPagina('ADMIN');
+    cargarEspacios();
+    const editButton = fixture.nativeElement.querySelector(
+      '[aria-label="Editar Laboratorio de Redes"]'
+    ) as HTMLButtonElement;
+    editButton.click();
+    fixture.detectChanges();
+
+    fixture.componentInstance.estadoEspacioVisual = 'Mantenimiento';
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('.boton-guardar-figma') as HTMLButtonElement).click();
+
+    const patch = httpTestingController.expectOne(`${API_BASE_URL}/espacios/42/estado`);
+    expect(patch.request.method).toBe('PATCH');
+    expect(patch.request.body).toEqual({ activo: false });
+    patch.flush({ ...espaciosAdmin[0], activo: false });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.overlay-admin')).toBeNull();
+    expect(fixture.componentInstance.etiquetaEstadoEspacio(42)).toBe('Mantenimiento');
+    cargarEspacios();
+  });
+
+  it('opens and closes the Nuevo espacio modal for ADMIN', () => {
+    crearPagina('ADMIN');
+    cargarEspacios();
+
+    const nuevoBoton = fixture.nativeElement.querySelector('.nuevo-espacio') as HTMLButtonElement;
+    expect(nuevoBoton.disabled).toBeFalse();
+    nuevoBoton.click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('#titulo-crear-espacio')?.textContent).toContain('Nuevo espacio');
+    expect(fixture.componentInstance.modalCrearEspacioAbierto).toBeTrue();
+
+    const cancelarBoton = fixture.nativeElement.querySelector('.dialogo-crear-espacio-figma .boton-cancelar-figma') as HTMLButtonElement;
+    cancelarBoton.click();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.modalCrearEspacioAbierto).toBeFalse();
+  });
+
+  it('submits Nuevo espacio modal and calls POST /espacios/ successfully', () => {
+    crearPagina('ADMIN');
+    cargarEspacios();
+
+    (fixture.nativeElement.querySelector('.nuevo-espacio') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    fixture.componentInstance.formularioNuevoEspacio = {
+      codigo: 'L105',
+      edificio: 'B',
+      nombre: 'Laboratorio de Multimedia',
+      piso: 'Piso 2',
+      capacidad: 25,
+      estado: 'Activo'
+    };
+    fixture.detectChanges();
+
+    (fixture.nativeElement.querySelector('.dialogo-crear-espacio-figma .boton-guardar-figma') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    const postReq = httpTestingController.expectOne(`${API_BASE_URL}/espacios/`);
+    expect(postReq.request.method).toBe('POST');
+    expect(postReq.request.body).toEqual({
+      nombre: 'Laboratorio de Multimedia',
+      tipo: 'LABORATORIO',
+      capacidad: 25,
+      ubicacion: 'Edificio B, Piso 2'
+    });
+    postReq.flush({
+      id: 99,
+      nombre: 'Laboratorio de Multimedia',
+      tipo: 'LABORATORIO',
+      capacidad: 25,
+      ubicacion: 'Edificio B, Piso 2',
+      activo: true
+    });
+    fixture.detectChanges();
+
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      key: 'admin-espacios',
+      severity: 'success',
+      summary: 'Espacio creado'
+    }));
+    expect(fixture.componentInstance.modalCrearEspacioAbierto).toBeFalse();
+    cargarEspacios();
+  });
+
+  it('confirms deactivation and uses the estado PATCH without deleting spaces', () => {
+    crearPagina('ADMIN');
+    cargarEspacios();
+    (fixture.nativeElement.querySelector('[aria-label="Desactivar Laboratorio de Redes"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[role="alertdialog"]')?.textContent)
+      .toContain('no elimina el espacio');
+    (fixture.nativeElement.querySelector('.boton-principal-admin') as HTMLButtonElement).click();
+
+    const patch = httpTestingController.expectOne(`${API_BASE_URL}/espacios/42/estado`);
+    expect(patch.request.method).toBe('PATCH');
+    expect(patch.request.body).toEqual({ activo: false });
+    patch.flush({ ...espaciosAdmin[0], activo: false });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[role="alertdialog"]')).toBeNull();
+    httpTestingController.expectNone(request => request.method === 'DELETE');
+    cargarEspacios();
+  });
+
+  it('loads real resolved request history with filters and shows decision details', () => {
+    crearPagina('APROBADOR');
+    cargarEspacios();
+    httpTestingController.expectOne(`${API_BASE_URL}/solicitudes/pendientes`).flush([solicitudPendiente]);
+    (fixture.nativeElement.querySelector('.ver-solicitudes') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    httpTestingController.expectOne(request =>
+      request.url === `${API_BASE_URL}/solicitudes/pendientes` &&
+      request.params.get('espacio_id') === '42'
+    ).flush([solicitudPendiente]);
+    fixture.detectChanges();
+    httpTestingController.expectOne(`${API_BASE_URL}/solicitudes/51`).flush(respuestaDetalle());
+    fixture.detectChanges();
+
+    const historial = httpTestingController.expectOne(request =>
+      request.url === `${API_BASE_URL}/solicitudes/resueltas` &&
+      request.params.get('espacio_id') === '42'
+    );
+    expect(historial.request.method).toBe('GET');
+    const aprobada = {
+      id: 61,
+      estado: 'APROBADA',
+      solicitante: solicitudPendiente.solicitante,
+      espacio: espacios[0],
+      inicio: '2026-10-08T11:00:00-05:00',
+      fin: '2026-10-08T12:00:00-05:00',
+      asistentes: 10,
+      decidida_por: 'Coordinación',
+      fecha_decision: '2026-10-07T10:00:00-05:00',
+      motivo_rechazo: null
+    };
+    const rechazada = {
+      ...aprobada,
+      id: 62,
+      estado: 'RECHAZADA',
+      decidida_por: 'Coordinación Académica',
+      motivo_rechazo: 'El espacio no está disponible.'
+    };
+    historial.flush([aprobada, rechazada]);
+    fixture.detectChanges();
+
+    const texto = fixture.nativeElement.querySelector('.historial-solicitudes')?.textContent as string;
+    expect(texto).toContain('Estudiante de Prueba');
+    expect(texto).toContain('Laboratorio de Redes');
+    expect(texto).toContain('Coordinación');
+    expect(texto).toContain('El espacio no está disponible.');
+    expect(fixture.nativeElement.querySelector('.badge-aprobada')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.badge-rechazada')).toBeTruthy();
+
+    const filtro = fixture.nativeElement.querySelector('.filtros-historial select') as HTMLSelectElement;
+    filtro.value = 'RECHAZADA';
+    filtro.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    const filtrada = httpTestingController.expectOne(request =>
+      request.url === `${API_BASE_URL}/solicitudes/resueltas` &&
+      request.params.get('espacio_id') === '42' &&
+      request.params.get('estado') === 'RECHAZADA'
+    );
+    filtrada.flush([rechazada]);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('.card-historial').length).toBe(1);
+  });
+
+  it('allows ADMIN to manage requests and inspect history', () => {
+    crearPagina('ADMIN');
+    cargarEspacios();
+    (fixture.nativeElement.querySelector('.ver-solicitudes') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    httpTestingController.expectOne(request =>
+      request.url === `${API_BASE_URL}/solicitudes/pendientes` &&
+      request.params.get('espacio_id') === '42'
+    ).flush([solicitudPendiente]);
+    fixture.detectChanges();
+    httpTestingController.expectOne(`${API_BASE_URL}/solicitudes/51`).flush(respuestaDetalle());
+    fixture.detectChanges();
+
+    const historial = httpTestingController.expectOne(request =>
+      request.url === `${API_BASE_URL}/solicitudes/resueltas` &&
+      request.params.get('espacio_id') === '42'
+    );
+    historial.flush([]);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.encabezado-historial')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.boton-aprobar')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.boton-rechazar')).toBeTruthy();
+  });
+
   it('keeps route access limited to the two existing admin roles', () => {
     const adminRoute = routes.find(route => route.path === 'admin/espacios');
     expect(adminRoute?.canActivate?.length).toBe(2);
     expect(adminRoute?.data?.['roles']).toEqual(['APROBADOR', 'ADMIN']);
     const usersRoute = routes.find(route => route.path === 'admin/usuarios');
     expect(usersRoute?.data?.['roles']).toEqual(['ADMIN']);
+  });
+
+  it('handles user initials formatting and empty name', () => {
+    const authService = TestBed.inject(AuthService);
+    spyOn(authService, 'obtenerUsuarioActual').and.returnValue({
+      id: 2,
+      nombre: 'Coordinador de Laboratorios',
+      email: 'coordinador@reservas.test',
+      rol: 'ADMIN',
+      cargo: 'ADMINISTRADOR_SISTEMA'
+    });
+    crearPagina('ADMIN');
+    cargarEspacios();
+    expect(fixture.componentInstance.inicialesUsuario).toBe('CL');
+
+    (authService.obtenerUsuarioActual as jasmine.Spy).and.returnValue({
+      id: 2,
+      nombre: 'Admin',
+      email: 'admin@reservas.test',
+      rol: 'ADMIN',
+      cargo: 'ADMINISTRADOR_SISTEMA'
+    });
+    expect(fixture.componentInstance.inicialesUsuario).toBe('AD');
+
+    (authService.obtenerUsuarioActual as jasmine.Spy).and.returnValue({
+      id: 2,
+      nombre: '   ',
+      email: 'admin@reservas.test',
+      rol: 'ADMIN',
+      cargo: 'ADMINISTRADOR_SISTEMA'
+    });
+    expect(fixture.componentInstance.inicialesUsuario).toBe('');
+  });
+
+  it('handles errors when loading spaces and metrics', () => {
+    crearPagina('ADMIN');
+    httpTestingController.expectOne(`${API_BASE_URL}/espacios/admin`).flush(
+      { detail: 'Fallo al cargar espacios' },
+      { status: 500, statusText: 'Error' }
+    );
+    httpTestingController.expectOne(request => request.url === `${API_BASE_URL}/espacios/metricas`).flush(
+      { detail: 'Fallo métricas' },
+      { status: 500, statusText: 'Error' }
+    );
+    const pendientes = httpTestingController.match(`${API_BASE_URL}/solicitudes/pendientes`);
+    pendientes.forEach(r => r.flush([]));
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.errorEspacios).toBe('Fallo al cargar espacios');
+    expect(fixture.componentInstance.errorMetricas).toBe('Fallo métricas');
+    expect(fixture.componentInstance.cargandoEspacios).toBeFalse();
+    expect(fixture.componentInstance.cargandoMetricas).toBeFalse();
+  });
+
+  it('handles metrics loading state and occupancy display helpers', () => {
+    crearPagina('ADMIN');
+    cargarEspacios();
+    const comp = fixture.componentInstance;
+
+    comp.cargandoMetricas = true;
+    expect(comp.obtenerReservasHoy(42)).toBe('…');
+    expect(comp.obtenerOcupacion(42)).toBe('…');
+
+    comp.cargandoMetricas = false;
+    expect(comp.obtenerReservasHoy(999)).toBe(0);
+
+    // Inactive space returns '—' and null width
+    comp.estadosEspacios.set(77, false);
+    expect(comp.obtenerOcupacion(77)).toBe('—');
+    expect(comp.obtenerAnchoOcupacion(77)).toBeNull();
+    expect(comp.ocupacionNoDisponible(77)).toBeTrue();
+
+    // Custom status label
+    comp.estadosPersonalizadosEspacios.set(42, 'Mantenimiento');
+    expect(comp.etiquetaEstadoEspacio(42)).toBe('Mantenimiento');
+    expect(comp.etiquetaEstadoEspacio(77)).toBe('Inactivo');
+  });
+
+  it('handles error when loading pending counts', () => {
+    crearPagina('ADMIN');
+    httpTestingController.expectOne(`${API_BASE_URL}/espacios/admin`).flush(espaciosAdmin);
+    httpTestingController.expectOne(request => request.url === `${API_BASE_URL}/espacios/metricas`).flush(metricas);
+    const pendingReq = httpTestingController.expectOne(`${API_BASE_URL}/solicitudes/pendientes`);
+    pendingReq.flush({ detail: 'Error' }, { status: 500, statusText: 'Error' });
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.errorConteos).toBeTrue();
+    expect(fixture.componentInstance.obtenerConteoPendientes(42)).toBe(0);
+  });
+
+  it('handles errors when viewing requests and history (403 and 500)', () => {
+    crearPagina('ADMIN');
+    cargarEspacios();
+    const comp = fixture.componentInstance;
+
+    // View requests with 403 error
+    comp.verSolicitudes(espacios[0]);
+    const reqPend403 = httpTestingController.expectOne(r => r.url === `${API_BASE_URL}/solicitudes/pendientes` && r.params.get('espacio_id') === '42');
+    reqPend403.flush(null, { status: 403, statusText: 'Forbidden' });
+    const reqRes403 = httpTestingController.expectOne(r => r.url === `${API_BASE_URL}/solicitudes/resueltas` && r.params.get('espacio_id') === '42');
+    reqRes403.flush(null, { status: 403, statusText: 'Forbidden' });
+    fixture.detectChanges();
+
+    expect(comp.errorSolicitudes).toBe('No tienes permiso para consultar estas solicitudes.');
+    expect(comp.errorResueltas).toBe('No tienes permiso para consultar el historial de este espacio.');
+
+    // View requests with 500 error
+    comp.verSolicitudes(espacios[0]);
+    const reqPend500 = httpTestingController.expectOne(r => r.url === `${API_BASE_URL}/solicitudes/pendientes` && r.params.get('espacio_id') === '42');
+    reqPend500.flush({ detail: 'Error interno' }, { status: 500, statusText: 'Internal Error' });
+    const reqRes500 = httpTestingController.expectOne(r => r.url === `${API_BASE_URL}/solicitudes/resueltas` && r.params.get('espacio_id') === '42');
+    reqRes500.flush({ detail: 'Error historial' }, { status: 500, statusText: 'Internal Error' });
+    fixture.detectChanges();
+
+    expect(comp.errorSolicitudes).toBe('Error interno');
+    expect(comp.errorResueltas).toBe('Error historial');
+  });
+
+  it('covers edit form helpers: opening, location parsing, visual amenities, visual colors, and cancel', () => {
+    crearPagina('ADMIN');
+    cargarEspacios();
+    const comp = fixture.componentInstance;
+
+    const espacioEd = { ...espacios[0], ubicacion: 'Edificio C, Piso 3' };
+    comp.abrirEdicion(espacioEd);
+    expect(comp.espacioEnEdicion).toEqual(espacioEd);
+    expect(comp.edificioEspacioVisual).toBe('C');
+    expect(comp.pisoEspacioVisual).toBe('Piso 3');
+
+    // Toggle amenities
+    expect(comp.amenidadesSeleccionadasVisual).toContain('Proyector');
+    comp.alternarAmenidadVisual('Proyector');
+    expect(comp.amenidadesSeleccionadasVisual).not.toContain('Proyector');
+    comp.alternarAmenidadVisual('Proyector');
+    expect(comp.amenidadesSeleccionadasVisual).toContain('Proyector');
+
+    // Select color
+    comp.seleccionarColorVisual('#ef4444');
+    expect(comp.colorSeleccionadoVisual).toBe('#ef4444');
+
+    // Cancel edit
+    comp.cancelarEdicion();
+    expect(comp.espacioEnEdicion).toBeNull();
+  });
+
+  it('covers create space modal helpers and validation', () => {
+    crearPagina('ADMIN');
+    cargarEspacios();
+    const comp = fixture.componentInstance;
+
+    comp.abrirCrearEspacio();
+    expect(comp.modalCrearEspacioAbierto).toBeTrue();
+
+    comp.seleccionarColorNuevoEspacio('#10b981');
+    expect(comp.colorNuevoEspacioVisual).toBe('#10b981');
+
+    comp.alternarAmenidadNuevoEspacio('WiFi');
+    expect(comp.amenidadesNuevoEspacioVisual).toContain('WiFi');
+    comp.alternarAmenidadNuevoEspacio('WiFi');
+    expect(comp.amenidadesNuevoEspacioVisual).not.toContain('WiFi');
+
+    // Validation failure: invalid nombre or capacidad
+    comp.formularioNuevoEspacio.nombre = '   ';
+    comp.guardarNuevoEspacio();
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      severity: 'warn',
+      summary: 'Revisa los datos'
+    }));
+
+    // Successful create with 'Mantenimiento' status and 'Sala' name
+    comp.formularioNuevoEspacio = {
+      codigo: 'S201',
+      edificio: 'B',
+      nombre: 'Sala Reuniones B',
+      piso: 'Piso 2',
+      capacidad: 15,
+      estado: 'Mantenimiento'
+    };
+    comp.guardarNuevoEspacio();
+    const reqCreate = httpTestingController.expectOne(`${API_BASE_URL}/espacios/`);
+    expect(reqCreate.request.method).toBe('POST');
+    expect(reqCreate.request.body.tipo).toBe('SALA');
+    expect(reqCreate.request.body.ubicacion).toBe('Edificio B, Piso 2');
+    reqCreate.flush({ id: 88, nombre: 'Sala Reuniones B', tipo: 'SALA', capacidad: 15, activo: true });
+
+    // Updating state to inactivo for mantenimiento
+    const reqEstado = httpTestingController.expectOne(`${API_BASE_URL}/espacios/88/estado`);
+    expect(reqEstado.request.method).toBe('PATCH');
+    reqEstado.flush({ id: 88, activo: false });
+
+    // Recargar datos admin
+    httpTestingController.expectOne(`${API_BASE_URL}/espacios/admin`).flush([]);
+    httpTestingController.expectOne(r => r.url === `${API_BASE_URL}/espacios/metricas`).flush([]);
+    const pends = httpTestingController.match(`${API_BASE_URL}/solicitudes/pendientes`);
+    pends.forEach(r => r.flush([]));
+    fixture.detectChanges();
+
+    expect(comp.modalCrearEspacioAbierto).toBeFalse();
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({ severity: 'success' }));
+
+    // Create space API error
+    comp.abrirCrearEspacio();
+    comp.formularioNuevoEspacio.nombre = 'Lab Error';
+    comp.formularioNuevoEspacio.capacidad = 20;
+    comp.guardarNuevoEspacio();
+    const reqCreateFail = httpTestingController.expectOne(`${API_BASE_URL}/espacios/`);
+    reqCreateFail.flush({ detail: 'Error al crear' }, { status: 500, statusText: 'Error' });
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      severity: 'error',
+      summary: 'Error al crear espacio'
+    }));
+
+    comp.cerrarCrearEspacio();
+    expect(comp.modalCrearEspacioAbierto).toBeFalse();
+  });
+
+  it('covers guardarEdicion validation, no-change detection, field updates and status update errors', () => {
+    crearPagina('ADMIN');
+    cargarEspacios();
+    const comp = fixture.componentInstance;
+
+    comp.abrirEdicion(espacios[0]);
+
+    // Validation failure
+    comp.formularioEspacio.nombre = '';
+    comp.guardarEdicion();
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      severity: 'warn',
+      summary: 'Revisa los datos'
+    }));
+
+    // No changes -> closes without request
+    comp.formularioEspacio.nombre = espacios[0].nombre;
+    comp.formularioEspacio.capacidad = espacios[0].capacidad;
+    comp.formularioEspacio.tipo = espacios[0].tipo;
+    comp.formularioEspacio.ubicacion = espacios[0].ubicacion!;
+    comp.estadoEspacioVisual = 'Activo';
+    comp.guardarEdicion();
+    expect(comp.espacioEnEdicion).toBeNull();
+
+    // Edit fields and status simultaneously
+    comp.abrirEdicion(espacios[0]);
+    comp.formularioEspacio.nombre = 'Laboratorio Renovado';
+    comp.estadoEspacioVisual = 'Mantenimiento';
+    comp.guardarEdicion();
+    const reqUpdate = httpTestingController.expectOne(`${API_BASE_URL}/espacios/42`);
+    reqUpdate.flush({ ...espacios[0], nombre: 'Laboratorio Renovado' });
+    const reqStatus = httpTestingController.expectOne(`${API_BASE_URL}/espacios/42/estado`);
+    reqStatus.flush({ ...espacios[0], activo: false });
+
+    // Reload admin data
+    httpTestingController.expectOne(`${API_BASE_URL}/espacios/admin`).flush([]);
+    httpTestingController.expectOne(r => r.url === `${API_BASE_URL}/espacios/metricas`).flush([]);
+    const pends = httpTestingController.match(`${API_BASE_URL}/solicitudes/pendientes`);
+    pends.forEach(r => r.flush([]));
+    fixture.detectChanges();
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({ severity: 'success' }));
+
+    // Edit fields error handling (409 conflict)
+    comp.abrirEdicion(espacios[0]);
+    comp.formularioEspacio.nombre = 'Nombre Conflicto';
+    comp.guardarEdicion();
+    const req409 = httpTestingController.expectOne(`${API_BASE_URL}/espacios/42`);
+    req409.flush({ detail: 'Ya existe' }, { status: 409, statusText: 'Conflict' });
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      severity: 'warn',
+      summary: 'No se pueden guardar los cambios'
+    }));
+
+    // Edit status only with error
+    comp.abrirEdicion(espacios[0]);
+    comp.estadoEspacioVisual = 'Mantenimiento';
+    comp.guardarEdicion();
+    const reqStatusOnly = httpTestingController.expectOne(`${API_BASE_URL}/espacios/42/estado`);
+    reqStatusOnly.flush({ detail: 'Error estado' }, { status: 500, statusText: 'Error' });
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      severity: 'error',
+      summary: 'Error al cambiar estado'
+    }));
+  });
+
+  it('covers confirming and cancelling space status toggle with error handling', () => {
+    crearPagina('ADMIN');
+    cargarEspacios();
+    const comp = fixture.componentInstance;
+
+    comp.abrirConfirmacionEstado(espacios[0]);
+    expect(comp.espacioCambioEstado).toEqual(espacios[0]);
+    comp.cerrarConfirmacionEstado();
+    expect(comp.espacioCambioEstado).toBeNull();
+
+    // Confirm status change error
+    comp.abrirConfirmacionEstado(espacios[0]);
+    comp.confirmarCambioEstado();
+    const req = httpTestingController.expectOne(`${API_BASE_URL}/espacios/42/estado`);
+    req.flush({ detail: 'No se pudo desactivar' }, { status: 500, statusText: 'Error' });
+    expect(comp.actualizandoEstadoId).toBeNull();
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      severity: 'error',
+      summary: 'Error al cambiar el estado'
+    }));
+  });
+
+  it('covers closing requests modal, request rejection dialog and detail load errors', () => {
+    crearPagina('ADMIN');
+    cargarEspacios();
+    const comp = fixture.componentInstance;
+
+    (fixture.nativeElement.querySelector('.ver-solicitudes') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    httpTestingController.expectOne(r => r.url === `${API_BASE_URL}/solicitudes/pendientes` && r.params.get('espacio_id') === '42').flush([solicitudPendiente]);
+    // Detalle fails
+    const reqDetalle = httpTestingController.expectOne(`${API_BASE_URL}/solicitudes/51`);
+    reqDetalle.flush({ detail: 'Error detalle' }, { status: 500, statusText: 'Error' });
+    httpTestingController.expectOne(r => r.url === `${API_BASE_URL}/solicitudes/resueltas` && r.params.get('espacio_id') === '42').flush([]);
+    fixture.detectChanges();
+
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      severity: 'error',
+      summary: 'Error al cargar una solicitud'
+    }));
+
+    // Rejection dialog
+    comp.abrirDialogoRechazo(51);
+    expect(comp.solicitudRechazoId).toBe(51);
+    comp.cancelarRechazo();
+    expect(comp.solicitudRechazoId).toBeNull();
+
+    // Rejection error (500)
+    comp.abrirDialogoRechazo(51);
+    comp.rechazarSolicitud(51, 'Motivo de rechazo válido');
+    const reqRechazo = httpTestingController.expectOne(`${API_BASE_URL}/solicitudes/51/rechazar`);
+    reqRechazo.flush({ detail: 'Error al rechazar' }, { status: 500, statusText: 'Error' });
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      severity: 'error',
+      summary: 'Error al rechazar la solicitud'
+    }));
+
+    // Close requests modal
+    comp.cerrarSolicitudes();
+    expect(comp.espacioSeleccionado).toBeNull();
+    expect(comp.solicitudes.length).toBe(0);
+  });
+
+  it('covers logout in cerrarSesion', () => {
+    crearPagina('ADMIN');
+    cargarEspacios();
+    const router = TestBed.inject(Router);
+    spyOn(router, 'navigateByUrl');
+    fixture.componentInstance.cerrarSesion();
+    expect(sessionStorage.getItem('access_token')).toBeNull();
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/login');
   });
 });

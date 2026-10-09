@@ -71,6 +71,22 @@ export interface ReservaResumen {
   inicio: string;
   fin: string;
   solicitud_id: number;
+  titular?: string;
+  proposito?: string;
+  asistentes?: number;
+}
+
+export interface SolicitudResuelta {
+  id: number;
+  estado: 'APROBADA' | 'RECHAZADA';
+  solicitante: SolicitanteResumen;
+  espacio: EspacioResumen;
+  inicio: string;
+  fin: string;
+  asistentes: number;
+  decidida_por: string | null;
+  fecha_decision: string | null;
+  motivo_rechazo: string | null;
 }
 
 export interface ReservaDetalle {

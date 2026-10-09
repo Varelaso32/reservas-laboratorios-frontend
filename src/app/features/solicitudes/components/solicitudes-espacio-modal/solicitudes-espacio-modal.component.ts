@@ -3,7 +3,11 @@ import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Toast } from 'primeng/toast';
 
 import { Espacio } from '../../../../shared/models/espacio.model';
-import { EstadoDetalleSolicitud, SolicitudPendiente } from '../../../../shared/models/solicitud.model';
+import {
+  EstadoDetalleSolicitud,
+  SolicitudPendiente,
+  SolicitudResuelta
+} from '../../../../shared/models/solicitud.model';
 
 @Component({
   selector: 'app-solicitudes-espacio-modal',
@@ -21,6 +25,11 @@ export class SolicitudesEspacioModalComponent implements OnChanges {
   @Input() aprobandoSolicitudId: number | null = null;
   @Input() solicitudRechazoId: number | null = null;
   @Input() rechazandoSolicitudId: number | null = null;
+  @Input() solicitudesResueltas: SolicitudResuelta[] = [];
+  @Input() cargandoResueltas = false;
+  @Input() errorResueltas: string | null = null;
+  @Input() puedeGestionarPendientes = true;
+  @Input() puedeVerHistorial = true;
 
   @Output() cerrar = new EventEmitter<void>();
   @Output() reintentar = new EventEmitter<void>();
@@ -28,7 +37,14 @@ export class SolicitudesEspacioModalComponent implements OnChanges {
   @Output() solicitarRechazo = new EventEmitter<number>();
   @Output() cancelarRechazo = new EventEmitter<void>();
   @Output() rechazar = new EventEmitter<{ solicitudId: number; motivo: string }>();
-
+  @Output() filtrosHistorialChange = new EventEmitter<{
+    estado?: 'APROBADA' | 'RECHAZADA';
+    fecha_desde?: string;
+    fecha_hasta?: string;
+  }>();
+  filtroEstado: '' | 'APROBADA' | 'RECHAZADA' = '';
+  filtroFechaDesde = '';
+  filtroFechaHasta = '';
   readonly motivoRechazo = new FormControl('', {
     nonNullable: true,
     validators: [
@@ -108,5 +124,31 @@ export class SolicitudesEspacioModalComponent implements OnChanges {
       timeStyle: 'short',
       timeZone: 'America/Bogota'
     }).format(new Date(valor));
+  }
+  cambiarFiltroEstado(event: Event): void {
+    this.filtroEstado = (event.target as HTMLSelectElement).value as typeof this.filtroEstado;
+    this.emitirFiltrosHistorial();
+  }
+
+  cambiarFiltroFechaDesde(event: Event): void {
+    this.filtroFechaDesde = (event.target as HTMLInputElement).value;
+    this.emitirFiltrosHistorial();
+  }
+
+  cambiarFiltroFechaHasta(event: Event): void {
+    this.filtroFechaHasta = (event.target as HTMLInputElement).value;
+    this.emitirFiltrosHistorial();
+  }
+
+  reintentarHistorial(): void {
+    this.emitirFiltrosHistorial();
+  }
+
+  private emitirFiltrosHistorial(): void {
+    this.filtrosHistorialChange.emit({
+      ...(this.filtroEstado ? { estado: this.filtroEstado } : {}),
+      ...(this.filtroFechaDesde ? { fecha_desde: this.filtroFechaDesde } : {}),
+      ...(this.filtroFechaHasta ? { fecha_hasta: this.filtroFechaHasta } : {})
+    });
   }
 }

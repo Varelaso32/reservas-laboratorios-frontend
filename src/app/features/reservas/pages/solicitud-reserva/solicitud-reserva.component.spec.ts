@@ -35,7 +35,7 @@ describe('SolicitudReservaComponent', () => {
   };
 
   beforeEach(async () => {
-    messageService = jasmine.createSpyObj<MessageService>('MessageService', ['add']);
+    messageService = jasmine.createSpyObj<MessageService>('MessageService', ['add', 'clear']);
     sesionActiva = true;
     usuario = {
       id: 4,

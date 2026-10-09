@@ -37,7 +37,9 @@
           } @else if (errorAgenda) {
             <p class="estado-dashboard" role="status">No se pudo cargar la agenda.</p>
           } @else if (reservasHoy.length === 0) {
-            <p class="estado-dashboard" role="status">No tienes reservas activas para hoy.</p>
+            <p class="estado-dashboard" role="status">
+              {{ rolUsuario === 'SOLICITANTE' ? 'No tienes reservas activas para hoy.' : 'No hay reservas activas para hoy.' }}
+            </p>
           } @else {
             <div class="lista-agenda">
               @for (reserva of reservasHoy; track reserva.id) {
@@ -51,12 +53,24 @@
                     <strong>{{ reserva.espacio.nombre }}</strong>
                     @if (detallesReservas.get(reserva.id); as detalle) {
                       <small>{{ detalle.titular }} · {{ detalle.proposito }}</small>
+                    } @else if (reserva.titular || reserva.proposito) {
+                      <small>{{ reserva.titular ?? 'Reserva' }} · {{ reserva.proposito ?? '' }}</small>
                     }
                   </div>
                   <div class="horario-agenda">
                     <strong>{{ formatearHora(reserva.inicio) }} – {{ formatearHora(reserva.fin) }}</strong>
                     <span [class]="obtenerClaseEstado(reserva)">{{ obtenerEstadoReserva(reserva) }}</span>
                   </div>
+                  @if (puedeCancelarReserva(reserva)) {
+                    <button
+                      type="button"
+                      class="cancelar-reserva"
+                      [disabled]="cancelandoReservaId !== null"
+                      (click)="abrirConfirmacionCancelacion(reserva)"
+                    >
+                      Cancelar
+                    </button>
+                  }
                 </article>
               }
             </div>
@@ -72,7 +86,11 @@
               <strong [attr.aria-label]="'Total de reservas activas hoy: ' + totalReservasHoy">
                 {{ totalReservasHoy }}
               </strong>
-              <small>Reservas activas de tu cuenta</small>
+              @if (rolUsuario === 'SOLICITANTE') {
+                <small>Reservas activas de tu cuenta</small>
+              } @else {
+                <small>Reservas activas hoy</small>
+              }
             } @else {
               <strong aria-label="Total no disponible">—</strong>
             }
@@ -136,3 +154,34 @@
     </section>
   </main>
 </div>
+@if (reservaCancelar) {
+  <div class="dialogo-confirmacion-overlay">
+    <section
+      class="dialogo-confirmacion"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="titulo-cancelar-reserva"
+      aria-describedby="descripcion-cancelar-reserva"
+    >
+      <h2 id="titulo-cancelar-reserva">¿Cancelar esta reserva?</h2>
+      <p id="descripcion-cancelar-reserva">
+        La reserva de {{ reservaCancelar.espacio.nombre }} será cancelada.
+      </p>
+      <footer>
+        <button
+          type="button"
+          class="boton-secundario"
+          [disabled]="cancelandoReservaId !== null"
+          (click)="cerrarConfirmacionCancelacion()"
+        >Volver</button>
+        <button
+          type="button"
+          class="boton-confirmar"
+          [disabled]="cancelandoReservaId !== null"
+          [attr.aria-busy]="cancelandoReservaId === reservaCancelar.id"
+          (click)="confirmarCancelacion()"
+        >{{ cancelandoReservaId === reservaCancelar.id ? 'Cancelando…' : 'Sí, cancelar' }}</button>
+      </footer>
+    </section>
+  </div>
+}

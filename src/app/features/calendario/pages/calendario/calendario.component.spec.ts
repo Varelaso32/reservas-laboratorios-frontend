@@ -5,6 +5,7 @@ import { provideRouter } from '@angular/router';
 import { MessageService } from 'primeng/api';
 
 import { API_BASE_URL } from '../../../../core/config/api.config';
+import { AuthService } from '../../../../core/services/auth.service';
 import { routes } from '../../../../app.routes';
 import { sumarDiasFecha } from '../../../../shared/utils/fecha-colombia.util';
 import { CalendarioComponent } from './calendario.component';
@@ -157,22 +158,74 @@ describe('CalendarioComponent', () => {
       .toBe('auto');
   });
 
-  it('keeps POS navigation for APROBADOR and leaves the calendar clean and empty', () => {
+  it('loads weekly reservations for APROBADOR using agenda endpoint and preserves navigation', () => {
     crearCalendario('APROBADOR');
     httpTestingController.expectNone(`${API_BASE_URL}/reservas/mias`);
+    const reqAgenda = httpTestingController.expectOne(req =>
+      req.url === `${API_BASE_URL}/reservas/` &&
+      req.params.get('fecha_inicio') === component.semanaInicio &&
+      req.params.get('fecha_fin') === sumarDiasFecha(component.semanaInicio, 6)
+    );
+    expect(reqAgenda.request.method).toBe('GET');
+    const fechaReserva = component.diasSemana[1].fecha;
+    reqAgenda.flush([
+      {
+        id: 75,
+        estado: 'ACTIVA',
+        espacio,
+        inicio: `${fechaReserva}T09:00:00-05:00`,
+        fin: `${fechaReserva}T10:00:00-05:00`,
+        solicitud_id: 35
+      }
+    ]);
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('Calendario');
-    expect(fixture.nativeElement.querySelectorAll('.bloque-reserva').length).toBe(0);
+    expect(fixture.nativeElement.querySelectorAll('.bloque-reserva').length).toBe(1);
+    expect(fixture.nativeElement.textContent).toContain('Laboratorio de Redes');
     expect(fixture.nativeElement.querySelector('.mensaje-no-disponible')).toBeNull();
-    expect(fixture.nativeElement.querySelector('.pagina-calendario').textContent)
-      .not.toMatch(/backend|endpoint|api|openapi|aprobador|listado general/i);
     expect(getComputedStyle(fixture.nativeElement.querySelector('.contenedor-calendario')).overflowX)
       .toBe('auto');
     expect(fixture.nativeElement.querySelector('.menu a[routerLink="/dashboard"]')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('.menu a[routerLink="/calendario"]')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('.menu a[routerLink="/espacios"]')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('.menu a[routerLink="/admin/espacios"]')).toBeTruthy();
+  });
+
+  it('loads weekly reservations for ADMIN using agenda endpoint and refreshes on week navigation', () => {
+    crearCalendario('ADMIN');
+    httpTestingController.expectNone(`${API_BASE_URL}/reservas/mias`);
+    const reqAgenda = httpTestingController.expectOne(req =>
+      req.url === `${API_BASE_URL}/reservas/` &&
+      req.params.get('fecha_inicio') === component.semanaInicio &&
+      req.params.get('fecha_fin') === sumarDiasFecha(component.semanaInicio, 6)
+    );
+    expect(reqAgenda.request.method).toBe('GET');
+    reqAgenda.flush([]);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('.bloque-reserva').length).toBe(0);
+
+    // Navigating to next week queries the new week range
+    component.semanaSiguiente();
+    const reqSiguiente = httpTestingController.expectOne(req =>
+      req.url === `${API_BASE_URL}/reservas/` &&
+      req.params.get('fecha_inicio') === component.semanaInicio &&
+      req.params.get('fecha_fin') === sumarDiasFecha(component.semanaInicio, 6)
+    );
+    const fechaReservaNext = component.diasSemana[2].fecha;
+    reqSiguiente.flush([
+      {
+        id: 85,
+        estado: 'ACTIVA',
+        espacio,
+        inicio: `${fechaReservaNext}T14:00:00-05:00`,
+        fin: `${fechaReservaNext}T16:00:00-05:00`,
+        solicitud_id: 45
+      }
+    ]);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('.bloque-reserva').length).toBe(1);
+    expect(fixture.nativeElement.textContent).toContain('Laboratorio de Redes');
   });
 
   it('shows an empty calendar with no fabricated events and reports API errors through Toast', () => {
@@ -202,5 +255,59 @@ describe('CalendarioComponent', () => {
       detail: 'No se pudo consultar el listado.'
     }));
     expect(fixture.nativeElement.querySelector('p-toast')?.getAttribute('position')).toBe('bottom-right');
+  });
+
+  it('navigates to previous week and handles errors on admin agenda request', () => {
+    crearCalendario('ADMIN');
+    const reqAgenda = httpTestingController.expectOne(req =>
+      req.url === `${API_BASE_URL}/reservas/` &&
+      req.params.get('fecha_inicio') === component.semanaInicio
+    );
+    reqAgenda.flush([]);
+    fixture.detectChanges();
+
+    component.semanaAnterior();
+    const reqAnterior = httpTestingController.expectOne(req =>
+      req.url === `${API_BASE_URL}/reservas/` &&
+      req.params.get('fecha_inicio') === component.semanaInicio
+    );
+    reqAnterior.flush(
+      { detail: 'Error al consultar semana anterior' },
+      { status: 500, statusText: 'Server Error' }
+    );
+    fixture.detectChanges();
+
+    expect(component.errorCarga).toBe('Error al consultar semana anterior');
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      key: 'calendario',
+      severity: 'error',
+      detail: 'Error al consultar semana anterior'
+    }));
+  });
+
+  it('computes user initials correctly for single name and handles empty user', () => {
+    const authService = TestBed.inject(AuthService);
+    spyOn(authService, 'obtenerUsuarioActual').and.returnValue({ ...usuario, rol: 'ADMIN' });
+    crearCalendario('ADMIN');
+    httpTestingController.expectOne(req => req.url === `${API_BASE_URL}/reservas/`).flush([]);
+
+    (authService.obtenerUsuarioActual as jasmine.Spy).and.returnValue({ ...usuario, nombre: 'Admin', rol: 'ADMIN' });
+    expect(component.inicialesUsuario).toBe('AD');
+
+    (authService.obtenerUsuarioActual as jasmine.Spy).and.returnValue({ ...usuario, nombre: '   ', rol: 'ADMIN' });
+    expect(component.inicialesUsuario).toBe('');
+  });
+
+  it('does not load reservations when role is unexpected', () => {
+    sessionStorage.setItem('access_token', 'spec-session-token');
+    sessionStorage.setItem('usuario', JSON.stringify({ ...usuario, rol: 'OTRO_ROL' }));
+    fixture = TestBed.createComponent(CalendarioComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    expect(component.reservas).toEqual([]);
+    expect(component.cargando).toBeFalse();
+    httpTestingController.expectNone(`${API_BASE_URL}/reservas/mias`);
+    httpTestingController.expectNone(`${API_BASE_URL}/reservas/`);
   });
 });

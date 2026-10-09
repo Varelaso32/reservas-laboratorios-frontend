@@ -1,13 +1,14 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter, Router } from '@angular/router';
+import { provideRouter } from '@angular/router';
 import { MessageService } from 'primeng/api';
 
 import { API_BASE_URL } from '../../../../core/config/api.config';
+import { AuthService } from '../../../../core/services/auth.service';
 import { authGuard } from '../../../../core/guards/auth.guard';
 import { routes } from '../../../../app.routes';
-import { fechaColombia, horaColombia } from '../../../../shared/utils/fecha-colombia.util';
+import { fechaColombia } from '../../../../shared/utils/fecha-colombia.util';
 import { DashboardComponent } from './dashboard.component';
 
 describe('DashboardComponent', () => {
@@ -185,7 +186,7 @@ describe('DashboardComponent', () => {
     expect(fixture.nativeElement.querySelector('.tarjeta-resumen strong')?.textContent?.trim()).toBe('1');
   });
 
-  it('does not offer cancellation or send a mutation request without a backend cancellation operation', () => {
+  it('confirms cancellation, posts without a body and refreshes the agenda and counter', () => {
     crearDashboard();
     const inicio = new Date(Date.now() + 60 * 60_000).toISOString();
     const fin = new Date(Date.now() + 2 * 60 * 60_000).toISOString();
@@ -217,18 +218,162 @@ describe('DashboardComponent', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('.fila-agenda')).toBeTruthy();
-    expect(fixture.nativeElement.querySelector('.cancelar-reserva')).toBeNull();
-    expect(fixture.nativeElement.querySelector('.fila-agenda').textContent).not.toContain('Cancelar');
-    httpTestingController.expectNone(request =>
-      request.url.startsWith(`${API_BASE_URL}/reservas/`) &&
-      ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)
-    );
+    const cancelar = fixture.nativeElement.querySelector('.cancelar-reserva') as HTMLButtonElement;
+    expect(cancelar).toBeTruthy();
+    cancelar.click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[role="alertdialog"]')).toBeTruthy();
+
+    (fixture.nativeElement.querySelector('.boton-confirmar') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const request = httpTestingController.expectOne(`${API_BASE_URL}/reservas/81/cancelar`);
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toBeNull();
+    expect((fixture.nativeElement.querySelector('.boton-confirmar') as HTMLButtonElement).disabled).toBeTrue();
+    request.flush({
+      id: 81,
+      estado: 'CANCELADA',
+      espacio,
+      inicio,
+      fin,
+      solicitud_id: 41
+    });
+    const refresh = httpTestingController.expectOne(`${API_BASE_URL}/reservas/mias`);
+    expect(refresh.request.method).toBe('GET');
+    refresh.flush([]);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[role="alertdialog"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.fila-agenda')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.tarjeta-resumen strong')?.textContent?.trim()).toBe('0');
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      key: 'dashboard',
+      severity: 'success',
+      summary: 'Reserva cancelada'
+    }));
   });
 
-  it('keeps Dashboard, Calendar, Spaces and Admin navigation for APROBADOR without requesting a forbidden list', () => {
+  it('does not offer cancellation for a reservation that has already started', () => {
+    crearDashboard();
+    const inicio = new Date(Date.now() - 10 * 60_000).toISOString();
+    const fin = new Date(Date.now() + 20 * 60_000).toISOString();
+    obtenerDisponibilidad().flush([]);
+    httpTestingController.expectOne(`${API_BASE_URL}/reservas/mias`).flush([{
+      id: 82,
+      estado: 'ACTIVA',
+      espacio,
+      inicio,
+      fin,
+      solicitud_id: 42
+    }]);
+    httpTestingController.expectOne(`${API_BASE_URL}/reservas/82`).flush({
+      id: 82,
+      estado: 'ACTIVA',
+      espacio,
+      inicio,
+      fin,
+      solicitud_id: 42,
+      finalizada: false,
+      titular: usuario.nombre,
+      proposito: 'Reserva en curso',
+      asistentes: 10,
+      equipamiento: null,
+      aprobada_por: 'Coordinación',
+      fecha_aprobacion: null,
+      creada_en: inicio
+    });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.cancelar-reserva')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.fila-agenda').textContent).not.toContain('Cancelar');
+  });
+
+  it('shows the HTTP 409 cancellation conflict without changing the reservation locally', () => {
+    crearDashboard();
+    const inicio = new Date(Date.now() + 30 * 60_000).toISOString();
+    const fin = new Date(Date.now() + 60 * 60_000).toISOString();
+    obtenerDisponibilidad().flush([]);
+    httpTestingController.expectOne(`${API_BASE_URL}/reservas/mias`).flush([{
+      id: 83,
+      estado: 'ACTIVA',
+      espacio,
+      inicio,
+      fin,
+      solicitud_id: 43
+    }]);
+    httpTestingController.expectOne(`${API_BASE_URL}/reservas/83`).flush({
+      id: 83,
+      estado: 'ACTIVA',
+      espacio,
+      inicio,
+      fin,
+      solicitud_id: 43,
+      finalizada: false,
+      titular: usuario.nombre,
+      proposito: 'Reserva próxima',
+      asistentes: 10,
+      equipamiento: null,
+      aprobada_por: 'Coordinación',
+      fecha_aprobacion: null,
+      creada_en: inicio
+    });
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('.cancelar-reserva') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('.boton-confirmar') as HTMLButtonElement).click();
+
+    httpTestingController.expectOne(`${API_BASE_URL}/reservas/83/cancelar`).flush(
+      { detail: 'La reserva ya inició.' },
+      { status: 409, statusText: 'Conflict' }
+    );
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.fila-agenda')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.cancelar-reserva')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.dialogo-confirmacion')).toBeTruthy();
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      key: 'dashboard',
+      severity: 'warn',
+      summary: 'No se puede cancelar la reserva',
+      detail: 'La reserva ya inició y no se puede cancelar.'
+    }));
+    httpTestingController.expectNone(`${API_BASE_URL}/reservas/mias`);
+  });
+
+  it('loads today’s reservations for APROBADOR using agenda endpoint and preserves navigation', () => {
     crearDashboard('APROBADOR');
     httpTestingController.expectNone(`${API_BASE_URL}/reservas/mias`);
+    const reqAgenda = httpTestingController.expectOne(req =>
+      req.url === `${API_BASE_URL}/reservas/` && req.params.get('fecha') === fechaColombia(new Date())
+    );
+    expect(reqAgenda.request.method).toBe('GET');
     obtenerDisponibilidad().flush([]);
+
+    const inicio = new Date(Date.now() + 10 * 60_000).toISOString();
+    const fin = new Date(Date.now() + 40 * 60_000).toISOString();
+    reqAgenda.flush([
+      {
+        id: 70,
+        estado: 'ACTIVA',
+        espacio,
+        inicio,
+        fin,
+        solicitud_id: 30,
+        titular: 'Coordinación Labs',
+        proposito: 'Práctica redes'
+      }
+    ]);
+    const reqDetalle = httpTestingController.expectOne(`${API_BASE_URL}/reservas/70`);
+    reqDetalle.flush({
+      id: 70,
+      estado: 'ACTIVA',
+      espacio,
+      inicio,
+      fin,
+      solicitud_id: 30,
+      titular: 'Coordinación Labs',
+      proposito: 'Práctica redes',
+      finalizada: false
+    });
     fixture.detectChanges();
 
     const links = fixture.nativeElement.querySelectorAll('.menu a') as NodeListOf<HTMLAnchorElement>;
@@ -241,24 +386,54 @@ describe('DashboardComponent', () => {
     expect(routesByText).toContain(jasmine.objectContaining({ text: 'Espacios', href: '/espacios' }));
     expect(routesByText).toContain(jasmine.objectContaining({ text: 'Panel Admin', href: '/admin/espacios' }));
     expect(fixture.nativeElement.querySelector('.menu').textContent).toContain('Configuración');
-    expect(fixture.nativeElement.textContent).toContain('No hay reservas disponibles para mostrar.');
-    expect(fixture.nativeElement.querySelector('.panel-agenda').textContent)
-      .not.toMatch(/backend|endpoint|api|openapi|aprobador/i);
-    expect(fixture.nativeElement.querySelector('.tarjeta-resumen:first-child').textContent)
-      .not.toMatch(/backend|endpoint|api|openapi|aprobador/i);
-    expect(fixture.nativeElement.textContent).not.toContain('No tienes reservas activas para hoy.');
-    expect(TestBed.inject(Router).url).not.toBe('/reservas-activas');
+    expect(fixture.nativeElement.textContent).toContain('Laboratorio de Redes');
+    expect(fixture.nativeElement.textContent).toContain('Coordinación Labs · Práctica redes');
+    expect(fixture.nativeElement.querySelector('.tarjeta-resumen:first-child strong')?.textContent?.trim()).toBe('1');
+    expect(fixture.nativeElement.querySelector('.tarjeta-resumen:first-child small')?.textContent?.trim()).toBe('Reservas activas hoy');
   });
 
-  it('does not request the applicant reservation list or invent a total for ADMIN', () => {
+  it('loads today’s reservations for ADMIN using agenda endpoint and displays total', () => {
     crearDashboard('ADMIN');
     httpTestingController.expectNone(`${API_BASE_URL}/reservas/mias`);
+    const reqAgenda = httpTestingController.expectOne(req =>
+      req.url === `${API_BASE_URL}/reservas/` && req.params.get('fecha') === fechaColombia(new Date())
+    );
+    expect(reqAgenda.request.method).toBe('GET');
     obtenerDisponibilidad().flush([]);
+
+    const inicio = new Date(Date.now() + 15 * 60_000).toISOString();
+    const fin = new Date(Date.now() + 45 * 60_000).toISOString();
+    reqAgenda.flush([
+      {
+        id: 80,
+        estado: 'ACTIVA',
+        espacio,
+        inicio,
+        fin,
+        solicitud_id: 40,
+        titular: 'Admin Sistema',
+        proposito: 'Mantenimiento'
+      }
+    ]);
+    const reqDetalle = httpTestingController.expectOne(`${API_BASE_URL}/reservas/80`);
+    reqDetalle.flush({
+      id: 80,
+      estado: 'ACTIVA',
+      espacio,
+      inicio,
+      fin,
+      solicitud_id: 40,
+      titular: 'Admin Sistema',
+      proposito: 'Mantenimiento',
+      finalizada: false
+    });
     fixture.detectChanges();
 
     const resumenReservas = fixture.nativeElement.querySelector('.tarjeta-resumen:first-child') as HTMLElement;
-    expect(resumenReservas.querySelector('strong')?.textContent?.trim()).toBe('—');
-    expect(resumenReservas.textContent).not.toMatch(/backend|endpoint|api|openapi|admin/i);
+    expect(resumenReservas.querySelector('strong')?.textContent?.trim()).toBe('1');
+    expect(resumenReservas.querySelector('small')?.textContent?.trim()).toBe('Reservas activas hoy');
+    expect(fixture.nativeElement.textContent).toContain('Laboratorio de Redes');
+    expect(fixture.nativeElement.textContent).toContain('Admin Sistema · Mantenimiento');
   });
 
   it('protects Dashboard with authentication without adding role restrictions', () => {
@@ -316,5 +491,107 @@ describe('DashboardComponent', () => {
       severity: 'error',
       detail: 'Internal endpoint failure'
     }));
+  });
+
+  it('handles cancellation dialog closing and cancellation errors (404 and 409)', () => {
+    crearDashboard();
+    httpTestingController.expectOne(`${API_BASE_URL}/reservas/mias`).flush([]);
+    obtenerDisponibilidad().flush([]);
+
+    const reservaFutura = {
+      id: 99,
+      estado: 'ACTIVA' as const,
+      espacio,
+      inicio: new Date(Date.now() + 60 * 60_000).toISOString(),
+      fin: new Date(Date.now() + 120 * 60_000).toISOString(),
+      solicitud_id: 20
+    };
+
+    fixture.componentInstance.abrirConfirmacionCancelacion(reservaFutura);
+    expect(fixture.componentInstance.reservaCancelar).toEqual(reservaFutura);
+
+    fixture.componentInstance.cerrarConfirmacionCancelacion();
+    expect(fixture.componentInstance.reservaCancelar).toBeNull();
+
+    // Early return if no reservation is set
+    fixture.componentInstance.confirmarCancelacion();
+
+    // 404 error
+    fixture.componentInstance.abrirConfirmacionCancelacion(reservaFutura);
+    fixture.componentInstance.confirmarCancelacion();
+    const req404 = httpTestingController.expectOne(`${API_BASE_URL}/reservas/99/cancelar`);
+    req404.flush({ detail: 'No encontrada' }, { status: 404, statusText: 'Not Found' });
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      key: 'dashboard',
+      severity: 'error',
+      summary: 'Reserva no encontrada'
+    }));
+
+    // 409 error
+    fixture.componentInstance.abrirConfirmacionCancelacion(reservaFutura);
+    fixture.componentInstance.confirmarCancelacion();
+    const req409 = httpTestingController.expectOne(`${API_BASE_URL}/reservas/99/cancelar`);
+    req409.flush({ detail: 'Conflicto' }, { status: 409, statusText: 'Conflict' });
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      key: 'dashboard',
+      severity: 'warn',
+      summary: 'No se puede cancelar la reserva'
+    }));
+  });
+
+  it('handles cancelled reservation state, user initials for single/empty names and detail load errors', () => {
+    const authService = TestBed.inject(AuthService);
+    spyOn(authService, 'obtenerUsuarioActual').and.returnValue({ ...usuario, rol: 'SOLICITANTE' });
+    crearDashboard();
+    const reqReservas = httpTestingController.expectOne(`${API_BASE_URL}/reservas/mias`);
+    obtenerDisponibilidad().flush([]);
+
+    (authService.obtenerUsuarioActual as jasmine.Spy).and.returnValue({ ...usuario, nombre: 'María', rol: 'SOLICITANTE' });
+    expect(fixture.componentInstance.inicialesUsuario).toBe('MA');
+    (authService.obtenerUsuarioActual as jasmine.Spy).and.returnValue({ ...usuario, nombre: '   ', rol: 'SOLICITANTE' });
+    expect(fixture.componentInstance.inicialesUsuario).toBe('');
+
+    const reservaCancelada = {
+      id: 101,
+      estado: 'CANCELADA' as const,
+      espacio,
+      inicio: new Date(Date.now() + 60 * 60_000).toISOString(),
+      fin: new Date(Date.now() + 120 * 60_000).toISOString(),
+      solicitud_id: 25
+    };
+    expect(fixture.componentInstance.obtenerEstadoReserva(reservaCancelada)).toBe('Cancelada');
+    expect(fixture.componentInstance.obtenerClaseEstado(reservaCancelada)).toBe('estado-cancelada');
+
+    const reservaActivaHoy = {
+      id: 102,
+      estado: 'ACTIVA' as const,
+      espacio,
+      inicio: new Date(Date.now() + 10 * 60_000).toISOString(),
+      fin: new Date(Date.now() + 60 * 60_000).toISOString(),
+      solicitud_id: 26
+    };
+    reqReservas.flush([reservaActivaHoy]);
+    fixture.detectChanges();
+
+    // Detalle returns error
+    const reqDetalle = httpTestingController.expectOne(`${API_BASE_URL}/reservas/102`);
+    reqDetalle.flush({ detail: 'Error detalle' }, { status: 500, statusText: 'Error' });
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      key: 'dashboard',
+      severity: 'error',
+      summary: 'No se pudo cargar el detalle de una reserva'
+    }));
+  });
+
+  it('sets mensajeAgendaNoDisponible when role is unexpected', () => {
+    sessionStorage.setItem('access_token', 'spec-session-token');
+    sessionStorage.setItem('usuario', JSON.stringify({ ...usuario, rol: 'OTRO' }));
+    fixture = TestBed.createComponent(DashboardComponent);
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.mensajeAgendaNoDisponible).toBe('No hay reservas disponibles para mostrar.');
+    httpTestingController.expectNone(`${API_BASE_URL}/reservas/mias`);
+    httpTestingController.expectNone(`${API_BASE_URL}/reservas/`);
+    obtenerDisponibilidad().flush([]);
   });
 });
