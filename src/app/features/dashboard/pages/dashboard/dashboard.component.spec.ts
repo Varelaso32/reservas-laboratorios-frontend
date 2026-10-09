@@ -5,6 +5,7 @@ import { provideRouter } from '@angular/router';
 import { MessageService } from 'primeng/api';
 
 import { API_BASE_URL } from '../../../../core/config/api.config';
+import { AuthService } from '../../../../core/services/auth.service';
 import { authGuard } from '../../../../core/guards/auth.guard';
 import { routes } from '../../../../app.routes';
 import { fechaColombia } from '../../../../shared/utils/fecha-colombia.util';
@@ -490,5 +491,107 @@ describe('DashboardComponent', () => {
       severity: 'error',
       detail: 'Internal endpoint failure'
     }));
+  });
+
+  it('handles cancellation dialog closing and cancellation errors (404 and 409)', () => {
+    crearDashboard();
+    httpTestingController.expectOne(`${API_BASE_URL}/reservas/mias`).flush([]);
+    obtenerDisponibilidad().flush([]);
+
+    const reservaFutura = {
+      id: 99,
+      estado: 'ACTIVA' as const,
+      espacio,
+      inicio: new Date(Date.now() + 60 * 60_000).toISOString(),
+      fin: new Date(Date.now() + 120 * 60_000).toISOString(),
+      solicitud_id: 20
+    };
+
+    fixture.componentInstance.abrirConfirmacionCancelacion(reservaFutura);
+    expect(fixture.componentInstance.reservaCancelar).toEqual(reservaFutura);
+
+    fixture.componentInstance.cerrarConfirmacionCancelacion();
+    expect(fixture.componentInstance.reservaCancelar).toBeNull();
+
+    // Early return if no reservation is set
+    fixture.componentInstance.confirmarCancelacion();
+
+    // 404 error
+    fixture.componentInstance.abrirConfirmacionCancelacion(reservaFutura);
+    fixture.componentInstance.confirmarCancelacion();
+    const req404 = httpTestingController.expectOne(`${API_BASE_URL}/reservas/99/cancelar`);
+    req404.flush({ detail: 'No encontrada' }, { status: 404, statusText: 'Not Found' });
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      key: 'dashboard',
+      severity: 'error',
+      summary: 'Reserva no encontrada'
+    }));
+
+    // 409 error
+    fixture.componentInstance.abrirConfirmacionCancelacion(reservaFutura);
+    fixture.componentInstance.confirmarCancelacion();
+    const req409 = httpTestingController.expectOne(`${API_BASE_URL}/reservas/99/cancelar`);
+    req409.flush({ detail: 'Conflicto' }, { status: 409, statusText: 'Conflict' });
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      key: 'dashboard',
+      severity: 'warn',
+      summary: 'No se puede cancelar la reserva'
+    }));
+  });
+
+  it('handles cancelled reservation state, user initials for single/empty names and detail load errors', () => {
+    const authService = TestBed.inject(AuthService);
+    spyOn(authService, 'obtenerUsuarioActual').and.returnValue({ ...usuario, rol: 'SOLICITANTE' });
+    crearDashboard();
+    const reqReservas = httpTestingController.expectOne(`${API_BASE_URL}/reservas/mias`);
+    obtenerDisponibilidad().flush([]);
+
+    (authService.obtenerUsuarioActual as jasmine.Spy).and.returnValue({ ...usuario, nombre: 'María', rol: 'SOLICITANTE' });
+    expect(fixture.componentInstance.inicialesUsuario).toBe('MA');
+    (authService.obtenerUsuarioActual as jasmine.Spy).and.returnValue({ ...usuario, nombre: '   ', rol: 'SOLICITANTE' });
+    expect(fixture.componentInstance.inicialesUsuario).toBe('');
+
+    const reservaCancelada = {
+      id: 101,
+      estado: 'CANCELADA' as const,
+      espacio,
+      inicio: new Date(Date.now() + 60 * 60_000).toISOString(),
+      fin: new Date(Date.now() + 120 * 60_000).toISOString(),
+      solicitud_id: 25
+    };
+    expect(fixture.componentInstance.obtenerEstadoReserva(reservaCancelada)).toBe('Cancelada');
+    expect(fixture.componentInstance.obtenerClaseEstado(reservaCancelada)).toBe('estado-cancelada');
+
+    const reservaActivaHoy = {
+      id: 102,
+      estado: 'ACTIVA' as const,
+      espacio,
+      inicio: new Date(Date.now() + 10 * 60_000).toISOString(),
+      fin: new Date(Date.now() + 60 * 60_000).toISOString(),
+      solicitud_id: 26
+    };
+    reqReservas.flush([reservaActivaHoy]);
+    fixture.detectChanges();
+
+    // Detalle returns error
+    const reqDetalle = httpTestingController.expectOne(`${API_BASE_URL}/reservas/102`);
+    reqDetalle.flush({ detail: 'Error detalle' }, { status: 500, statusText: 'Error' });
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      key: 'dashboard',
+      severity: 'error',
+      summary: 'No se pudo cargar el detalle de una reserva'
+    }));
+  });
+
+  it('sets mensajeAgendaNoDisponible when role is unexpected', () => {
+    sessionStorage.setItem('access_token', 'spec-session-token');
+    sessionStorage.setItem('usuario', JSON.stringify({ ...usuario, rol: 'OTRO' }));
+    fixture = TestBed.createComponent(DashboardComponent);
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.mensajeAgendaNoDisponible).toBe('No hay reservas disponibles para mostrar.');
+    httpTestingController.expectNone(`${API_BASE_URL}/reservas/mias`);
+    httpTestingController.expectNone(`${API_BASE_URL}/reservas/`);
+    obtenerDisponibilidad().flush([]);
   });
 });

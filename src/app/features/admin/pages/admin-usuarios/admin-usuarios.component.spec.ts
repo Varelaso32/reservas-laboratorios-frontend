@@ -2,11 +2,13 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import type { ComponentFixture } from '@angular/core/testing';
 import { TestBed } from '@angular/core/testing';
+import type { NgForm } from '@angular/forms';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 import { MessageService } from 'primeng/api';
 
 import type { ListaUsuariosResponse, UsuarioAdmin } from '../../../../core/models/usuarios.model';
+import { AuthService } from '../../../../core/services/auth.service';
 import { AdminUsuariosComponent } from './admin-usuarios.component';
 
 const USUARIOS_URL = 'http://localhost:8000/api/v1/usuarios/';
@@ -278,5 +280,207 @@ describe('AdminUsuariosComponent', () => {
     expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({ severity: 'error' }));
   });
 
+  it('covers user initials and name initials formatting edge cases', () => {
+    const authService = TestBed.inject(AuthService);
+    spyOn(authService, 'obtenerUsuarioActual').and.returnValue({ ...docente, nombre: 'Admin' });
+    expect(fixture.componentInstance.inicialesUsuario).toBe('AD');
+    (authService.obtenerUsuarioActual as jasmine.Spy).and.returnValue({ ...docente, nombre: '   ' });
+    expect(fixture.componentInstance.inicialesUsuario).toBe('');
 
+    expect(fixture.componentInstance.inicialesNombre('Carlos')).toBe('CA');
+    expect(fixture.componentInstance.inicialesNombre('Carlos Gomez Perez')).toBe('CP');
+    expect(fixture.componentInstance.inicialesNombre('')).toBe('');
+  });
+
+  it('covers pagination methods irPaginaAnterior and irPaginaSiguiente', () => {
+    const comp = fixture.componentInstance;
+    comp.totalUsuarios = 25;
+    comp.paginaActual = 0;
+
+    // Ir anterior when page 0 -> does nothing
+    comp.irPaginaAnterior();
+    expect(comp.paginaActual).toBe(0);
+
+    // Ir siguiente when page 0 and total 25
+    comp.irPaginaSiguiente();
+    expect(comp.paginaActual).toBe(1);
+    const reqNext = httpTestingController.expectOne(`${USUARIOS_URL}?skip=10&limit=10`);
+    reqNext.flush(respuesta([docente], 25, 10, 10));
+
+    // Ir siguiente when on last page -> does nothing
+    comp.paginaActual = 2; // ultimaFila is 25, total is 25
+    comp.irPaginaSiguiente();
+    expect(comp.paginaActual).toBe(2);
+
+    // Ir anterior from page 2
+    comp.irPaginaAnterior();
+    expect(comp.paginaActual).toBe(1);
+    const reqPrev = httpTestingController.expectOne(`${USUARIOS_URL}?skip=10&limit=10`);
+    reqPrev.flush(respuesta([docente], 25, 10, 10));
+
+    // Test filtered pagination
+    comp.seleccionarFiltro('docentes');
+    const reqFiltro = httpTestingController.expectOne(`${USUARIOS_URL}?skip=0&limit=100&rol=SOLICITANTE`);
+    reqFiltro.flush(respuesta(Array(15).fill(docente), 15, 0, 100));
+    comp.irPaginaSiguiente();
+    expect(comp.paginaActual).toBe(1);
+    expect(comp.usuarios.length).toBe(5);
+  });
+
+  it('ignores duplicate filter selection and handles filtered load error', () => {
+    const comp = fixture.componentInstance;
+    comp.filtroActual = 'docentes';
+    // Duplicate filter does not re-request
+    comp.seleccionarFiltro('docentes');
+    httpTestingController.expectNone(`${USUARIOS_URL}?skip=0&limit=100&rol=SOLICITANTE`);
+
+    // Select filter that fails
+    comp.seleccionarFiltro('operadores');
+    const req = httpTestingController.expectOne(`${USUARIOS_URL}?skip=0&limit=100&rol=APROBADOR`);
+    req.flush({ detail: 'Error operadores' }, { status: 500, statusText: 'Error' });
+    expect(comp.errorCarga).toBe('Error operadores');
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({ severity: 'error' }));
+  });
+
+  it('handles error when loading user detail to edit', () => {
+    const comp = fixture.componentInstance;
+    comp.abrirEditar(docente);
+    const req = httpTestingController.expectOne(`${USUARIOS_URL}11`);
+    req.flush({ detail: 'Usuario no existe' }, { status: 404, statusText: 'Not Found' });
+
+    expect(comp.cargandoDetalle).toBeFalse();
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      severity: 'error',
+      summary: 'No se pudo cargar el usuario'
+    }));
+  });
+
+  it('handles modal and menu actions, and updating profile selection', () => {
+    const comp = fixture.componentInstance;
+    comp.abrirCrear();
+    expect(comp.modalAbierto).toBeTrue();
+    expect(comp.formulario.nombre).toBe('');
+
+    comp.actualizarPerfil('OPERADOR');
+    expect(comp.formulario.perfil).toBe('OPERADOR');
+
+    comp.cerrarModal();
+    expect(comp.modalAbierto).toBeFalse();
+
+    comp.alternarMenu(11);
+    expect(comp.menuUsuarioAbiertoId).toBe(11);
+    comp.alternarMenu(11);
+    expect(comp.menuUsuarioAbiertoId).toBeNull();
+    comp.alternarMenu(12);
+    comp.cerrarMenu();
+    expect(comp.menuUsuarioAbiertoId).toBeNull();
+  });
+
+  it('validates creation form when password is empty and handles creation failure', () => {
+    const comp = fixture.componentInstance;
+    comp.abrirCrear();
+    comp.formulario = {
+      nombre: 'Nuevo Sin Clave',
+      email: 'sinclave@test.com',
+      password: '   ',
+      perfil: 'ESTUDIANTE'
+    };
+
+    const dummyForm = {
+      valid: true,
+      control: { markAllAsTouched: jasmine.createSpy('markAllAsTouched') }
+    } as unknown as NgForm;
+
+    comp.guardar(dummyForm);
+    expect(comp.guardando).toBeFalse();
+    expect(dummyForm.control.markAllAsTouched).toHaveBeenCalled();
+
+    // Now with password but API failure
+    comp.formulario.password = 'clave123';
+    comp.guardar(dummyForm);
+    const req = httpTestingController.expectOne(USUARIOS_URL);
+    req.flush({ detail: 'Email ya registrado' }, { status: 409, statusText: 'Conflict' });
+
+    expect(comp.guardando).toBeFalse();
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      severity: 'error',
+      detail: 'Email ya registrado'
+    }));
+  });
+
+  it('handles edit failure and status update failure inside edit', () => {
+    const comp = fixture.componentInstance;
+    comp.abrirEditar(docente);
+    const reqDetalle = httpTestingController.expectOne(`${USUARIOS_URL}11`);
+    reqDetalle.flush(docente);
+
+    comp.estadoUsuarioVisual = 'Inactivo';
+    comp.formulario = {
+      nombre: 'Ana Editada',
+      email: 'ana@test.com',
+      password: '',
+      perfil: 'DOCENTE'
+    };
+
+    const dummyForm = {
+      valid: true,
+      control: { markAllAsTouched: jasmine.createSpy('markAllAsTouched') }
+    } as unknown as NgForm;
+
+    // Failure on update
+    comp.guardar(dummyForm);
+    const reqUpdate = httpTestingController.expectOne(`${USUARIOS_URL}11`);
+    reqUpdate.flush({ detail: 'Error al actualizar' }, { status: 500, statusText: 'Error' });
+    expect(comp.guardando).toBeFalse();
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      severity: 'error',
+      detail: 'Error al actualizar'
+    }));
+
+    // Success on update but status failure (still calls guardarFinalizado)
+    comp.guardar(dummyForm);
+    const reqUpdate2 = httpTestingController.expectOne(`${USUARIOS_URL}11`);
+    reqUpdate2.flush({ ...docente, nombre: 'Ana Editada' });
+    const reqStatus = httpTestingController.expectOne(`${USUARIOS_URL}11/estado`);
+    reqStatus.flush({ detail: 'No se pudo cambiar estado' }, { status: 500, statusText: 'Error' });
+    const reqReload = httpTestingController.expectOne(request => request.method === 'GET' && request.url === USUARIOS_URL);
+    reqReload.flush(respuesta([docente], 1));
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      severity: 'success'
+    }));
+  });
+
+  it('cancels status change when user rejects confirm and handles API error on status change', () => {
+    const comp = fixture.componentInstance;
+    spyOn(window, 'confirm').and.returnValue(false);
+    comp.cambiarEstado(docente);
+    httpTestingController.expectNone(`${USUARIOS_URL}11/estado`);
+
+    // When confirmed but API fails
+    (window.confirm as jasmine.Spy).and.returnValue(true);
+    comp.cambiarEstado(docente);
+    const req = httpTestingController.expectOne(`${USUARIOS_URL}11/estado`);
+    req.flush({ detail: 'Fallo de estado' }, { status: 500, statusText: 'Error' });
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      severity: 'error',
+      detail: 'Fallo de estado'
+    }));
+  });
+
+  it('maps profile labels and classes for ADMIN and ADMINISTRATIVO cargo', () => {
+    const comp = fixture.componentInstance;
+    expect(comp.etiquetaPerfil('ADMIN', 'ADMINISTRADOR_SISTEMA')).toBe('Administrador');
+    expect(comp.clasePerfil('ADMIN', 'ADMINISTRADOR_SISTEMA')).toBe('rol-administrador');
+    expect(comp.etiquetaPerfil('SOLICITANTE', 'ADMINISTRATIVO')).toBe('Departamento');
+    expect(comp.clasePerfil('SOLICITANTE', 'ADMINISTRATIVO')).toBe('rol-departamento');
+    expect(comp.etiquetaPerfilDePresentacion('DEPARTAMENTO')).toBe('Departamento');
+  });
+
+  it('logs out and redirects to login on cerrarSesion', () => {
+    const router = TestBed.inject(Router);
+    spyOn(router, 'navigateByUrl');
+    fixture.componentInstance.cerrarSesion();
+    expect(sessionStorage.getItem('access_token')).toBeNull();
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/login');
+  });
 });

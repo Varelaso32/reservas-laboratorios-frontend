@@ -5,6 +5,7 @@ import { provideRouter } from '@angular/router';
 import { MessageService } from 'primeng/api';
 
 import { API_BASE_URL } from '../../../../core/config/api.config';
+import { AuthService } from '../../../../core/services/auth.service';
 import { routes } from '../../../../app.routes';
 import { sumarDiasFecha } from '../../../../shared/utils/fecha-colombia.util';
 import { CalendarioComponent } from './calendario.component';
@@ -254,5 +255,59 @@ describe('CalendarioComponent', () => {
       detail: 'No se pudo consultar el listado.'
     }));
     expect(fixture.nativeElement.querySelector('p-toast')?.getAttribute('position')).toBe('bottom-right');
+  });
+
+  it('navigates to previous week and handles errors on admin agenda request', () => {
+    crearCalendario('ADMIN');
+    const reqAgenda = httpTestingController.expectOne(req =>
+      req.url === `${API_BASE_URL}/reservas/` &&
+      req.params.get('fecha_inicio') === component.semanaInicio
+    );
+    reqAgenda.flush([]);
+    fixture.detectChanges();
+
+    component.semanaAnterior();
+    const reqAnterior = httpTestingController.expectOne(req =>
+      req.url === `${API_BASE_URL}/reservas/` &&
+      req.params.get('fecha_inicio') === component.semanaInicio
+    );
+    reqAnterior.flush(
+      { detail: 'Error al consultar semana anterior' },
+      { status: 500, statusText: 'Server Error' }
+    );
+    fixture.detectChanges();
+
+    expect(component.errorCarga).toBe('Error al consultar semana anterior');
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      key: 'calendario',
+      severity: 'error',
+      detail: 'Error al consultar semana anterior'
+    }));
+  });
+
+  it('computes user initials correctly for single name and handles empty user', () => {
+    const authService = TestBed.inject(AuthService);
+    spyOn(authService, 'obtenerUsuarioActual').and.returnValue({ ...usuario, rol: 'ADMIN' });
+    crearCalendario('ADMIN');
+    httpTestingController.expectOne(req => req.url === `${API_BASE_URL}/reservas/`).flush([]);
+
+    (authService.obtenerUsuarioActual as jasmine.Spy).and.returnValue({ ...usuario, nombre: 'Admin', rol: 'ADMIN' });
+    expect(component.inicialesUsuario).toBe('AD');
+
+    (authService.obtenerUsuarioActual as jasmine.Spy).and.returnValue({ ...usuario, nombre: '   ', rol: 'ADMIN' });
+    expect(component.inicialesUsuario).toBe('');
+  });
+
+  it('does not load reservations when role is unexpected', () => {
+    sessionStorage.setItem('access_token', 'spec-session-token');
+    sessionStorage.setItem('usuario', JSON.stringify({ ...usuario, rol: 'OTRO_ROL' }));
+    fixture = TestBed.createComponent(CalendarioComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    expect(component.reservas).toEqual([]);
+    expect(component.cargando).toBeFalse();
+    httpTestingController.expectNone(`${API_BASE_URL}/reservas/mias`);
+    httpTestingController.expectNone(`${API_BASE_URL}/reservas/`);
   });
 });

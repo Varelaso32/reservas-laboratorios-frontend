@@ -70,6 +70,11 @@ describe('ReservasService', () => {
     );
     expect(req2.request.method).toBe('GET');
     req2.flush([mockReservaResumen]);
+
+    service.consultarAgenda().subscribe();
+    const req3 = httpTesting.expectOne(`${API_BASE_URL}/reservas/`);
+    expect(req3.request.method).toBe('GET');
+    req3.flush([]);
   });
 
   it('debe obtener detalle de reserva con GET /reservas/:id', () => {

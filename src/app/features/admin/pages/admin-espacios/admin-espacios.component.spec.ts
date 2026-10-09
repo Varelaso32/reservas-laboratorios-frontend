@@ -6,6 +6,7 @@ import { Router, provideRouter } from '@angular/router';
 import { MessageService } from 'primeng/api';
 
 import { API_BASE_URL } from '../../../../core/config/api.config';
+import { AuthService } from '../../../../core/services/auth.service';
 import { routes } from '../../../../app.routes';
 import { AdminEspaciosComponent } from './admin-espacios.component';
 
@@ -925,5 +926,357 @@ describe('AdminEspaciosComponent', () => {
     expect(adminRoute?.data?.['roles']).toEqual(['APROBADOR', 'ADMIN']);
     const usersRoute = routes.find(route => route.path === 'admin/usuarios');
     expect(usersRoute?.data?.['roles']).toEqual(['ADMIN']);
+  });
+
+  it('handles user initials formatting and empty name', () => {
+    const authService = TestBed.inject(AuthService);
+    spyOn(authService, 'obtenerUsuarioActual').and.returnValue({
+      id: 2,
+      nombre: 'Coordinador de Laboratorios',
+      email: 'coordinador@reservas.test',
+      rol: 'ADMIN',
+      cargo: 'ADMINISTRADOR_SISTEMA'
+    });
+    crearPagina('ADMIN');
+    cargarEspacios();
+    expect(fixture.componentInstance.inicialesUsuario).toBe('CL');
+
+    (authService.obtenerUsuarioActual as jasmine.Spy).and.returnValue({
+      id: 2,
+      nombre: 'Admin',
+      email: 'admin@reservas.test',
+      rol: 'ADMIN',
+      cargo: 'ADMINISTRADOR_SISTEMA'
+    });
+    expect(fixture.componentInstance.inicialesUsuario).toBe('AD');
+
+    (authService.obtenerUsuarioActual as jasmine.Spy).and.returnValue({
+      id: 2,
+      nombre: '   ',
+      email: 'admin@reservas.test',
+      rol: 'ADMIN',
+      cargo: 'ADMINISTRADOR_SISTEMA'
+    });
+    expect(fixture.componentInstance.inicialesUsuario).toBe('');
+  });
+
+  it('handles errors when loading spaces and metrics', () => {
+    crearPagina('ADMIN');
+    httpTestingController.expectOne(`${API_BASE_URL}/espacios/admin`).flush(
+      { detail: 'Fallo al cargar espacios' },
+      { status: 500, statusText: 'Error' }
+    );
+    httpTestingController.expectOne(request => request.url === `${API_BASE_URL}/espacios/metricas`).flush(
+      { detail: 'Fallo métricas' },
+      { status: 500, statusText: 'Error' }
+    );
+    const pendientes = httpTestingController.match(`${API_BASE_URL}/solicitudes/pendientes`);
+    pendientes.forEach(r => r.flush([]));
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.errorEspacios).toBe('Fallo al cargar espacios');
+    expect(fixture.componentInstance.errorMetricas).toBe('Fallo métricas');
+    expect(fixture.componentInstance.cargandoEspacios).toBeFalse();
+    expect(fixture.componentInstance.cargandoMetricas).toBeFalse();
+  });
+
+  it('handles metrics loading state and occupancy display helpers', () => {
+    crearPagina('ADMIN');
+    cargarEspacios();
+    const comp = fixture.componentInstance;
+
+    comp.cargandoMetricas = true;
+    expect(comp.obtenerReservasHoy(42)).toBe('…');
+    expect(comp.obtenerOcupacion(42)).toBe('…');
+
+    comp.cargandoMetricas = false;
+    expect(comp.obtenerReservasHoy(999)).toBe(0);
+
+    // Inactive space returns '—' and null width
+    comp.estadosEspacios.set(77, false);
+    expect(comp.obtenerOcupacion(77)).toBe('—');
+    expect(comp.obtenerAnchoOcupacion(77)).toBeNull();
+    expect(comp.ocupacionNoDisponible(77)).toBeTrue();
+
+    // Custom status label
+    comp.estadosPersonalizadosEspacios.set(42, 'Mantenimiento');
+    expect(comp.etiquetaEstadoEspacio(42)).toBe('Mantenimiento');
+    expect(comp.etiquetaEstadoEspacio(77)).toBe('Inactivo');
+  });
+
+  it('handles error when loading pending counts', () => {
+    crearPagina('ADMIN');
+    httpTestingController.expectOne(`${API_BASE_URL}/espacios/admin`).flush(espaciosAdmin);
+    httpTestingController.expectOne(request => request.url === `${API_BASE_URL}/espacios/metricas`).flush(metricas);
+    const pendingReq = httpTestingController.expectOne(`${API_BASE_URL}/solicitudes/pendientes`);
+    pendingReq.flush({ detail: 'Error' }, { status: 500, statusText: 'Error' });
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.errorConteos).toBeTrue();
+    expect(fixture.componentInstance.obtenerConteoPendientes(42)).toBe(0);
+  });
+
+  it('handles errors when viewing requests and history (403 and 500)', () => {
+    crearPagina('ADMIN');
+    cargarEspacios();
+    const comp = fixture.componentInstance;
+
+    // View requests with 403 error
+    comp.verSolicitudes(espacios[0]);
+    const reqPend403 = httpTestingController.expectOne(r => r.url === `${API_BASE_URL}/solicitudes/pendientes` && r.params.get('espacio_id') === '42');
+    reqPend403.flush(null, { status: 403, statusText: 'Forbidden' });
+    const reqRes403 = httpTestingController.expectOne(r => r.url === `${API_BASE_URL}/solicitudes/resueltas` && r.params.get('espacio_id') === '42');
+    reqRes403.flush(null, { status: 403, statusText: 'Forbidden' });
+    fixture.detectChanges();
+
+    expect(comp.errorSolicitudes).toBe('No tienes permiso para consultar estas solicitudes.');
+    expect(comp.errorResueltas).toBe('No tienes permiso para consultar el historial de este espacio.');
+
+    // View requests with 500 error
+    comp.verSolicitudes(espacios[0]);
+    const reqPend500 = httpTestingController.expectOne(r => r.url === `${API_BASE_URL}/solicitudes/pendientes` && r.params.get('espacio_id') === '42');
+    reqPend500.flush({ detail: 'Error interno' }, { status: 500, statusText: 'Internal Error' });
+    const reqRes500 = httpTestingController.expectOne(r => r.url === `${API_BASE_URL}/solicitudes/resueltas` && r.params.get('espacio_id') === '42');
+    reqRes500.flush({ detail: 'Error historial' }, { status: 500, statusText: 'Internal Error' });
+    fixture.detectChanges();
+
+    expect(comp.errorSolicitudes).toBe('Error interno');
+    expect(comp.errorResueltas).toBe('Error historial');
+  });
+
+  it('covers edit form helpers: opening, location parsing, visual amenities, visual colors, and cancel', () => {
+    crearPagina('ADMIN');
+    cargarEspacios();
+    const comp = fixture.componentInstance;
+
+    const espacioEd = { ...espacios[0], ubicacion: 'Edificio C, Piso 3' };
+    comp.abrirEdicion(espacioEd);
+    expect(comp.espacioEnEdicion).toEqual(espacioEd);
+    expect(comp.edificioEspacioVisual).toBe('C');
+    expect(comp.pisoEspacioVisual).toBe('Piso 3');
+
+    // Toggle amenities
+    expect(comp.amenidadesSeleccionadasVisual).toContain('Proyector');
+    comp.alternarAmenidadVisual('Proyector');
+    expect(comp.amenidadesSeleccionadasVisual).not.toContain('Proyector');
+    comp.alternarAmenidadVisual('Proyector');
+    expect(comp.amenidadesSeleccionadasVisual).toContain('Proyector');
+
+    // Select color
+    comp.seleccionarColorVisual('#ef4444');
+    expect(comp.colorSeleccionadoVisual).toBe('#ef4444');
+
+    // Cancel edit
+    comp.cancelarEdicion();
+    expect(comp.espacioEnEdicion).toBeNull();
+  });
+
+  it('covers create space modal helpers and validation', () => {
+    crearPagina('ADMIN');
+    cargarEspacios();
+    const comp = fixture.componentInstance;
+
+    comp.abrirCrearEspacio();
+    expect(comp.modalCrearEspacioAbierto).toBeTrue();
+
+    comp.seleccionarColorNuevoEspacio('#10b981');
+    expect(comp.colorNuevoEspacioVisual).toBe('#10b981');
+
+    comp.alternarAmenidadNuevoEspacio('WiFi');
+    expect(comp.amenidadesNuevoEspacioVisual).toContain('WiFi');
+    comp.alternarAmenidadNuevoEspacio('WiFi');
+    expect(comp.amenidadesNuevoEspacioVisual).not.toContain('WiFi');
+
+    // Validation failure: invalid nombre or capacidad
+    comp.formularioNuevoEspacio.nombre = '   ';
+    comp.guardarNuevoEspacio();
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      severity: 'warn',
+      summary: 'Revisa los datos'
+    }));
+
+    // Successful create with 'Mantenimiento' status and 'Sala' name
+    comp.formularioNuevoEspacio = {
+      codigo: 'S201',
+      edificio: 'B',
+      nombre: 'Sala Reuniones B',
+      piso: 'Piso 2',
+      capacidad: 15,
+      estado: 'Mantenimiento'
+    };
+    comp.guardarNuevoEspacio();
+    const reqCreate = httpTestingController.expectOne(`${API_BASE_URL}/espacios/`);
+    expect(reqCreate.request.method).toBe('POST');
+    expect(reqCreate.request.body.tipo).toBe('SALA');
+    expect(reqCreate.request.body.ubicacion).toBe('Edificio B, Piso 2');
+    reqCreate.flush({ id: 88, nombre: 'Sala Reuniones B', tipo: 'SALA', capacidad: 15, activo: true });
+
+    // Updating state to inactivo for mantenimiento
+    const reqEstado = httpTestingController.expectOne(`${API_BASE_URL}/espacios/88/estado`);
+    expect(reqEstado.request.method).toBe('PATCH');
+    reqEstado.flush({ id: 88, activo: false });
+
+    // Recargar datos admin
+    httpTestingController.expectOne(`${API_BASE_URL}/espacios/admin`).flush([]);
+    httpTestingController.expectOne(r => r.url === `${API_BASE_URL}/espacios/metricas`).flush([]);
+    const pends = httpTestingController.match(`${API_BASE_URL}/solicitudes/pendientes`);
+    pends.forEach(r => r.flush([]));
+    fixture.detectChanges();
+
+    expect(comp.modalCrearEspacioAbierto).toBeFalse();
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({ severity: 'success' }));
+
+    // Create space API error
+    comp.abrirCrearEspacio();
+    comp.formularioNuevoEspacio.nombre = 'Lab Error';
+    comp.formularioNuevoEspacio.capacidad = 20;
+    comp.guardarNuevoEspacio();
+    const reqCreateFail = httpTestingController.expectOne(`${API_BASE_URL}/espacios/`);
+    reqCreateFail.flush({ detail: 'Error al crear' }, { status: 500, statusText: 'Error' });
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      severity: 'error',
+      summary: 'Error al crear espacio'
+    }));
+
+    comp.cerrarCrearEspacio();
+    expect(comp.modalCrearEspacioAbierto).toBeFalse();
+  });
+
+  it('covers guardarEdicion validation, no-change detection, field updates and status update errors', () => {
+    crearPagina('ADMIN');
+    cargarEspacios();
+    const comp = fixture.componentInstance;
+
+    comp.abrirEdicion(espacios[0]);
+
+    // Validation failure
+    comp.formularioEspacio.nombre = '';
+    comp.guardarEdicion();
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      severity: 'warn',
+      summary: 'Revisa los datos'
+    }));
+
+    // No changes -> closes without request
+    comp.formularioEspacio.nombre = espacios[0].nombre;
+    comp.formularioEspacio.capacidad = espacios[0].capacidad;
+    comp.formularioEspacio.tipo = espacios[0].tipo;
+    comp.formularioEspacio.ubicacion = espacios[0].ubicacion!;
+    comp.estadoEspacioVisual = 'Activo';
+    comp.guardarEdicion();
+    expect(comp.espacioEnEdicion).toBeNull();
+
+    // Edit fields and status simultaneously
+    comp.abrirEdicion(espacios[0]);
+    comp.formularioEspacio.nombre = 'Laboratorio Renovado';
+    comp.estadoEspacioVisual = 'Mantenimiento';
+    comp.guardarEdicion();
+    const reqUpdate = httpTestingController.expectOne(`${API_BASE_URL}/espacios/42`);
+    reqUpdate.flush({ ...espacios[0], nombre: 'Laboratorio Renovado' });
+    const reqStatus = httpTestingController.expectOne(`${API_BASE_URL}/espacios/42/estado`);
+    reqStatus.flush({ ...espacios[0], activo: false });
+
+    // Reload admin data
+    httpTestingController.expectOne(`${API_BASE_URL}/espacios/admin`).flush([]);
+    httpTestingController.expectOne(r => r.url === `${API_BASE_URL}/espacios/metricas`).flush([]);
+    const pends = httpTestingController.match(`${API_BASE_URL}/solicitudes/pendientes`);
+    pends.forEach(r => r.flush([]));
+    fixture.detectChanges();
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({ severity: 'success' }));
+
+    // Edit fields error handling (409 conflict)
+    comp.abrirEdicion(espacios[0]);
+    comp.formularioEspacio.nombre = 'Nombre Conflicto';
+    comp.guardarEdicion();
+    const req409 = httpTestingController.expectOne(`${API_BASE_URL}/espacios/42`);
+    req409.flush({ detail: 'Ya existe' }, { status: 409, statusText: 'Conflict' });
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      severity: 'warn',
+      summary: 'No se pueden guardar los cambios'
+    }));
+
+    // Edit status only with error
+    comp.abrirEdicion(espacios[0]);
+    comp.estadoEspacioVisual = 'Mantenimiento';
+    comp.guardarEdicion();
+    const reqStatusOnly = httpTestingController.expectOne(`${API_BASE_URL}/espacios/42/estado`);
+    reqStatusOnly.flush({ detail: 'Error estado' }, { status: 500, statusText: 'Error' });
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      severity: 'error',
+      summary: 'Error al cambiar estado'
+    }));
+  });
+
+  it('covers confirming and cancelling space status toggle with error handling', () => {
+    crearPagina('ADMIN');
+    cargarEspacios();
+    const comp = fixture.componentInstance;
+
+    comp.abrirConfirmacionEstado(espacios[0]);
+    expect(comp.espacioCambioEstado).toEqual(espacios[0]);
+    comp.cerrarConfirmacionEstado();
+    expect(comp.espacioCambioEstado).toBeNull();
+
+    // Confirm status change error
+    comp.abrirConfirmacionEstado(espacios[0]);
+    comp.confirmarCambioEstado();
+    const req = httpTestingController.expectOne(`${API_BASE_URL}/espacios/42/estado`);
+    req.flush({ detail: 'No se pudo desactivar' }, { status: 500, statusText: 'Error' });
+    expect(comp.actualizandoEstadoId).toBeNull();
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      severity: 'error',
+      summary: 'Error al cambiar el estado'
+    }));
+  });
+
+  it('covers closing requests modal, request rejection dialog and detail load errors', () => {
+    crearPagina('ADMIN');
+    cargarEspacios();
+    const comp = fixture.componentInstance;
+
+    (fixture.nativeElement.querySelector('.ver-solicitudes') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    httpTestingController.expectOne(r => r.url === `${API_BASE_URL}/solicitudes/pendientes` && r.params.get('espacio_id') === '42').flush([solicitudPendiente]);
+    // Detalle fails
+    const reqDetalle = httpTestingController.expectOne(`${API_BASE_URL}/solicitudes/51`);
+    reqDetalle.flush({ detail: 'Error detalle' }, { status: 500, statusText: 'Error' });
+    httpTestingController.expectOne(r => r.url === `${API_BASE_URL}/solicitudes/resueltas` && r.params.get('espacio_id') === '42').flush([]);
+    fixture.detectChanges();
+
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      severity: 'error',
+      summary: 'Error al cargar una solicitud'
+    }));
+
+    // Rejection dialog
+    comp.abrirDialogoRechazo(51);
+    expect(comp.solicitudRechazoId).toBe(51);
+    comp.cancelarRechazo();
+    expect(comp.solicitudRechazoId).toBeNull();
+
+    // Rejection error (500)
+    comp.abrirDialogoRechazo(51);
+    comp.rechazarSolicitud(51, 'Motivo de rechazo válido');
+    const reqRechazo = httpTestingController.expectOne(`${API_BASE_URL}/solicitudes/51/rechazar`);
+    reqRechazo.flush({ detail: 'Error al rechazar' }, { status: 500, statusText: 'Error' });
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      severity: 'error',
+      summary: 'Error al rechazar la solicitud'
+    }));
+
+    // Close requests modal
+    comp.cerrarSolicitudes();
+    expect(comp.espacioSeleccionado).toBeNull();
+    expect(comp.solicitudes.length).toBe(0);
+  });
+
+  it('covers logout in cerrarSesion', () => {
+    crearPagina('ADMIN');
+    cargarEspacios();
+    const router = TestBed.inject(Router);
+    spyOn(router, 'navigateByUrl');
+    fixture.componentInstance.cerrarSesion();
+    expect(sessionStorage.getItem('access_token')).toBeNull();
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/login');
   });
 });
