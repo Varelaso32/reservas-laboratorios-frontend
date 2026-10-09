@@ -14,16 +14,16 @@ describe('AppComponent', () => {
     expect(app).toBeTruthy();
   });
 
-  it(`should have the 'reservas-laboratorios-frontend' title`, () => {
+  it(`should have the 'Reserva ECCI' title`, () => {
     const fixture = TestBed.createComponent(AppComponent);
     const app = fixture.componentInstance;
-    expect(app.title).toEqual('reservas-laboratorios-frontend');
+    expect(app.title).toEqual('Reserva ECCI');
   });
 
-  it('should render title', () => {
+  it('should render the router outlet', () => {
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain('Hello, reservas-laboratorios-frontend');
+    expect(compiled.querySelector('router-outlet')).toBeTruthy();
   });
 });

@@ -1,0 +1,127 @@
+<div class="aplicacion">
+
+  <app-pos-sidebar seccionActiva="espacios" />
+
+
+  <main class="contenido">
+
+    <header class="topbar">
+
+      <label class="buscador" for="busqueda-espacios">
+        <i class="pi pi-search" aria-hidden="true"></i>
+
+        <input
+          id="busqueda-espacios"
+          type="search"
+          placeholder="Buscar espacios, reservas..."
+          aria-label="Buscar espacios, reservas..."
+        />
+      </label>
+
+      <div class="acciones-topbar">
+        <i class="pi pi-bell" aria-hidden="true"></i>
+        <div class="perfil">
+          {{ inicialesUsuario }}
+        </div>
+      </div>
+
+    </header>
+
+
+    <section class="pagina">
+
+      <div class="encabezado">
+
+        <div>
+          <h1>Espacios</h1>
+          @if (cargando) {
+            <p>Cargando espacios...</p>
+          } @else if (!errorCarga) {
+            <p>{{ espacios.length }} espacios registrados</p>
+          }
+        </div>
+
+      </div>
+
+
+      <div class="grid-espacios">
+
+        @if (cargando) {
+          <p class="estado-lista" role="status">Cargando espacios...</p>
+        } @else if (errorCarga) {
+          <div class="estado-lista error-carga" role="alert">
+            <p>{{ errorCarga }}</p>
+            <button type="button" (click)="cargarEspacios()">Reintentar</button>
+          </div>
+        } @else if (espacios.length === 0) {
+          <p class="estado-lista">No hay espacios registrados.</p>
+        } @else {
+          @for (espacio of espacios; track espacio.id) {
+
+          <article class="tarjeta">
+
+            <div class="tarjeta-header">
+
+              <div class="nombre">
+
+                <span
+                  class="punto"
+                  aria-hidden="true"
+                  [style.background-color]="obtenerColorEspacio(espacio.id)"
+                ></span>
+
+                <strong>
+                  {{ espacio.nombre }}
+                </strong>
+
+              </div>
+
+              <span class="tipo-espacio">
+                {{ espacio.tipo }}
+              </span>
+
+            </div>
+
+
+            <div class="informacion">
+
+              @if (espacio.ubicacion) {
+                <p>
+                  <i class="pi pi-map-marker"></i>
+                  {{ espacio.ubicacion }}
+                </p>
+              }
+
+              <p>
+                <i class="pi pi-users"></i>
+                {{ espacio.capacidad }} personas
+              </p>
+
+            </div>
+
+
+            <button type="button" (click)="abrirReserva(espacio)">
+              Reservar ahora
+            </button>
+
+          </article>
+
+          }
+        }
+
+      </div>
+
+    </section>
+
+  </main>
+
+</div>
+
+@if (modalReservaAbierto && espacioSeleccionado) {
+
+  <app-solicitud-reserva
+    [espacio]="espacioSeleccionado"
+    (cerrar)="cerrarReserva()"
+  />
+
+}
