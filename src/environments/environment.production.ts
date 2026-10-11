@@ -1,3 +1,3 @@
 export const environment = {
-  apiBaseUrl: 'http://localhost:8000/api/v1'
+  apiBaseUrl: 'https://reservas-ecci-api-prod.onrender.com/api/v1'
 };
