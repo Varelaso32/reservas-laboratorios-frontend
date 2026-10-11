@@ -1,0 +1,34 @@
+# Blueprint de Render: frontend Angular 19 (static site) - dos entornos.
+# - QA:         rama qa,    se redespliega solo con cada push.
+# - Produccion: rama main,  se redespliega solo con cada merge a main.
+# El blueprint se crea una vez desde el dashboard (New > Blueprint) con la rama main.
+services:
+  - type: web
+    runtime: static
+    name: reservas-ecci-web-qa
+    branch: qa
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist/reservas-laboratorios-frontend/browser
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+    # SPA: cualquier ruta que no sea un archivo real sirve index.html
+    # (evita 404 al refrescar /dashboard, /calendario, etc.)
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+  - type: web
+    runtime: static
+    name: reservas-ecci-web-prod
+    branch: main
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist/reservas-laboratorios-frontend/browser
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
