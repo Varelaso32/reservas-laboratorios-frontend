@@ -97,7 +97,7 @@ describe('CalendarioComponent', () => {
       .find(element => element.getAttribute('aria-label') === `${dia.nombre} ${dia.numero}`)!;
     const bloque = columna.querySelector('.bloque-reserva') as HTMLElement;
     expect(fixture.nativeElement.textContent).toContain('Calendario');
-    expect(fixture.nativeElement.textContent).toContain('Semana');
+    expect(fixture.nativeElement.textContent).toContain(component.etiquetaSemana);
     expect(bloque.textContent).toContain('Laboratorio de Redes');
     expect(bloque.getAttribute('aria-label')).toContain('09:00 a 10:00');
     expect(getComputedStyle(bloque.querySelector('strong') as HTMLElement).fontSize).toBe('9px');
