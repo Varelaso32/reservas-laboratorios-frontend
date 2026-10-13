@@ -149,7 +149,7 @@ export class SolicitudesEspacioModalComponent implements OnChanges {
   extraerFechaLocal(fechaIso: string): string {
     try {
       const fecha = new Date(fechaIso);
-      if (isNaN(fecha.getTime())) {
+      if (Number.isNaN(fecha.getTime())) {
         return fechaIso.slice(0, 10);
       }
       const formateador = new Intl.DateTimeFormat('en-CA', {

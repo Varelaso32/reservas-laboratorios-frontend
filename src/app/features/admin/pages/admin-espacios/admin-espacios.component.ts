@@ -15,6 +15,8 @@ import { obtenerColorIdentificadorEspacio } from '../../../../shared/utils/espac
 import { EstadoDetalleSolicitud, SolicitudPendiente, SolicitudResuelta } from '../../../../shared/models/solicitud.model';
 import { SolicitudesEspacioModalComponent } from '../../../solicitudes/components/solicitudes-espacio-modal/solicitudes-espacio-modal.component';
 import { fechaColombia } from '../../../../shared/utils/fecha-colombia.util';
+import { filtrarEspaciosPorTermino } from '../../../../shared/utils/espacio-filtro.util';
+import { obtenerInicialesUsuario } from '../../../../shared/utils/usuario-iniciales.util';
 
 @Component({
   selector: 'app-admin-espacios',
@@ -102,24 +104,7 @@ export class AdminEspaciosComponent implements OnDestroy, OnInit {
   terminoBusqueda = '';
 
   get espaciosFiltrados(): Espacio[] {
-    const termino = this.terminoBusqueda.trim().toLowerCase();
-    if (!termino) {
-      return this.espacios;
-    }
-    return this.espacios.filter(espacio => {
-      const nombre = espacio.nombre.toLowerCase();
-      const tipo = espacio.tipo.toLowerCase();
-      const ubicacion = (espacio.ubicacion ?? '').toLowerCase();
-      const capacidad = String(espacio.capacidad);
-      const codigo = `l10${espacio.id}`;
-      return (
-        nombre.includes(termino) ||
-        tipo.includes(termino) ||
-        ubicacion.includes(termino) ||
-        capacidad.includes(termino) ||
-        codigo.includes(termino)
-      );
-    });
+    return filtrarEspaciosPorTermino(this.espacios, this.terminoBusqueda);
   }
 
   bloquearTeclasNoDigitos(event: KeyboardEvent): void {
@@ -146,7 +131,7 @@ export class AdminEspaciosComponent implements OnDestroy, OnInit {
       soloDigitos = soloDigitos.replace(/^0+/, '');
     }
     input.value = soloDigitos;
-    const valorNumerico = soloDigitos ? parseInt(soloDigitos, 10) : 0;
+    const valorNumerico = soloDigitos ? Number.parseInt(soloDigitos, 10) : 0;
     if (tipo === 'edicion') {
       this.formularioEspacio.capacidad = valorNumerico;
     } else {
@@ -179,17 +164,7 @@ export class AdminEspaciosComponent implements OnDestroy, OnInit {
   }
 
   get inicialesUsuario(): string {
-    const nombre = this.usuarioActual?.nombre.trim();
-    if (!nombre) {
-      return '';
-    }
-
-    const partes = nombre.split(/\s+/).filter(Boolean);
-    if (partes.length === 1) {
-      return partes[0].slice(0, 2).toLocaleUpperCase();
-    }
-
-    return `${partes[0][0]}${partes[partes.length - 1][0]}`.toLocaleUpperCase();
+    return obtenerInicialesUsuario(this.usuarioActual?.nombre);
   }
 
   ngOnInit(): void {

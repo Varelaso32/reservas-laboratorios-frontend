@@ -7,6 +7,8 @@ import { AuthService } from '../../../../core/services/auth.service';
 import { obtenerMensajeErrorApi } from '../../../../core/utils/api-error.util';
 import { obtenerColorIdentificadorEspacio } from '../../../../shared/utils/espacio-color.util';
 import { PosSidebarComponent } from '../../../../shared/components/pos-sidebar/pos-sidebar.component';
+import { obtenerInicialesUsuario } from '../../../../shared/utils/usuario-iniciales.util';
+import { filtrarEspaciosPorTermino } from '../../../../shared/utils/espacio-filtro.util';
 
 @Component({
   selector: 'app-espacios',
@@ -32,17 +34,7 @@ export class EspaciosComponent implements OnInit {
   }
 
   get inicialesUsuario(): string {
-    const nombre = this.usuarioActual?.nombre.trim();
-    if (!nombre) {
-      return '';
-    }
-
-    const partes = nombre.split(/\s+/).filter(Boolean);
-    if (partes.length === 1) {
-      return partes[0].slice(0, 2).toLocaleUpperCase();
-    }
-
-    return `${partes[0][0]}${partes[partes.length - 1][0]}`.toLocaleUpperCase();
+    return obtenerInicialesUsuario(this.usuarioActual?.nombre);
   }
 
   obtenerColorEspacio(espacioId: number): string {
@@ -76,24 +68,7 @@ export class EspaciosComponent implements OnInit {
   }
 
   get espaciosFiltrados(): Espacio[] {
-    const termino = this.terminoBusqueda.trim().toLowerCase();
-    if (!termino) {
-      return this.espacios;
-    }
-    return this.espacios.filter(espacio => {
-      const nombre = espacio.nombre.toLowerCase();
-      const tipo = espacio.tipo.toLowerCase();
-      const ubicacion = (espacio.ubicacion ?? '').toLowerCase();
-      const capacidad = String(espacio.capacidad);
-      const codigo = `l10${espacio.id}`;
-      return (
-        nombre.includes(termino) ||
-        tipo.includes(termino) ||
-        ubicacion.includes(termino) ||
-        capacidad.includes(termino) ||
-        codigo.includes(termino)
-      );
-    });
+    return filtrarEspaciosPorTermino(this.espacios, this.terminoBusqueda);
   }
 
   limpiarBusqueda(): void {
