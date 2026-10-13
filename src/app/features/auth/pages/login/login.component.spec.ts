@@ -150,7 +150,6 @@ describe('LoginComponent', () => {
     expect(component.cargandoRegistro).toBeFalse();
     expect(component.errorRegistro).toBe('El correo ya existe');
   });
-
   it('debe enmascarar la contraseña por defecto con type="password"', () => {
     const passwordInput = fixture.nativeElement.querySelector('#login-password') as HTMLInputElement;
     expect(passwordInput.type).toBe('password');

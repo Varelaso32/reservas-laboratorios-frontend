@@ -1279,7 +1279,6 @@ describe('AdminEspaciosComponent', () => {
     expect(sessionStorage.getItem('access_token')).toBeNull();
     expect(router.navigateByUrl).toHaveBeenCalledWith('/login');
   });
-
   it('filters spaces list by search term in admin panel', () => {
     crearPagina('ADMIN');
     cargarEspacios();
