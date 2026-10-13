@@ -281,13 +281,21 @@ export class SolicitudReservaComponent {
         this.limpiarEstadoDisponibilidad();
         this.solicitudCreada = respuesta;
       },
-      error: error => {
+      error: (error: { status?: number }) => {
         this.cargandoSolicitud = false;
         this.disponible = null;
         this.estadoDisponibilidad = 'error';
+        const conflicto = error?.status === 409;
         this.mensajeDisponibilidad =
-          obtenerMensajeErrorApi(error) ?? 'No se pudo crear la solicitud. Intenta nuevamente.';
-        this.notificar('error', 'No se pudo enviar la solicitud', this.mensajeDisponibilidad);
+          obtenerMensajeErrorApi(error) ??
+          (conflicto
+            ? 'El espacio ya cuenta con una solicitud pendiente o una reserva en ese horario. Por favor selecciona otro horario o espacio.'
+            : 'No se pudo crear la solicitud. Intenta nuevamente.');
+        this.notificar(
+          'error',
+          conflicto ? 'Espacio no disponible' : 'No se pudo enviar la solicitud',
+          this.mensajeDisponibilidad
+        );
       }
     });
   }

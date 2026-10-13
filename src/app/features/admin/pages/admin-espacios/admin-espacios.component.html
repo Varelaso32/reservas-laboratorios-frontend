@@ -65,7 +65,12 @@
     <header class="topbar">
       <label class="buscador">
         <i class="pi pi-search" aria-hidden="true"></i>
-        <input type="search" placeholder="Buscar espacios..." aria-label="Buscar espacios" />
+        <input
+          type="search"
+          placeholder="Buscar espacios..."
+          aria-label="Buscar espacios"
+          [(ngModel)]="terminoBusqueda"
+        />
       </label>
       <div class="acciones-topbar">
         <i class="pi pi-bell" aria-hidden="true"></i>
@@ -80,7 +85,11 @@
           @if (cargandoEspacios) {
             <p>Cargando espacios...</p>
           } @else if (!errorEspacios) {
-            <p>{{ espacios.length }} espacios registrados</p>
+            @if (terminoBusqueda.trim()) {
+              <p>{{ espaciosFiltrados.length }} de {{ espacios.length }} espacios encontrados</p>
+            } @else {
+              <p>{{ espacios.length }} espacios registrados</p>
+            }
           }
         </div>
         <button
@@ -127,8 +136,10 @@
               </tr>
             } @else if (espacios.length === 0) {
               <tr><td class="estado-tabla" [attr.colspan]="columnas">No hay espacios registrados.</td></tr>
+            } @else if (espaciosFiltrados.length === 0) {
+              <tr><td class="estado-tabla" [attr.colspan]="columnas">No se encontraron espacios que coincidan con "{{ terminoBusqueda }}".</td></tr>
             } @else {
-              @for (espacio of espacios; track espacio.id) {
+              @for (espacio of espaciosFiltrados; track espacio.id) {
                 <tr>
                   <td>
                     <div class="espacio-identidad">
@@ -300,7 +311,15 @@
           </label>
           <label class="campo-espacio">
             <span>CAPACIDAD</span>
-            <input type="number" [(ngModel)]="formularioEspacio.capacidad" min="1" step="1" />
+            <input
+              type="text"
+              inputmode="numeric"
+              pattern="[0-9]*"
+              autocomplete="off"
+              [value]="formularioEspacio.capacidad"
+              (keydown)="bloquearTeclasNoDigitos($event)"
+              (input)="validarEntradaCapacidad($event, 'edicion')"
+            />
           </label>
           <label class="campo-espacio">
             <span>ESTADO</span>
@@ -409,7 +428,16 @@
           </label>
           <label class="campo-espacio">
             <span>CAPACIDAD</span>
-            <input type="number" [(ngModel)]="formularioNuevoEspacio.capacidad" min="1" step="1" />
+            <input
+              type="text"
+              inputmode="numeric"
+              pattern="[0-9]*"
+              autocomplete="off"
+              placeholder="Ej. 20"
+              [value]="formularioNuevoEspacio.capacidad || ''"
+              (keydown)="bloquearTeclasNoDigitos($event)"
+              (input)="validarEntradaCapacidad($event, 'nuevo')"
+            />
           </label>
           <label class="campo-espacio">
             <span>ESTADO</span>
