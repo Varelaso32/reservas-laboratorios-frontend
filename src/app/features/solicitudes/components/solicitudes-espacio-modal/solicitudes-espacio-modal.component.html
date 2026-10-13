@@ -138,10 +138,16 @@
               <option value="RECHAZADA">Rechazadas</option>
             </select>
           </label>
-          <label>Desde
+          <label>Criterio de fecha
+            <select [value]="criterioFecha" (change)="cambiarCriterioFecha($event)">
+              <option value="reserva">Fecha de reserva</option>
+              <option value="decision">Fecha de decisión</option>
+            </select>
+          </label>
+          <label>{{ criterioFecha === 'reserva' ? 'Reserva desde' : 'Decisión desde' }}
             <input type="date" [value]="filtroFechaDesde" (change)="cambiarFiltroFechaDesde($event)" />
           </label>
-          <label>Hasta
+          <label>{{ criterioFecha === 'reserva' ? 'Reserva hasta' : 'Decisión hasta' }}
             <input type="date" [value]="filtroFechaHasta" (change)="cambiarFiltroFechaHasta($event)" />
           </label>
         </div>
@@ -152,11 +158,11 @@
           <p>{{ errorResueltas }}</p>
           <button type="button" (click)="reintentarHistorial()">Reintentar</button>
         </div>
-      } @else if (solicitudesResueltas.length === 0) {
+      } @else if (solicitudesResueltasFiltradas.length === 0) {
         <p class="feedback-solicitudes" role="status">No hay solicitudes resueltas para los filtros seleccionados.</p>
       } @else {
         <div class="cards-solicitudes">
-          @for (solicitud of solicitudesResueltas; track solicitud.id) {
+          @for (solicitud of solicitudesResueltasFiltradas; track solicitud.id) {
             <article class="card-solicitud card-historial">
               <header class="card-solicitud-header">
                 <div class="solicitante">

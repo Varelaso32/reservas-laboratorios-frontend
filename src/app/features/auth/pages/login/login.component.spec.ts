@@ -150,5 +150,23 @@ describe('LoginComponent', () => {
     expect(component.cargandoRegistro).toBeFalse();
     expect(component.errorRegistro).toBe('El correo ya existe');
   });
+
+  it('debe enmascarar la contraseña por defecto con type="password"', () => {
+    const passwordInput = fixture.nativeElement.querySelector('#login-password') as HTMLInputElement;
+    expect(passwordInput.type).toBe('password');
+    expect(component.mostrarPasswordLogin).toBeFalse();
+
+    const eyeButton = fixture.nativeElement.querySelector('.eye-btn') as HTMLButtonElement;
+    eyeButton.click();
+    fixture.detectChanges();
+
+    expect(passwordInput.type).toBe('text');
+    expect(component.mostrarPasswordLogin).toBeTrue();
+
+    eyeButton.click();
+    fixture.detectChanges();
+    expect(passwordInput.type).toBe('password');
+    expect(component.mostrarPasswordLogin).toBeFalse();
+  });
 });
 

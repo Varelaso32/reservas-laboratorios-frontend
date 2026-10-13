@@ -1,4 +1,5 @@
 import { Component, OnInit, inject } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { SolicitudReservaComponent } from '../../../reservas/pages/solicitud-reserva/solicitud-reserva.component';
 import { Espacio } from '../../../../shared/models/espacio.model';
 import { EspaciosService } from '../../../../core/services/espacios.service';
@@ -9,7 +10,7 @@ import { PosSidebarComponent } from '../../../../shared/components/pos-sidebar/p
 
 @Component({
   selector: 'app-espacios',
-  imports: [SolicitudReservaComponent, PosSidebarComponent],
+  imports: [FormsModule, SolicitudReservaComponent, PosSidebarComponent],
   templateUrl: './espacios.component.html',
   styleUrl: './espacios.component.scss'
 })
@@ -22,6 +23,7 @@ export class EspaciosComponent implements OnInit {
   errorCarga: string | null = null;
   espacios: Espacio[] = [];
   espacioSeleccionado: Espacio | null = null;
+  terminoBusqueda = '';
 
   get usuarioActual() {
     return this.authService.tieneSesionActiva()
@@ -71,6 +73,31 @@ export class EspaciosComponent implements OnInit {
   abrirReserva(espacio: Espacio): void {
     this.espacioSeleccionado = espacio;
     this.modalReservaAbierto = true;
+  }
+
+  get espaciosFiltrados(): Espacio[] {
+    const termino = this.terminoBusqueda.trim().toLowerCase();
+    if (!termino) {
+      return this.espacios;
+    }
+    return this.espacios.filter(espacio => {
+      const nombre = espacio.nombre.toLowerCase();
+      const tipo = espacio.tipo.toLowerCase();
+      const ubicacion = (espacio.ubicacion ?? '').toLowerCase();
+      const capacidad = String(espacio.capacidad);
+      const codigo = `l10${espacio.id}`;
+      return (
+        nombre.includes(termino) ||
+        tipo.includes(termino) ||
+        ubicacion.includes(termino) ||
+        capacidad.includes(termino) ||
+        codigo.includes(termino)
+      );
+    });
+  }
+
+  limpiarBusqueda(): void {
+    this.terminoBusqueda = '';
   }
 
   cerrarReserva(): void {

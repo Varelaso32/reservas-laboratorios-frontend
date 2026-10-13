@@ -99,6 +99,60 @@ export class AdminEspaciosComponent implements OnDestroy, OnInit {
   amenidadesNuevoEspacioVisual: string[] = [];
 
   filtrosHistorial: { estado?: 'APROBADA' | 'RECHAZADA'; fecha_desde?: string; fecha_hasta?: string } = {};
+  terminoBusqueda = '';
+
+  get espaciosFiltrados(): Espacio[] {
+    const termino = this.terminoBusqueda.trim().toLowerCase();
+    if (!termino) {
+      return this.espacios;
+    }
+    return this.espacios.filter(espacio => {
+      const nombre = espacio.nombre.toLowerCase();
+      const tipo = espacio.tipo.toLowerCase();
+      const ubicacion = (espacio.ubicacion ?? '').toLowerCase();
+      const capacidad = String(espacio.capacidad);
+      const codigo = `l10${espacio.id}`;
+      return (
+        nombre.includes(termino) ||
+        tipo.includes(termino) ||
+        ubicacion.includes(termino) ||
+        capacidad.includes(termino) ||
+        codigo.includes(termino)
+      );
+    });
+  }
+
+  bloquearTeclasNoDigitos(event: KeyboardEvent): void {
+    const teclasPermitidas = [
+      'Backspace', 'Delete', 'Tab', 'Escape', 'Enter',
+      'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
+      'Home', 'End'
+    ];
+    if (teclasPermitidas.includes(event.key)) {
+      return;
+    }
+    if (event.ctrlKey || event.metaKey) {
+      return;
+    }
+    if (!/^\d$/.test(event.key)) {
+      event.preventDefault();
+    }
+  }
+
+  validarEntradaCapacidad(event: Event, tipo: 'edicion' | 'nuevo'): void {
+    const input = event.target as HTMLInputElement;
+    let soloDigitos = input.value.replace(/\D/g, '');
+    if (soloDigitos.startsWith('0')) {
+      soloDigitos = soloDigitos.replace(/^0+/, '');
+    }
+    input.value = soloDigitos;
+    const valorNumerico = soloDigitos ? parseInt(soloDigitos, 10) : 0;
+    if (tipo === 'edicion') {
+      this.formularioEspacio.capacidad = valorNumerico;
+    } else {
+      this.formularioNuevoEspacio.capacidad = valorNumerico;
+    }
+  }
 
   get usuarioActual() {
     return this.authService.obtenerUsuarioActual();

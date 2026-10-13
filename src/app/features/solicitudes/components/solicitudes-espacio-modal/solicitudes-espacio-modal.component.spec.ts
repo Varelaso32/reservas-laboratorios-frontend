@@ -105,6 +105,8 @@ describe('SolicitudesEspacioModalComponent', () => {
       estado: 'APROBADA'
     });
 
+    // Con criterio 'decision', emite fechas al backend
+    component.criterioFecha = 'decision';
     const fechaDesdeEvent = { target: { value: '2026-10-01' } } as unknown as Event;
     component.cambiarFiltroFechaDesde(fechaDesdeEvent);
 
@@ -121,6 +123,58 @@ describe('SolicitudesEspacioModalComponent', () => {
       fecha_desde: '2026-10-01',
       fecha_hasta: '2026-10-15'
     });
+  });
+
+  it('filtra solicitudes resueltas por fecha de reserva y por fecha de decision', () => {
+    component.solicitudesResueltas = [
+      {
+        id: 1,
+        solicitante: { id: 1, nombre: 'Ana', email: 'ana@ecci.edu.co', cargo: null },
+        espacio: mockEspacio,
+        inicio: '2026-10-15T08:00:00-05:00',
+        fin: '2026-10-15T10:00:00-05:00',
+        asistentes: 10,
+        estado: 'APROBADA',
+        motivo_rechazo: null,
+        decidida_por: 'Admin',
+        fecha_decision: '2026-10-11T18:58:00-05:00'
+      },
+      {
+        id: 2,
+        solicitante: { id: 2, nombre: 'Carlos', email: 'carlos@ecci.edu.co', cargo: null },
+        espacio: mockEspacio,
+        inicio: '2026-10-20T08:00:00-05:00',
+        fin: '2026-10-20T10:00:00-05:00',
+        asistentes: 15,
+        estado: 'RECHAZADA',
+        motivo_rechazo: 'Mantenimiento',
+        decidida_por: 'Admin',
+        fecha_decision: '2026-10-12T10:00:00-05:00'
+      }
+    ];
+
+    // Por defecto criterio 'reserva':
+    component.criterioFecha = 'reserva';
+    component.filtroFechaDesde = '2026-10-11';
+    component.filtroFechaHasta = '2026-10-12';
+    // El inicio es 15 y 20, ninguno coincide
+    expect(component.solicitudesResueltasFiltradas.length).toBe(0);
+
+    // Ajustamos rango de reserva
+    component.filtroFechaDesde = '2026-10-15';
+    component.filtroFechaHasta = '2026-10-16';
+    expect(component.solicitudesResueltasFiltradas.length).toBe(1);
+    expect(component.solicitudesResueltasFiltradas[0].id).toBe(1);
+
+    // Con criterio 'decision':
+    component.criterioFecha = 'decision';
+    component.filtroFechaDesde = '2026-10-11';
+    component.filtroFechaHasta = '2026-10-12';
+    expect(component.solicitudesResueltasFiltradas.length).toBe(2);
+
+    const criterioEvent = { target: { value: 'decision' } } as unknown as Event;
+    component.cambiarCriterioFecha(criterioEvent);
+    expect(component.criterioFecha).toBe('decision');
   });
 });
 
