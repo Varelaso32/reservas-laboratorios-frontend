@@ -43,6 +43,7 @@ export class SolicitudesEspacioModalComponent implements OnChanges {
     fecha_hasta?: string;
   }>();
   filtroEstado: '' | 'APROBADA' | 'RECHAZADA' = '';
+  criterioFecha: 'reserva' | 'decision' = 'reserva';
   filtroFechaDesde = '';
   filtroFechaHasta = '';
   readonly motivoRechazo = new FormControl('', {
@@ -130,6 +131,11 @@ export class SolicitudesEspacioModalComponent implements OnChanges {
     this.emitirFiltrosHistorial();
   }
 
+  cambiarCriterioFecha(event: Event): void {
+    this.criterioFecha = (event.target as HTMLSelectElement).value as 'reserva' | 'decision';
+    this.emitirFiltrosHistorial();
+  }
+
   cambiarFiltroFechaDesde(event: Event): void {
     this.filtroFechaDesde = (event.target as HTMLInputElement).value;
     this.emitirFiltrosHistorial();
@@ -140,15 +146,65 @@ export class SolicitudesEspacioModalComponent implements OnChanges {
     this.emitirFiltrosHistorial();
   }
 
+  extraerFechaLocal(fechaIso: string): string {
+    try {
+      const fecha = new Date(fechaIso);
+      if (Number.isNaN(fecha.getTime())) {
+        return fechaIso.slice(0, 10);
+      }
+      const formateador = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/Bogota',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      });
+      return formateador.format(fecha);
+    } catch {
+      return fechaIso.slice(0, 10);
+    }
+  }
+
+  get solicitudesResueltasFiltradas(): SolicitudResuelta[] {
+    let lista = this.solicitudesResueltas;
+    if (this.filtroEstado) {
+      lista = lista.filter(s => s.estado === this.filtroEstado);
+    }
+    if (this.criterioFecha === 'reserva') {
+      if (this.filtroFechaDesde) {
+        lista = lista.filter(s => this.extraerFechaLocal(s.inicio) >= this.filtroFechaDesde);
+      }
+      if (this.filtroFechaHasta) {
+        lista = lista.filter(s => this.extraerFechaLocal(s.inicio) <= this.filtroFechaHasta);
+      }
+    } else if (this.criterioFecha === 'decision') {
+      if (this.filtroFechaDesde) {
+        lista = lista.filter(s => !!s.fecha_decision && this.extraerFechaLocal(s.fecha_decision) >= this.filtroFechaDesde);
+      }
+      if (this.filtroFechaHasta) {
+        lista = lista.filter(s => !!s.fecha_decision && this.extraerFechaLocal(s.fecha_decision) <= this.filtroFechaHasta);
+      }
+    }
+    return lista;
+  }
+
   reintentarHistorial(): void {
     this.emitirFiltrosHistorial();
   }
 
   private emitirFiltrosHistorial(): void {
-    this.filtrosHistorialChange.emit({
-      ...(this.filtroEstado ? { estado: this.filtroEstado } : {}),
-      ...(this.filtroFechaDesde ? { fecha_desde: this.filtroFechaDesde } : {}),
-      ...(this.filtroFechaHasta ? { fecha_hasta: this.filtroFechaHasta } : {})
-    });
+    if (this.criterioFecha === 'decision') {
+      this.filtrosHistorialChange.emit({
+        ...(this.filtroEstado ? { estado: this.filtroEstado } : {}),
+        ...(this.filtroFechaDesde ? { fecha_desde: this.filtroFechaDesde } : {}),
+        ...(this.filtroFechaHasta ? { fecha_hasta: this.filtroFechaHasta } : {})
+      });
+    } else {
+      // Para criterio de reserva, no enviamos fecha_desde/fecha_hasta al backend porque
+      // el backend filtra por fecha_decision. El filtrado por fecha de reserva se realiza
+      // localmente sobre las solicitudes resueltas.
+      this.filtrosHistorialChange.emit({
+        ...(this.filtroEstado ? { estado: this.filtroEstado } : {})
+      });
+    }
   }
 }

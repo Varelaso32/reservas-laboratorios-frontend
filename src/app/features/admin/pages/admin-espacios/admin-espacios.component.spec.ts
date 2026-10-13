@@ -1279,4 +1279,62 @@ describe('AdminEspaciosComponent', () => {
     expect(sessionStorage.getItem('access_token')).toBeNull();
     expect(router.navigateByUrl).toHaveBeenCalledWith('/login');
   });
+  it('filters spaces list by search term in admin panel', () => {
+    crearPagina('ADMIN');
+    cargarEspacios();
+    const comp = fixture.componentInstance;
+
+    comp.terminoBusqueda = 'Redes';
+    expect(comp.espaciosFiltrados.length).toBe(1);
+    expect(comp.espaciosFiltrados[0].nombre).toBe('Laboratorio de Redes');
+
+    comp.terminoBusqueda = 'Inexistente';
+    expect(comp.espaciosFiltrados.length).toBe(0);
+
+    comp.terminoBusqueda = '';
+    expect(comp.espaciosFiltrados.length).toBe(2);
+  });
+
+  it('blocks non-digit keys and sanitizes capacity input for positive integers', () => {
+    crearPagina('ADMIN');
+    cargarEspacios();
+    const comp = fixture.componentInstance;
+
+    // Test blocking 'e', 'E', '+', '-', '.', 'a'
+    const preventDefaultSpy = jasmine.createSpy('preventDefault');
+    comp.bloquearTeclasNoDigitos({ key: 'e', preventDefault: preventDefaultSpy } as unknown as KeyboardEvent);
+    expect(preventDefaultSpy).toHaveBeenCalled();
+
+    preventDefaultSpy.calls.reset();
+    comp.bloquearTeclasNoDigitos({ key: '+', preventDefault: preventDefaultSpy } as unknown as KeyboardEvent);
+    expect(preventDefaultSpy).toHaveBeenCalled();
+
+    preventDefaultSpy.calls.reset();
+    comp.bloquearTeclasNoDigitos({ key: '-', preventDefault: preventDefaultSpy } as unknown as KeyboardEvent);
+    expect(preventDefaultSpy).toHaveBeenCalled();
+
+    preventDefaultSpy.calls.reset();
+    comp.bloquearTeclasNoDigitos({ key: '.', preventDefault: preventDefaultSpy } as unknown as KeyboardEvent);
+    expect(preventDefaultSpy).toHaveBeenCalled();
+
+    // Digits and navigation keys are allowed
+    preventDefaultSpy.calls.reset();
+    comp.bloquearTeclasNoDigitos({ key: '5', preventDefault: preventDefaultSpy } as unknown as KeyboardEvent);
+    expect(preventDefaultSpy).not.toHaveBeenCalled();
+
+    preventDefaultSpy.calls.reset();
+    comp.bloquearTeclasNoDigitos({ key: 'Backspace', preventDefault: preventDefaultSpy } as unknown as KeyboardEvent);
+    expect(preventDefaultSpy).not.toHaveBeenCalled();
+
+    // Test sanitizing input for edit and new space
+    const fakeInputEdicion = { value: '1e5+' };
+    comp.validarEntradaCapacidad({ target: fakeInputEdicion } as unknown as Event, 'edicion');
+    expect(fakeInputEdicion.value).toBe('15');
+    expect(comp.formularioEspacio.capacidad).toBe(15);
+
+    const fakeInputNuevo = { value: '0025abc' };
+    comp.validarEntradaCapacidad({ target: fakeInputNuevo } as unknown as Event, 'nuevo');
+    expect(fakeInputNuevo.value).toBe('25');
+    expect(comp.formularioNuevoEspacio.capacidad).toBe(25);
+  });
 });
