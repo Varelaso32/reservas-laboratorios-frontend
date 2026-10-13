@@ -198,4 +198,30 @@ describe('EspaciosComponent', () => {
     expect(result instanceof UrlTree).toBeTrue();
     expect(router.serializeUrl(result as UrlTree)).toBe('/login');
   });
+
+  it('filters spaces by search term and restores list on clear', () => {
+    component.espacios = [
+      { id: 1, nombre: 'Laboratorio de Redes', tipo: 'LABORATORIO', capacidad: 25, ubicacion: 'Bloque A' },
+      { id: 2, nombre: 'Sala de Juntas', tipo: 'SALA', capacidad: 10, ubicacion: 'Bloque B' }
+    ];
+    fixture.detectChanges();
+
+    component.terminoBusqueda = 'Redes';
+    expect(component.espaciosFiltrados.length).toBe(1);
+    expect(component.espaciosFiltrados[0].nombre).toBe('Laboratorio de Redes');
+
+    component.terminoBusqueda = 'Juntas';
+    expect(component.espaciosFiltrados.length).toBe(1);
+    expect(component.espaciosFiltrados[0].nombre).toBe('Sala de Juntas');
+
+    component.terminoBusqueda = 'Inexistente';
+    expect(component.espaciosFiltrados.length).toBe(0);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('No se encontraron espacios');
+
+    component.limpiarBusqueda();
+    expect(component.terminoBusqueda).toBe('');
+    expect(component.espaciosFiltrados.length).toBe(2);
+  });
 });

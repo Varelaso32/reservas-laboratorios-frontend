@@ -7,7 +7,8 @@
 
     <header class="topbar">
 
-      <label class="buscador" for="busqueda-espacios">
+      <div class="buscador">
+        <label for="busqueda-espacios" class="sr-only">Buscar espacios</label>
         <i class="pi pi-search" aria-hidden="true"></i>
 
         <input
@@ -15,8 +16,20 @@
           type="search"
           placeholder="Buscar espacios, reservas..."
           aria-label="Buscar espacios, reservas..."
+          [(ngModel)]="terminoBusqueda"
         />
-      </label>
+
+        @if (terminoBusqueda) {
+          <button
+            type="button"
+            class="boton-limpiar-busqueda"
+            aria-label="Limpiar búsqueda"
+            (click)="limpiarBusqueda()"
+          >
+            <i class="pi pi-times" aria-hidden="true"></i>
+          </button>
+        }
+      </div>
 
       <div class="acciones-topbar">
         <i class="pi pi-bell" aria-hidden="true"></i>
@@ -37,7 +50,11 @@
           @if (cargando) {
             <p>Cargando espacios...</p>
           } @else if (!errorCarga) {
-            <p>{{ espacios.length }} espacios registrados</p>
+            @if (terminoBusqueda.trim()) {
+              <p>{{ espaciosFiltrados.length }} de {{ espacios.length }} espacios encontrados</p>
+            } @else {
+              <p>{{ espacios.length }} espacios registrados</p>
+            }
           }
         </div>
 
@@ -55,8 +72,13 @@
           </div>
         } @else if (espacios.length === 0) {
           <p class="estado-lista">No hay espacios registrados.</p>
+        } @else if (espaciosFiltrados.length === 0) {
+          <div class="estado-lista sin-resultados" role="status">
+            <p>No se encontraron espacios que coincidan con "{{ terminoBusqueda }}".</p>
+            <button type="button" class="boton-reintentar-filtro" (click)="limpiarBusqueda()">Mostrar todos los espacios</button>
+          </div>
         } @else {
-          @for (espacio of espacios; track espacio.id) {
+          @for (espacio of espaciosFiltrados; track espacio.id) {
 
           <article class="tarjeta">
 

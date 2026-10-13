@@ -1,4 +1,5 @@
 import { Component, OnInit, inject } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { SolicitudReservaComponent } from '../../../reservas/pages/solicitud-reserva/solicitud-reserva.component';
 import { Espacio } from '../../../../shared/models/espacio.model';
 import { EspaciosService } from '../../../../core/services/espacios.service';
@@ -6,10 +7,12 @@ import { AuthService } from '../../../../core/services/auth.service';
 import { obtenerMensajeErrorApi } from '../../../../core/utils/api-error.util';
 import { obtenerColorIdentificadorEspacio } from '../../../../shared/utils/espacio-color.util';
 import { PosSidebarComponent } from '../../../../shared/components/pos-sidebar/pos-sidebar.component';
+import { obtenerInicialesUsuario } from '../../../../shared/utils/usuario-iniciales.util';
+import { filtrarEspaciosPorTermino } from '../../../../shared/utils/espacio-filtro.util';
 
 @Component({
   selector: 'app-espacios',
-  imports: [SolicitudReservaComponent, PosSidebarComponent],
+  imports: [FormsModule, SolicitudReservaComponent, PosSidebarComponent],
   templateUrl: './espacios.component.html',
   styleUrl: './espacios.component.scss'
 })
@@ -22,6 +25,7 @@ export class EspaciosComponent implements OnInit {
   errorCarga: string | null = null;
   espacios: Espacio[] = [];
   espacioSeleccionado: Espacio | null = null;
+  terminoBusqueda = '';
 
   get usuarioActual() {
     return this.authService.tieneSesionActiva()
@@ -30,17 +34,7 @@ export class EspaciosComponent implements OnInit {
   }
 
   get inicialesUsuario(): string {
-    const nombre = this.usuarioActual?.nombre.trim();
-    if (!nombre) {
-      return '';
-    }
-
-    const partes = nombre.split(/\s+/).filter(Boolean);
-    if (partes.length === 1) {
-      return partes[0].slice(0, 2).toLocaleUpperCase();
-    }
-
-    return `${partes[0][0]}${partes[partes.length - 1][0]}`.toLocaleUpperCase();
+    return obtenerInicialesUsuario(this.usuarioActual?.nombre);
   }
 
   obtenerColorEspacio(espacioId: number): string {
@@ -71,6 +65,14 @@ export class EspaciosComponent implements OnInit {
   abrirReserva(espacio: Espacio): void {
     this.espacioSeleccionado = espacio;
     this.modalReservaAbierto = true;
+  }
+
+  get espaciosFiltrados(): Espacio[] {
+    return filtrarEspaciosPorTermino(this.espacios, this.terminoBusqueda);
+  }
+
+  limpiarBusqueda(): void {
+    this.terminoBusqueda = '';
   }
 
   cerrarReserva(): void {

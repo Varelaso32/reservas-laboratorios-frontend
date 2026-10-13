@@ -15,6 +15,8 @@ import { obtenerColorIdentificadorEspacio } from '../../../../shared/utils/espac
 import { EstadoDetalleSolicitud, SolicitudPendiente, SolicitudResuelta } from '../../../../shared/models/solicitud.model';
 import { SolicitudesEspacioModalComponent } from '../../../solicitudes/components/solicitudes-espacio-modal/solicitudes-espacio-modal.component';
 import { fechaColombia } from '../../../../shared/utils/fecha-colombia.util';
+import { filtrarEspaciosPorTermino } from '../../../../shared/utils/espacio-filtro.util';
+import { obtenerInicialesUsuario } from '../../../../shared/utils/usuario-iniciales.util';
 
 @Component({
   selector: 'app-admin-espacios',
@@ -99,6 +101,43 @@ export class AdminEspaciosComponent implements OnDestroy, OnInit {
   amenidadesNuevoEspacioVisual: string[] = [];
 
   filtrosHistorial: { estado?: 'APROBADA' | 'RECHAZADA'; fecha_desde?: string; fecha_hasta?: string } = {};
+  terminoBusqueda = '';
+
+  get espaciosFiltrados(): Espacio[] {
+    return filtrarEspaciosPorTermino(this.espacios, this.terminoBusqueda);
+  }
+
+  bloquearTeclasNoDigitos(event: KeyboardEvent): void {
+    const teclasPermitidas = [
+      'Backspace', 'Delete', 'Tab', 'Escape', 'Enter',
+      'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
+      'Home', 'End'
+    ];
+    if (teclasPermitidas.includes(event.key)) {
+      return;
+    }
+    if (event.ctrlKey || event.metaKey) {
+      return;
+    }
+    if (!/^\d$/.test(event.key)) {
+      event.preventDefault();
+    }
+  }
+
+  validarEntradaCapacidad(event: Event, tipo: 'edicion' | 'nuevo'): void {
+    const input = event.target as HTMLInputElement;
+    let soloDigitos = input.value.replace(/\D/g, '');
+    if (soloDigitos.startsWith('0')) {
+      soloDigitos = soloDigitos.replace(/^0+/, '');
+    }
+    input.value = soloDigitos;
+    const valorNumerico = soloDigitos ? Number.parseInt(soloDigitos, 10) : 0;
+    if (tipo === 'edicion') {
+      this.formularioEspacio.capacidad = valorNumerico;
+    } else {
+      this.formularioNuevoEspacio.capacidad = valorNumerico;
+    }
+  }
 
   get usuarioActual() {
     return this.authService.obtenerUsuarioActual();
@@ -125,17 +164,7 @@ export class AdminEspaciosComponent implements OnDestroy, OnInit {
   }
 
   get inicialesUsuario(): string {
-    const nombre = this.usuarioActual?.nombre.trim();
-    if (!nombre) {
-      return '';
-    }
-
-    const partes = nombre.split(/\s+/).filter(Boolean);
-    if (partes.length === 1) {
-      return partes[0].slice(0, 2).toLocaleUpperCase();
-    }
-
-    return `${partes[0][0]}${partes[partes.length - 1][0]}`.toLocaleUpperCase();
+    return obtenerInicialesUsuario(this.usuarioActual?.nombre);
   }
 
   ngOnInit(): void {
