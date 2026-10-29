@@ -100,7 +100,7 @@ describe('CalendarioComponent', () => {
     expect(fixture.nativeElement.textContent).toContain(component.etiquetaSemana);
     expect(bloque.textContent).toContain('Laboratorio de Redes');
     expect(bloque.getAttribute('aria-label')).toContain('09:00 a 10:00');
-    expect(getComputedStyle(bloque.querySelector('strong') as HTMLElement).fontSize).toBe('9px');
+    expect(getComputedStyle(bloque.querySelector('strong') as HTMLElement).fontSize).toBe('10px');
     expect(getComputedStyle(bloque.querySelector('strong') as HTMLElement).webkitLineClamp).toBe('2');
     expect(Number.parseFloat(bloque.style.top)).toBeCloseTo((9 / 24) * 100, 1);
     expect(Number.parseFloat(bloque.style.height)).toBeCloseTo((1 / 24) * 100, 1);
