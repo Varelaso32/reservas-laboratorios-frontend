@@ -204,7 +204,7 @@ describe('AdminEspaciosComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('25 pers.');
     expect(fixture.nativeElement.textContent).toContain('Ver solicitudes · 2');
     expect(getComputedStyle(fixture.nativeElement.querySelector('tbody td')).paddingTop)
-      .toBe('8px');
+      .toBe('12px');
     expect(fixture.nativeElement.querySelector('.menu a[routerLink="/espacios"]')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('.menu a[routerLink="/admin/usuarios"]')).toBeNull();
     expect(Array.from(fixture.nativeElement.querySelectorAll('.menu .inactivo') as NodeListOf<HTMLElement>)
@@ -283,7 +283,7 @@ describe('AdminEspaciosComponent', () => {
 
     const modal = fixture.nativeElement.querySelector('.modal-solicitudes') as HTMLElement;
     const card = fixture.nativeElement.querySelector('.card-solicitud') as HTMLElement;
-    expect(getComputedStyle(card).padding).toBe('12px 13px 10px');
+    expect(getComputedStyle(card).padding).toBe('16px 18px 14px');
     expect(router.url).toBe(urlBeforeClick);
     expect(modal.textContent).toContain('Solicitudes · Laboratorio de Redes');
     expect(modal.textContent).toContain('1 pendiente');

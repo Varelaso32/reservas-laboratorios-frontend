@@ -1,120 +1,78 @@
 <div class="login-container">
-  <!-- ─── Panel Izquierdo ─── -->
-  <aside class="left-panel" aria-label="Información institucional">
-    <div class="panel-grid-bg" aria-hidden="true"></div>
+  <!-- ─── Panel de marca (banda Sky Wash) ─── -->
+  <aside class="brand-panel" aria-label="Información de la plataforma">
+    <span class="blob blob--blue" aria-hidden="true"></span>
+    <span class="blob blob--lavender" aria-hidden="true"></span>
 
-    <!-- Logo Superior -->
-    <div class="brand-section">
-      <div class="brand-logo">
-        <div class="brand-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="#0d0d14" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/>
-            <path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/>
-            <path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/>
-            <path d="M10 6h4"/>
-            <path d="M10 10h4"/>
-            <path d="M10 14h4"/>
-            <path d="M10 18h4"/>
-          </svg>
-        </div>
-        <span class="brand-name">ReservaECCI</span>
-      </div>
-      <p class="brand-sub">Sistema de Reserva de Espacios · Universidad ECCI</p>
+    <div class="sticker-field" aria-hidden="true">
+      <span class="sticker sticker--violet"><i class="pi pi-building"></i></span>
+      <span class="sticker sticker--ember"><i class="pi pi-send"></i></span>
+      <span class="sticker sticker--sunburst"><i class="pi pi-calendar"></i></span>
+      <span class="sticker sticker--mint"><i class="pi pi-check"></i></span>
     </div>
 
-    <!-- Contenido Central / Hero -->
-    <div class="hero-section">
-      <h2 class="hero-title">
-        Gestiona cada espacio,<br />
-        <span class="hero-title-accent">sin fricciones.</span>
-      </h2>
-      <p class="hero-desc">
-        Reserva laboratorios, salas y aulas de la Escuela de Ciencias de la Computación e Informática en segundos.
+    <header class="brand-row">
+      <span class="brand-badge" aria-hidden="true">R</span>
+      <span class="brand-name">ReservaECCI</span>
+    </header>
+
+    <div class="brand-hero">
+      <p class="eyebrow">Plataforma de reservas · Universidad ECCI</p>
+      <h2 class="display">Reserva el espacio. No la fila.</h2>
+      <p class="tagline">
+        Laboratorios, salas y auditorios de la Escuela de Ciencias de la Computación e Informática,
+        disponibles en un solo lugar.
       </p>
-
-      <div class="hero-stats">
-        <div class="stat-item">
-          <div class="stat-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/>
-              <path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/>
-              <path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/>
-              <path d="M10 6h4"/>
-              <path d="M10 10h4"/>
-              <path d="M10 14h4"/>
-              <path d="M10 18h4"/>
-            </svg>
-          </div>
-          <div class="stat-val">24</div>
-          <div class="stat-lbl">Espacios</div>
-        </div>
-
-        <div class="stat-item">
-          <div class="stat-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M8 2v4"/>
-              <path d="M16 2v4"/>
-              <rect width="18" height="18" x="3" y="4" rx="2"/>
-              <path d="M3 10h18"/>
-            </svg>
-          </div>
-          <div class="stat-val">138</div>
-          <div class="stat-lbl">Reservas hoy</div>
-        </div>
-
-        <div class="stat-item">
-          <div class="stat-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-              <circle cx="9" cy="7" r="4"/>
-              <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
-              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-            </svg>
-          </div>
-          <div class="stat-val">600+</div>
-          <div class="stat-lbl">Usuarios</div>
-        </div>
-      </div>
+      <ul class="chip-row">
+        <li class="chip">Laboratorios</li>
+        <li class="chip">Salas</li>
+        <li class="chip">Auditorios</li>
+      </ul>
     </div>
 
-    <!-- Tarjetas de salas inferiores -->
-    <div class="room-cards" aria-hidden="true">
-      <div class="room-card">
-        <div class="room-header">
-          <span class="room-dot dot-blue"></span>
-          <span class="room-name">Lab. Redes</span>
+    <div class="space-strip" aria-hidden="true">
+      <div class="space-card">
+        <div class="space-card__head">
+          <span class="dot dot--blue"></span>
+          <span class="space-card__name">Lab. Redes</span>
         </div>
-        <div class="room-floor">Piso 1</div>
-        <span class="room-status status-available">Disponible</span>
+        <p class="space-card__floor">Piso 1</p>
+        <span class="status status--free">Disponible</span>
       </div>
 
-      <div class="room-card">
-        <div class="room-header">
-          <span class="room-dot dot-green"></span>
-          <span class="room-name">Sala A</span>
+      <div class="space-card">
+        <div class="space-card__head">
+          <span class="dot dot--mint"></span>
+          <span class="space-card__name">Sala A</span>
         </div>
-        <div class="room-floor">Piso 3</div>
-        <span class="room-status status-available">Disponible</span>
+        <p class="space-card__floor">Piso 3</p>
+        <span class="status status--free">Disponible</span>
       </div>
 
-      <div class="room-card">
-        <div class="room-header">
-          <span class="room-dot dot-purple"></span>
-          <span class="room-name">Aula Magna</span>
+      <div class="space-card">
+        <div class="space-card__head">
+          <span class="dot dot--violet"></span>
+          <span class="space-card__name">Aula Magna</span>
         </div>
-        <div class="room-floor">Piso 4</div>
-        <span class="room-status status-occupied">Ocupada</span>
+        <p class="space-card__floor">Piso 4</p>
+        <span class="status status--busy">Ocupada</span>
       </div>
     </div>
   </aside>
 
-  <!-- ─── Panel Derecho ─── -->
-  <main class="right-panel">
-    <div class="auth-box">
+  <!-- ─── Panel de acceso ─── -->
+  <main class="auth-panel">
+    <div class="mobile-brand">
+      <span class="brand-badge" aria-hidden="true">R</span>
+      <span class="brand-name">ReservaECCI</span>
+    </div>
+
+    <section class="auth-card">
       @if (vista === 'login') {
-        <header class="auth-header">
-          <h1 class="auth-title">Bienvenido</h1>
-          <p class="auth-subtitle">Ingresa con tus credenciales institucionales</p>
+        <header class="auth-head">
+          <p class="auth-eyebrow">Acceso institucional</p>
+          <h1 class="auth-title">Iniciar sesión</h1>
+          <p class="auth-sub">Ingresa con tu correo &#64;ecci.edu.co</p>
         </header>
 
         <!-- Tab switcher -->
@@ -142,7 +100,7 @@
         </div>
 
         <form [formGroup]="formLogin" (ngSubmit)="iniciarSesion()" novalidate aria-labelledby="login-tab">
-          <div class="form-group">
+          <div class="field">
             <label for="login-email">Correo institucional</label>
             <input
               id="login-email"
@@ -161,8 +119,11 @@
             }
           </div>
 
-          <div class="form-group">
-            <label for="login-password">Contraseña</label>
+          <div class="field">
+            <div class="field-head">
+              <label for="login-password">Contraseña</label>
+              <a href="javascript:void(0)" class="forgot-link">¿Olvidaste tu contraseña?</a>
+            </div>
             <div class="password-wrap">
               <input
                 id="login-password"
@@ -181,7 +142,12 @@
                 [attr.aria-pressed]="mostrarPasswordLogin"
                 (click)="mostrarPasswordLogin = !mostrarPasswordLogin"
               >
-                <ng-container *ngTemplateOutlet="eyeIcon; context: { visible: mostrarPasswordLogin }" />
+                <i
+                  class="pi"
+                  [class.pi-eye]="mostrarPasswordLogin"
+                  [class.pi-eye-slash]="!mostrarPasswordLogin"
+                  aria-hidden="true"
+                ></i>
               </button>
             </div>
             @if (formLogin.controls.password.touched && formLogin.controls.password.invalid) {
@@ -189,19 +155,17 @@
             }
           </div>
 
-          <div class="forgot-wrap">
-            <a href="javascript:void(0)" class="forgot-link">¿Olvidaste tu contraseña?</a>
-          </div>
-
           @if (mensajeError) {
             <div class="alert-box alert-error" role="alert">
-              {{ mensajeError }}
+              <i class="pi pi-exclamation-circle" aria-hidden="true"></i>
+              <span>{{ mensajeError }}</span>
             </div>
           }
 
           @if (mensajeRegistro) {
             <div class="alert-box alert-success" role="status">
-              {{ mensajeRegistro }}
+              <i class="pi pi-check-circle" aria-hidden="true"></i>
+              <span>{{ mensajeRegistro }}</span>
             </div>
           }
 
@@ -215,24 +179,23 @@
           </button>
         </form>
 
-        <footer class="footer-note">Universidad ECCI · v1.0</footer>
+        <footer class="auth-foot">Universidad ECCI · v1.0</footer>
       } @else {
         <!-- ── Modo Registro ── -->
-        <header class="auth-header header-signup">
-          <div class="header-back-row">
+        <header class="auth-head">
+          <div class="head-back-row">
             <button
               type="button"
               class="back-btn"
               aria-label="Volver a iniciar sesión"
               (click)="cambiarVista('login')"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="m15 18-6-6 6-6" />
-              </svg>
+              <i class="pi pi-arrow-left" aria-hidden="true"></i>
             </button>
-            <h1 class="auth-title signup-title">Crear cuenta</h1>
+            <p class="auth-eyebrow">Solicitud de acceso</p>
           </div>
-          <p class="auth-subtitle signup-subtitle">Solicitud de acceso al sistema</p>
+          <h1 class="auth-title">Crear cuenta</h1>
+          <p class="auth-sub">Regístrate con tu correo &#64;ecci.edu.co</p>
         </header>
 
         <!-- Tab switcher -->
@@ -260,7 +223,7 @@
         </div>
 
         <form [formGroup]="formRegistro" (ngSubmit)="solicitarAcceso()" novalidate aria-labelledby="signup-tab">
-          <div class="form-group">
+          <div class="field">
             <label for="signup-name">Nombre completo</label>
             <input
               id="signup-name"
@@ -277,7 +240,7 @@
             }
           </div>
 
-          <div class="form-group">
+          <div class="field">
             <label for="signup-email">Correo institucional</label>
             <input
               id="signup-email"
@@ -296,7 +259,7 @@
             }
           </div>
 
-          <div class="form-group">
+          <div class="field">
             <label for="signup-password">Contraseña</label>
             <div class="password-wrap">
               <input
@@ -316,7 +279,12 @@
                 [attr.aria-pressed]="mostrarPasswordRegistro"
                 (click)="mostrarPasswordRegistro = !mostrarPasswordRegistro"
               >
-                <ng-container *ngTemplateOutlet="eyeIcon; context: { visible: mostrarPasswordRegistro }" />
+                <i
+                  class="pi"
+                  [class.pi-eye]="mostrarPasswordRegistro"
+                  [class.pi-eye-slash]="!mostrarPasswordRegistro"
+                  aria-hidden="true"
+                ></i>
               </button>
             </div>
             @if (formRegistro.controls.password.touched && formRegistro.controls.password.hasError('required')) {
@@ -326,7 +294,7 @@
             }
           </div>
 
-          <div class="form-group confirm-group">
+          <div class="field">
             <label for="signup-confirm-password">Confirmar contraseña</label>
             <div class="password-wrap">
               <input
@@ -346,7 +314,12 @@
                 [attr.aria-pressed]="mostrarConfirmacionRegistro"
                 (click)="mostrarConfirmacionRegistro = !mostrarConfirmacionRegistro"
               >
-                <ng-container *ngTemplateOutlet="eyeIcon; context: { visible: mostrarConfirmacionRegistro }" />
+                <i
+                  class="pi"
+                  [class.pi-eye]="mostrarConfirmacionRegistro"
+                  [class.pi-eye-slash]="!mostrarConfirmacionRegistro"
+                  aria-hidden="true"
+                ></i>
               </button>
             </div>
             @if (formRegistro.controls.confirmarPassword.touched && formRegistro.controls.confirmarPassword.hasError('required')) {
@@ -358,7 +331,8 @@
 
           @if (errorRegistro) {
             <div class="alert-box alert-error" role="alert">
-              {{ errorRegistro }}
+              <i class="pi pi-exclamation-circle" aria-hidden="true"></i>
+              <span>{{ errorRegistro }}</span>
             </div>
           }
 
@@ -372,28 +346,13 @@
           </button>
 
           <p class="role-notice">
-            Las cuentas creadas se asignan inicialmente con rol Estudiante. El administrador puede actualizar tu rol si requieres permisos especiales.
+            Las cuentas creadas se asignan inicialmente con rol Estudiante. El administrador puede
+            actualizar tu rol si requieres permisos especiales.
           </p>
         </form>
 
-        <footer class="footer-note">Universidad ECCI · v1.0</footer>
+        <footer class="auth-foot">Universidad ECCI · v1.0</footer>
       }
-    </div>
+    </section>
   </main>
 </div>
-
-<ng-template #eyeIcon let-visible="visible">
-  @if (visible) {
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/>
-      <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/>
-      <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/>
-      <line x1="2" x2="22" y1="2" y2="22"/>
-    </svg>
-  } @else {
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
-      <circle cx="12" cy="12" r="3"/>
-    </svg>
-  }
-</ng-template>
