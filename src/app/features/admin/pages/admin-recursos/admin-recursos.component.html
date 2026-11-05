@@ -1,0 +1,593 @@
+<p-toast key="admin-recursos" position="bottom-right"></p-toast>
+
+<div class="admin-app">
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-icon">R</div>
+      <div>
+        <strong>ReservaECCI</strong>
+        <small>Panel Admin</small>
+      </div>
+    </div>
+
+    <nav class="menu" aria-label="Panel Admin">
+            @if (usuarioActual?.rol === 'ADMIN') {
+        <a class="menu-item" routerLink="/admin/dashboard" routerLinkActive="activo" ariaCurrentWhenActive="page">
+          <i class="pi pi-th-large" aria-hidden="true"></i>
+          <span>Resumen</span>
+        </a>
+      }
+      <a class="menu-item" routerLink="/admin/espacios">
+        <i class="pi pi-building" aria-hidden="true"></i>
+        <span>Espacios</span>
+      </a>
+      <a class="menu-item" routerLink="/admin/usuarios">
+        <i class="pi pi-users" aria-hidden="true"></i>
+        <span>Usuarios</span>
+      </a>
+      <a class="menu-item" routerLink="/admin/sanciones">
+        <i class="pi pi-shield" aria-hidden="true"></i>
+        <span>Sanciones</span>
+      </a>
+            @if (usuarioActual?.rol === 'ADMIN') {
+        <a class="menu-item" routerLink="/admin/reportes" routerLinkActive="activo" ariaCurrentWhenActive="page">
+          <i class="pi pi-chart-bar" aria-hidden="true"></i>
+          <span>Reportes</span>
+        </a>
+      }
+
+      <div class="grupo-menu">
+        <button
+          type="button"
+          class="menu-item grupo"
+          aria-controls="submenu-parametros"
+          [class.abierto]="parametrosAbierto"
+          [attr.aria-expanded]="parametrosAbierto"
+          (click)="alternarParametros()"
+        >
+          <i class="pi pi-sliders-h" aria-hidden="true"></i>
+          <span>Parámetros</span>
+          <i class="pi pi-angle-down chevron" aria-hidden="true"></i>
+        </button>
+
+        @if (parametrosAbierto) {
+          <div class="submenu" id="submenu-parametros">
+            <a class="submenu-item" routerLink="/admin/parametros/reglas" title="Reglas de reserva">
+              <i class="pi pi-calendar-times" aria-hidden="true"></i>
+              <span>Reglas de reserva</span>
+            </a>
+            <a class="submenu-item" routerLink="/admin/parametros/tipos-uso" title="Tipos de uso">
+              <i class="pi pi-tags" aria-hidden="true"></i>
+              <span>Tipos de uso</span>
+            </a>
+            <a class="submenu-item" routerLink="/admin/parametros/anticipacion" title="Anticipación">
+              <i class="pi pi-clock" aria-hidden="true"></i>
+              <span>Anticipación</span>
+            </a>
+            <a class="submenu-item" routerLink="/admin/parametros/sanciones" title="Sanciones">
+              <i class="pi pi-shield" aria-hidden="true"></i>
+              <span>Sanciones</span>
+            </a>
+            <a class="submenu-item" routerLink="/admin/parametros/recursos" routerLinkActive="activo" ariaCurrentWhenActive="page" title="Recursos">
+              <i class="pi pi-box" aria-hidden="true"></i>
+              <span>Recursos</span>
+            </a>
+            <a class="submenu-item" routerLink="/admin/parametros/historial" title="Historial">
+              <i class="pi pi-history" aria-hidden="true"></i>
+              <span>Historial</span>
+            </a>
+          </div>
+        }
+      </div>
+
+      <div class="separador"></div>
+
+      <a class="menu-item vista-operador" routerLink="/espacios">
+        <i class="pi pi-arrow-left" aria-hidden="true"></i>
+        <span>Vista Operador</span>
+      </a>
+    </nav>
+
+    @let usuario = usuarioActual;
+    @if (usuario) {
+      <div class="usuario">
+        <div class="avatar">{{ inicialesUsuario }}</div>
+        <div class="usuario-info">
+          <strong>{{ usuario.nombre }}</strong>
+          <small>Administrador</small>
+        </div>
+        <button
+          type="button"
+          class="logout"
+          aria-label="Cerrar sesión"
+          title="Cerrar sesión"
+          (click)="cerrarSesion()"
+        >
+          <i class="pi pi-sign-out" aria-hidden="true"></i>
+        </button>
+      </div>
+    }
+  </aside>
+
+  <main class="contenido">
+    <header class="topbar">
+      <div class="migas">
+        <i class="pi pi-sliders-h" aria-hidden="true"></i>
+        <span>Parámetros · Recursos</span>
+      </div>
+      <div class="acciones-topbar">
+        <app-campana-notificaciones />
+        <button type="button" class="boton-mini" [disabled]="procesando" (click)="procesarRetrasos()">
+          {{ procesando ? 'Procesando…' : 'Procesar retrasos' }}
+        </button>
+        <button type="button" class="boton-mini" [disabled]="cargando" (click)="cargar()">
+          <i class="pi pi-refresh" aria-hidden="true"></i>
+          Actualizar
+        </button>
+        <div class="perfil" aria-label="Usuario actual">{{ inicialesUsuario }}</div>
+      </div>
+    </header>
+
+    <section class="pagina">
+      <header class="encabezado">
+        <div>
+          <h1>Recursos y amenidades</h1>
+          <p>
+            Catálogo con stock, amenidades instaladas en los espacios, solicitudes por orden de
+            llegada, préstamos y devoluciones con penalización por retraso (HU-43 a HU-46).
+          </p>
+        </div>
+      </header>
+
+      <div class="resumen">
+        <article class="tarjeta">
+          <span>Solicitudes pendientes</span>
+          <strong>{{ pendientes }}</strong>
+        </article>
+        <article class="tarjeta">
+          <span>Préstamos vigentes</span>
+          <strong>{{ prestamosVigentes }}</strong>
+        </article>
+        <article class="tarjeta">
+          <span>Unidades activas</span>
+          <strong>{{ unidadesActivas }}</strong>
+        </article>
+        <article class="tarjeta">
+          <span>Instaladas en espacios</span>
+          <strong>{{ unidadesInstaladas }}</strong>
+        </article>
+      </div>
+
+      <nav class="pestanas" aria-label="Secciones de recursos">
+        <button
+          type="button"
+          class="pestana"
+          [class.activa]="seccion === 'catalogo'"
+          [attr.aria-current]="seccion === 'catalogo' ? 'page' : null"
+          (click)="cambiarSeccion('catalogo')"
+        >
+          <i class="pi pi-box" aria-hidden="true"></i>
+          Catálogo
+        </button>
+        <button
+          type="button"
+          class="pestana"
+          [class.activa]="seccion === 'solicitudes'"
+          [attr.aria-current]="seccion === 'solicitudes' ? 'page' : null"
+          (click)="cambiarSeccion('solicitudes')"
+        >
+          <i class="pi pi-inbox" aria-hidden="true"></i>
+          Solicitudes
+          @if (pendientes > 0) {
+            <span class="contador">{{ pendientes }}</span>
+          }
+        </button>
+        <button
+          type="button"
+          class="pestana"
+          [class.activa]="seccion === 'prestamos'"
+          [attr.aria-current]="seccion === 'prestamos' ? 'page' : null"
+          (click)="cambiarSeccion('prestamos')"
+        >
+          <i class="pi pi-send" aria-hidden="true"></i>
+          Préstamos
+        </button>
+      </nav>
+
+      @if (error) {
+        <div class="estado-panel error" role="alert">
+          <span>{{ error }}</span>
+          <button type="button" class="boton-mini" (click)="cargar()">Reintentar</button>
+        </div>
+      }
+
+      <!-- ─── Solicitudes ─── -->
+      @if (seccion === 'solicitudes') {
+        <section class="panel" aria-labelledby="titulo-solicitudes">
+          <header class="panel-header">
+            <div>
+              <h2 id="titulo-solicitudes">Solicitudes de recursos</h2>
+              <p>Se aprueban por orden de llegada; al aprobar se asignan unidades concretas.</p>
+            </div>
+
+            <label class="selector">
+              <span class="sr-only">Estado</span>
+              <select [(ngModel)]="filtroEstado">
+                <option value="PENDIENTE">Pendientes</option>
+                <option value="APROBADA">Aprobadas</option>
+                <option value="DEVUELTA">Devueltas</option>
+                <option value="RECHAZADA">Rechazadas</option>
+                <option value="CANCELADA">Canceladas</option>
+                <option value="TODAS">Todas</option>
+              </select>
+            </label>
+          </header>
+
+          @if (cargando) {
+            <p class="estado-panel" role="status">Cargando solicitudes...</p>
+          } @else if (solicitudesFiltradas.length === 0) {
+            <p class="estado-panel">No hay solicitudes en este estado.</p>
+          } @else {
+            <ul class="lista-solicitudes">
+              @for (solicitud of solicitudesFiltradas; track solicitud.id) {
+                <li class="fila-solicitud">
+                  <header class="fila-cabecera">
+                    <div class="titulo-solicitud">
+                      <strong>#{{ solicitud.id }} · {{ solicitud.solicitante }}</strong>
+                      <span>{{ solicitud.espacio }} · {{ franja(solicitud.inicio, solicitud.fin) }}</span>
+                    </div>
+                    <span [class]="claseEstadoSolicitud(solicitud.estado)">
+                      {{ nombreEstado(solicitud.estado) }}
+                    </span>
+                  </header>
+
+                  <div class="detalle-solicitud">
+                    <span class="etiqueta">Pedido</span>
+                    <ul class="chips-detalle">
+                      @for (linea of solicitud.detalle; track linea.tipo_recurso_id) {
+                        <li class="chip-detalle">
+                          {{ linea.cantidad }} × {{ linea.tipo }}
+                          @if (linea.asignados > 0) {
+                            <small>{{ linea.asignados }} asignada(s)</small>
+                          }
+                        </li>
+                      }
+                    </ul>
+                  </div>
+
+                  @if (solicitud.observacion) {
+                    <div class="detalle-solicitud">
+                      <span class="etiqueta">Observación</span>
+                      <p class="texto-detalle">{{ solicitud.observacion }}</p>
+                    </div>
+                  }
+
+                  @if (solicitud.motivo_rechazo && solicitud.estado === 'RECHAZADA') {
+                    <div class="detalle-solicitud motivo-rechazo">
+                      <span class="etiqueta">Motivo</span>
+                      <p class="texto-detalle">{{ solicitud.motivo_rechazo }}</p>
+                    </div>
+                  }
+
+                  @if (solicitud.asignaciones.length > 0) {
+                    <div class="detalle-solicitud">
+                      <span class="etiqueta">Unidades</span>
+                      <ul class="chips-detalle">
+                        @for (asignacion of solicitud.asignaciones; track asignacion.id) {
+                          <li class="chip-detalle">
+                            {{ asignacion.codigo }}
+                            <small>{{ nombreEstadoPrestamo(asignacion.estado) }}</small>
+                          </li>
+                        }
+                      </ul>
+                    </div>
+                  }
+
+                  @if (solicitud.estado === 'PENDIENTE') {
+                    <footer class="fila-acciones">
+                      <button type="button" class="boton-secundario" [disabled]="guardando" (click)="abrirDecision(solicitud, false)">
+                        Rechazar
+                      </button>
+                      <button type="button" class="boton-principal" [disabled]="guardando" (click)="abrirDecision(solicitud, true)">
+                        Aprobar y asignar
+                      </button>
+                    </footer>
+                  }
+                </li>
+              }
+            </ul>
+          }
+        </section>
+      }
+
+      <!-- ─── Préstamos ─── -->
+      @if (seccion === 'prestamos') {
+        <section class="panel" aria-labelledby="titulo-prestamos">
+          <header class="panel-header">
+            <div>
+              <h2 id="titulo-prestamos">Préstamos y devoluciones</h2>
+              <p>Quién tiene cada unidad y su hora límite de devolución.</p>
+            </div>
+            <button
+              type="button"
+              class="boton-filtro"
+              [class.activo]="soloVigentes"
+              (click)="soloVigentes = !soloVigentes"
+            >
+              <i class="pi pi-filter" aria-hidden="true"></i>
+              {{ soloVigentes ? 'Solo vigentes' : 'Ver todo' }}
+            </button>
+          </header>
+
+          @if (prestamosFiltrados.length === 0) {
+            <p class="estado-panel">No hay préstamos en este filtro.</p>
+          } @else {
+            <div class="tabla-prestamos">
+              <div class="tabla-cabecera">
+                <span>Unidad</span>
+                <span>Titular</span>
+                <span>Horario</span>
+                <span>Estado</span>
+                <span>Acciones</span>
+              </div>
+              <ul class="lista-prestamos">
+                @for (prestamo of prestamosFiltrados; track prestamo.id) {
+                  <li [class.vencido]="vencido(prestamo)">
+                    <span class="unidad">
+                      <strong>{{ prestamo.codigo }}</strong>
+                      <small>{{ prestamo.tipo }}</small>
+                    </span>
+                    <span class="titular">{{ prestamo.solicitante }}</span>
+                    <span class="horario">{{ franja(prestamo.inicio, prestamo.fin) }}</span>
+                    <span [class]="claseEstadoPrestamo(prestamo.estado)">
+                      {{ nombreEstadoPrestamo(prestamo.estado) }}
+                    </span>
+                    <span class="acciones">
+                      @if (prestamo.estado === 'ASIGNADA') {
+                        <button type="button" class="boton-mini" [disabled]="guardando" (click)="registrarEntrega(prestamo)">
+                          Entregar
+                        </button>
+                      }
+                      @if (prestamo.estado === 'ENTREGADA') {
+                        <button type="button" class="boton-mini" [disabled]="guardando" (click)="abrirDevolucion(prestamo)">
+                          Registrar devolución
+                        </button>
+                      }
+                    </span>
+                  </li>
+                }
+              </ul>
+            </div>
+          }
+        </section>
+      }
+
+      <!-- ─── Catálogo ─── -->
+      @if (seccion === 'catalogo') {
+        <section class="panel" aria-labelledby="titulo-catalogo">
+          <header class="panel-header">
+            <div>
+              <h2 id="titulo-catalogo">Catálogo de recursos</h2>
+              <p>
+                Crea la amenidad con su cantidad: el sistema genera las unidades y las descuenta
+                cuando se instalan en un espacio o se prestan en una reserva.
+              </p>
+            </div>
+            <button type="button" class="boton-principal" (click)="nuevoTipo()">
+              <i class="pi pi-plus" aria-hidden="true"></i>
+              Nuevo recurso
+            </button>
+          </header>
+
+          @if (tipos.length === 0) {
+            <p class="estado-panel">
+              Aún no hay recursos. Crea el primero, por ejemplo «TV» con 4 unidades.
+            </p>
+          } @else {
+            <div class="tabla-tipos">
+              <div class="tabla-cabecera">
+                <span>Recurso</span>
+                <span>Total</span>
+                <span>Instalados</span>
+                <span>Disponibles</span>
+                <span>Estado</span>
+                <span>Acciones</span>
+              </div>
+              <ul class="lista-tipos">
+                @for (tipo of tipos; track tipo.id) {
+                  <li [class.inactivo]="!tipo.activo">
+                    <span class="nombre-tipo">
+                      <strong>{{ tipo.nombre }}</strong>
+                      @if (tipo.descripcion) {
+                        <small>{{ tipo.descripcion }}</small>
+                      }
+                    </span>
+                    <span class="numero">{{ tipo.total }}</span>
+                    <span class="numero">{{ tipo.instalados }}</span>
+                    <span class="numero">{{ tipo.disponibles }}</span>
+                    <span [class]="tipo.activo ? 'badge-estado estado-ok' : 'badge-estado estado-baja'">
+                      {{ tipo.activo ? 'Activo' : 'Inactivo' }}
+                    </span>
+                    <span class="acciones">
+                      <button type="button" class="boton-mini" (click)="editarTipo(tipo)">Editar</button>
+                      <button type="button" class="boton-mini" [disabled]="guardando" (click)="alternarActivoTipo(tipo)">
+                        {{ tipo.activo ? 'Desactivar' : 'Activar' }}
+                      </button>
+                    </span>
+                  </li>
+                }
+              </ul>
+            </div>
+          }
+        </section>
+      }
+    </section>
+  </main>
+</div>
+
+<!-- ─── Diálogo: aprobar o rechazar ─── -->
+@if (decision) {
+  <div class="dialogo-overlay" role="presentation">
+    <section
+      class="dialogo"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="titulo-decision"
+    >
+      <h2 id="titulo-decision">{{ decision.aprobando ? 'Aprobar solicitud' : 'Rechazar solicitud' }}</h2>
+      <p>
+        Solicitud #{{ decision.solicitud.id }} · {{ decision.solicitud.solicitante }} ·
+        {{ decision.solicitud.espacio }}
+      </p>
+
+      <div class="detalle-solicitud">
+        <span class="etiqueta">Pedido</span>
+        <ul class="chips-detalle">
+          @for (linea of decision.solicitud.detalle; track linea.tipo_recurso_id) {
+            <li class="chip-detalle">{{ linea.cantidad }} × {{ linea.tipo }}</li>
+          }
+        </ul>
+      </div>
+
+      @if (decision.aprobando) {
+        <p class="ayuda">
+          Se asignarán unidades en funcionamiento del horario de la reserva. Si no hay stock
+          suficiente, la aprobación se rechaza.
+        </p>
+      } @else {
+        <label class="campo">
+          <span>Motivo del rechazo</span>
+          <textarea
+            rows="3"
+            maxlength="300"
+            placeholder="Ej. Sin disponibilidad para esa actividad"
+            [(ngModel)]="decision.motivo"
+          ></textarea>
+        </label>
+      }
+
+      <footer>
+        <button type="button" class="boton-secundario" [disabled]="guardando" (click)="cerrarDecision()">
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="boton-principal"
+          [disabled]="guardando || (!decision.aprobando && !decision.motivo.trim())"
+          (click)="confirmarDecision()"
+        >
+          {{ guardando ? 'Guardando…' : decision.aprobando ? 'Aprobar' : 'Rechazar' }}
+        </button>
+      </footer>
+    </section>
+  </div>
+}
+
+<!-- ─── Diálogo: devolución ─── -->
+@if (devolucion) {
+  <div class="dialogo-overlay" role="presentation">
+    <section
+      class="dialogo"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="titulo-devolucion"
+    >
+      <h2 id="titulo-devolucion">Registrar devolución</h2>
+      <p>Unidad {{ devolucion.prestamo.codigo }} · {{ devolucion.prestamo.tipo }}</p>
+
+      <label class="campo">
+        <span>Estado en que se recibe</span>
+        <select [(ngModel)]="devolucion.estado">
+          <option value="EN_FUNCIONAMIENTO">En funcionamiento</option>
+          <option value="FALLIDO">Fallido</option>
+        </select>
+      </label>
+
+      <label class="campo">
+        <span>Comentario (opcional)</span>
+        <textarea
+          rows="3"
+          maxlength="300"
+          placeholder="Ej. Se entrega con el cable de poder"
+          [(ngModel)]="devolucion.comentario"
+        ></textarea>
+      </label>
+
+      @if (vencido(devolucion.prestamo)) {
+        <p class="aviso-tardio" role="alert">
+          <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
+          La devolución está vencida: antes de registrar se generan los strikes dobles por retraso.
+        </p>
+      }
+
+      <footer>
+        <button type="button" class="boton-secundario" [disabled]="guardando" (click)="cerrarDevolucion()">
+          Cancelar
+        </button>
+        <button type="button" class="boton-principal" [disabled]="guardando" (click)="confirmarDevolucion()">
+          {{ guardando ? 'Guardando…' : 'Registrar devolución' }}
+        </button>
+      </footer>
+    </section>
+  </div>
+}
+
+<!-- ─── Diálogo: recurso del catálogo ─── -->
+@if (formularioTipo) {
+  <div class="dialogo-overlay" role="presentation">
+    <section
+      class="dialogo"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="titulo-tipo"
+    >
+      <h2 id="titulo-tipo">{{ tipoEnEdicion ? 'Editar recurso' : 'Nuevo recurso' }}</h2>
+      <p>
+        Escribe el nombre y cuántas unidades hay. El sistema crea las etiquetas
+        automáticamente y descuenta del stock cuando se instalan o se prestan.
+      </p>
+
+      <label class="campo">
+        <span>Nombre</span>
+        <input type="text" maxlength="80" placeholder="Ej. TV" [(ngModel)]="formularioTipo.nombre" />
+      </label>
+
+      <label class="campo">
+        <span>Descripción (opcional)</span>
+        <input type="text" maxlength="300" placeholder="Ej. Televisor para salas" [(ngModel)]="formularioTipo.descripcion" />
+      </label>
+
+      <label class="campo">
+        <span>Cantidad de unidades</span>
+        <input
+          type="number"
+          min="0"
+          max="500"
+          step="1"
+          placeholder="Ej. 4"
+          [(ngModel)]="formularioTipo.cantidad"
+        />
+        @if (tipoEnEdicion) {
+          <small class="ayuda">
+            Al bajar la cantidad solo se retiran unidades libres: las instaladas en espacios
+            o con un préstamo vigente se conservan.
+          </small>
+        }
+      </label>
+
+      <footer>
+        <button type="button" class="boton-secundario" [disabled]="guardando" (click)="cerrarFormularioTipo()">
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="boton-principal"
+          [disabled]="guardando || !formularioTipo.nombre.trim()"
+          (click)="guardarTipo()"
+        >
+          {{ guardando ? 'Guardando…' : 'Guardar recurso' }}
+        </button>
+      </footer>
+    </section>
+  </div>
+}
