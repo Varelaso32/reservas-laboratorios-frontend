@@ -42,3 +42,29 @@ export interface ActualizarUsuarioRequest {
 export interface CambiarEstadoUsuarioRequest {
   activo: boolean;
 }
+
+/** Respuesta de PATCH /usuarios/mi-cuenta (UsuarioDetalleOut del backend). */
+export interface UsuarioDetalle {
+  id: number;
+  nombre: string;
+  email: string;
+  rol: Rol;
+  cargo: Cargo | null;
+  activo: boolean;
+  puede_autorizar_especial: boolean;
+  creado_en: string;
+}
+
+export interface ActualizarMiCuentaRequest {
+  nombre?: string;
+  email?: string;
+}
+
+export interface CambiarMiClaveRequest {
+  clave_actual: string;
+  clave_nueva: string;
+}
+
+export interface ResultadoCambio {
+  mensaje: string;
+}
