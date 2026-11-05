@@ -7,12 +7,13 @@ import { AuthService } from '../../../../core/services/auth.service';
 import { obtenerMensajeErrorApi } from '../../../../core/utils/api-error.util';
 import { obtenerColorIdentificadorEspacio } from '../../../../shared/utils/espacio-color.util';
 import { PosSidebarComponent } from '../../../../shared/components/pos-sidebar/pos-sidebar.component';
+import { CampanaNotificacionesComponent } from '../../../../shared/components/campana-notificaciones/campana-notificaciones.component';
 import { obtenerInicialesUsuario } from '../../../../shared/utils/usuario-iniciales.util';
 import { filtrarEspaciosPorTermino } from '../../../../shared/utils/espacio-filtro.util';
 
 @Component({
   selector: 'app-espacios',
-  imports: [FormsModule, SolicitudReservaComponent, PosSidebarComponent],
+  imports: [FormsModule, SolicitudReservaComponent, PosSidebarComponent, CampanaNotificacionesComponent],
   templateUrl: './espacios.component.html',
   styleUrl: './espacios.component.scss'
 })

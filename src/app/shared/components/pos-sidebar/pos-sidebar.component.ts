@@ -3,7 +3,13 @@ import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 
 import { AuthService } from '../../../core/services/auth.service';
 
-export type SeccionPos = 'dashboard' | 'calendario' | 'espacios';
+export type SeccionPos =
+  | 'dashboard'
+  | 'calendario'
+  | 'espacios'
+  | 'notificaciones'
+  | 'configuracion'
+  | 'autorizaciones';
 
 @Component({
   selector: 'app-pos-sidebar',

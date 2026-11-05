@@ -19,10 +19,15 @@
 
 /* ─── Barra lateral ─── */
 .sidebar {
+  position: sticky;
+  top: 0;
   display: flex;
+  height: 100vh;
   min-height: 100vh;
   flex: 0 0 236px;
   flex-direction: column;
+  align-self: flex-start;
+  overflow-y: auto;
   padding: var(--space-20) var(--space-16);
   background: var(--color-paper-white);
   border-right: var(--outline-hairline);
@@ -110,6 +115,88 @@
   }
 
   &:hover:not(.inactivo):not(.activo) {
+    background: var(--color-soft-mist);
+    color: var(--color-carbon);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-carbon);
+    outline-offset: 2px;
+  }
+}
+
+/* Grupo "Parámetros" con sus pantallas */
+.grupo-menu {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.menu-item.grupo {
+  width: 100%;
+  margin-top: var(--space-8);
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+
+  .chevron {
+    margin-left: auto;
+    font-size: 10px;
+    transition: transform 0.15s ease;
+  }
+
+  &.abierto .chevron {
+    transform: rotate(180deg);
+  }
+
+  &:hover {
+    background: var(--color-soft-mist);
+    color: var(--color-carbon);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-carbon);
+    outline-offset: 2px;
+  }
+}
+
+.submenu {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 2px 0 var(--space-4) 18px;
+  padding-left: var(--space-12);
+  border-left: 1px solid var(--color-soft-mist);
+}
+
+.submenu-item {
+  display: flex;
+  min-height: 32px;
+  align-items: center;
+  gap: var(--space-8);
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  color: var(--color-text-subtle);
+  font-size: 11px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color 0.15s, color 0.15s;
+
+  i {
+    font-size: 11px;
+  }
+
+  &.activo {
+    background: var(--color-sky-wash);
+    border: var(--outline-hairline);
+    color: var(--color-carbon);
+  }
+
+  &:hover:not(.activo) {
     background: var(--color-soft-mist);
     color: var(--color-carbon);
   }
@@ -813,6 +900,9 @@ tbody tr:hover td {
 }
 
 .pill-amenidad {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   min-height: 32px;
   padding: 0 14px;
   background: var(--color-paper-white);
@@ -835,10 +925,27 @@ tbody tr:hover td {
     color: var(--color-paper-white);
   }
 
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+
   &:focus-visible {
     outline: 2px solid var(--color-carbon);
     outline-offset: 2px;
   }
+}
+
+.stock-amenidad {
+  font-size: 10px;
+  font-weight: 600;
+  opacity: 0.75;
+}
+
+.texto-amenidades-vacio {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 12px;
 }
 
 .footer-modal-figma {
@@ -1029,6 +1136,22 @@ tbody tr:hover td {
   .usuario {
     justify-content: center;
     padding: 8px;
+  }
+
+  .submenu {
+    align-items: center;
+    margin: 2px 0 0;
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .submenu-item {
+    justify-content: center;
+    padding: 8px 6px;
+
+    span {
+      display: none;
+    }
   }
 
   .tabla-contenedor {

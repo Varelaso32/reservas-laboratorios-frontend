@@ -34,6 +34,20 @@ export const routes: Routes = [
     canActivate: [authGuard]
   },
   {
+    path: 'admin/dashboard',
+    loadComponent: () => import('./features/admin/pages/admin-dashboard/admin-dashboard.component')
+      .then(modulo => modulo.AdminDashboardComponent),
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['ADMIN'] }
+  },
+  {
+    path: 'admin/reportes',
+    loadComponent: () => import('./features/admin/pages/admin-reportes/admin-reportes.component')
+      .then(modulo => modulo.AdminReportesComponent),
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['ADMIN'] }
+  },
+  {
     path: 'admin/espacios',
     component: AdminEspaciosComponent,
     canActivate: [authGuard, roleGuard],
@@ -47,7 +61,79 @@ export const routes: Routes = [
     data: { roles: ['ADMIN'] }
   },
   {
+    path: 'admin/parametros',
+    pathMatch: 'full',
+    redirectTo: 'admin/parametros/reglas'
+  },
+  {
+    path: 'admin/parametros/reglas',
+    loadComponent: () => import('./features/admin/pages/admin-parametros/admin-parametros.component')
+      .then(modulo => modulo.AdminParametrosComponent),
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['ADMIN'], seccion: 'reglas' }
+  },
+  {
+    path: 'admin/parametros/tipos-uso',
+    loadComponent: () => import('./features/admin/pages/admin-parametros/admin-parametros.component')
+      .then(modulo => modulo.AdminParametrosComponent),
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['ADMIN'], seccion: 'tipos-uso' }
+  },
+  {
+    path: 'admin/parametros/anticipacion',
+    loadComponent: () => import('./features/admin/pages/admin-parametros/admin-parametros.component')
+      .then(modulo => modulo.AdminParametrosComponent),
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['ADMIN'], seccion: 'anticipacion' }
+  },
+  {
+    path: 'admin/parametros/sanciones',
+    loadComponent: () => import('./features/admin/pages/admin-parametros/admin-parametros.component')
+      .then(modulo => modulo.AdminParametrosComponent),
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['ADMIN'], seccion: 'sanciones' }
+  },
+  {
+    path: 'admin/sanciones',
+    loadComponent: () => import('./features/admin/pages/admin-sanciones/admin-sanciones.component')
+      .then(modulo => modulo.AdminSancionesComponent),
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['ADMIN'] }
+  },
+  {
+    path: 'admin/parametros/recursos',
+    loadComponent: () => import('./features/admin/pages/admin-recursos/admin-recursos.component')
+      .then(modulo => modulo.AdminRecursosComponent),
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['ADMIN'] }
+  },
+  {
+    path: 'admin/parametros/historial',
+    loadComponent: () => import('./features/admin/pages/admin-parametros/admin-parametros.component')
+      .then(modulo => modulo.AdminParametrosComponent),
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['ADMIN'], seccion: 'historial' }
+  },
+  {
+    path: 'autorizaciones',
+    loadComponent: () => import('./features/solicitudes/pages/autorizaciones/autorizaciones.component')
+      .then(modulo => modulo.AutorizacionesComponent),
+    canActivate: [authGuard]
+  },
+  {
     path: 'solicitud-reserva',
     component: SolicitudReservaComponent
+  },
+  {
+    path: 'configuracion',
+    loadComponent: () => import('./features/configuracion/pages/configuracion/configuracion.component')
+      .then(modulo => modulo.ConfiguracionComponent),
+    canActivate: [authGuard]
+  },
+  {
+    path: 'notificaciones',
+    loadComponent: () => import('./features/notificaciones/pages/notificaciones/notificaciones.component')
+      .then(modulo => modulo.NotificacionesComponent),
+    canActivate: [authGuard]
   }
 ];
