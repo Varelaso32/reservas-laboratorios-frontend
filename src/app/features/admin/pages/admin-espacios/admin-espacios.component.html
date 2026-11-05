@@ -9,10 +9,12 @@
     </div>
 
     <nav class="menu" aria-label="Panel Admin">
-      <span class="menu-item inactivo">
-        <i class="pi pi-th-large" aria-hidden="true"></i>
-        <span>Resumen</span>
-      </span>
+            @if (usuarioActual?.rol === 'ADMIN') {
+        <a class="menu-item" routerLink="/admin/dashboard" routerLinkActive="activo" ariaCurrentWhenActive="page">
+          <i class="pi pi-th-large" aria-hidden="true"></i>
+          <span>Resumen</span>
+        </a>
+      }
       <a class="menu-item activo" routerLink="/admin/espacios" aria-current="page">
         <i class="pi pi-building" aria-hidden="true"></i>
         <span>Espacios</span>
@@ -22,15 +24,62 @@
           <i class="pi pi-users" aria-hidden="true"></i>
           <span>Usuarios</span>
         </a>
+        <a class="menu-item" routerLink="/admin/sanciones" routerLinkActive="activo" ariaCurrentWhenActive="page">
+          <i class="pi pi-shield" aria-hidden="true"></i>
+          <span>Sanciones</span>
+        </a>
       }
-      <span class="menu-item inactivo">
-        <i class="pi pi-chart-bar" aria-hidden="true"></i>
-        <span>Reportes</span>
-      </span>
-      <span class="menu-item inactivo">
-        <i class="pi pi-cog" aria-hidden="true"></i>
-        <span>Configuración</span>
-      </span>
+            @if (usuarioActual?.rol === 'ADMIN') {
+        <a class="menu-item" routerLink="/admin/reportes" routerLinkActive="activo" ariaCurrentWhenActive="page">
+          <i class="pi pi-chart-bar" aria-hidden="true"></i>
+          <span>Reportes</span>
+        </a>
+      }
+      @if (usuarioActual?.rol === 'ADMIN') {
+        <div class="grupo-menu">
+          <button
+            type="button"
+            class="menu-item grupo"
+            aria-controls="submenu-parametros"
+            [class.abierto]="parametrosAbierto"
+            [attr.aria-expanded]="parametrosAbierto"
+            (click)="alternarParametros()"
+          >
+            <i class="pi pi-sliders-h" aria-hidden="true"></i>
+            <span>Parámetros</span>
+            <i class="pi pi-angle-down chevron" aria-hidden="true"></i>
+          </button>
+
+          @if (parametrosAbierto) {
+            <div class="submenu" id="submenu-parametros">
+              <a class="submenu-item" routerLink="/admin/parametros/reglas" title="Reglas de reserva">
+                <i class="pi pi-calendar-times" aria-hidden="true"></i>
+                <span>Reglas de reserva</span>
+              </a>
+              <a class="submenu-item" routerLink="/admin/parametros/tipos-uso" title="Tipos de uso">
+                <i class="pi pi-tags" aria-hidden="true"></i>
+                <span>Tipos de uso</span>
+              </a>
+              <a class="submenu-item" routerLink="/admin/parametros/anticipacion" title="Anticipación">
+                <i class="pi pi-clock" aria-hidden="true"></i>
+                <span>Anticipación</span>
+              </a>
+              <a class="submenu-item" routerLink="/admin/parametros/sanciones" title="Sanciones">
+                <i class="pi pi-shield" aria-hidden="true"></i>
+                <span>Sanciones</span>
+              </a>
+              <a class="submenu-item" routerLink="/admin/parametros/recursos" title="Recursos">
+                <i class="pi pi-box" aria-hidden="true"></i>
+                <span>Recursos</span>
+              </a>
+              <a class="submenu-item" routerLink="/admin/parametros/historial" title="Historial">
+                <i class="pi pi-history" aria-hidden="true"></i>
+                <span>Historial</span>
+              </a>
+            </div>
+          }
+        </div>
+      }
 
       <div class="separador"></div>
 
@@ -73,7 +122,7 @@
         />
       </label>
       <div class="acciones-topbar">
-        <i class="pi pi-bell" aria-hidden="true"></i>
+        <app-campana-notificaciones />
         <div class="perfil" aria-label="Usuario actual">{{ inicialesUsuario }}</div>
       </div>
     </header>
@@ -353,18 +402,30 @@
         <!-- Fila 5: Amenidades -->
         <div class="seccion-amenidades-figma">
           <span>AMENIDADES</span>
-          <div class="lista-pills-amenidades">
-            @for (amenidad of amenidadesFigma; track amenidad) {
-              <button
-                type="button"
-                class="pill-amenidad"
-                [class.activa]="amenidadesSeleccionadasVisual.includes(amenidad)"
-                (click)="alternarAmenidadVisual(amenidad)"
-              >
-                {{ amenidad }}
-              </button>
-            }
-          </div>
+          @if (cargandoAmenidades) {
+            <p class="texto-amenidades-vacio">Cargando amenidades…</p>
+          } @else if (amenidadesCatalogo.length === 0) {
+            <p class="texto-amenidades-vacio">
+              No hay recursos configurados. Créalos en Parámetros → Recursos.
+            </p>
+          } @else {
+            <div class="lista-pills-amenidades">
+              @for (amenidad of amenidadesCatalogo; track amenidad.tipo_recurso_id) {
+                <button
+                  type="button"
+                  class="pill-amenidad"
+                  [class.activa]="amenidadesSeleccionadasVisual.includes(amenidad.tipo_recurso_id)"
+                  [disabled]="!puedeAlternarAmenidad(amenidad, amenidadesSeleccionadasVisual)"
+                  (click)="alternarAmenidadVisual(amenidad.tipo_recurso_id)"
+                >
+                  {{ amenidad.nombre }}
+                  <span class="stock-amenidad">
+                    {{ unidadesLibres(amenidad, amenidadesSeleccionadasVisual) }} disp.
+                  </span>
+                </button>
+              }
+            </div>
+          }
         </div>
       </div>
 
@@ -471,18 +532,30 @@
         <!-- Fila 5: Amenidades -->
         <div class="seccion-amenidades-figma">
           <span>AMENIDADES</span>
-          <div class="lista-pills-amenidades">
-            @for (amenidad of amenidadesFigma; track amenidad) {
-              <button
-                type="button"
-                class="pill-amenidad"
-                [class.activa]="amenidadesNuevoEspacioVisual.includes(amenidad)"
-                (click)="alternarAmenidadNuevoEspacio(amenidad)"
-              >
-                {{ amenidad }}
-              </button>
-            }
-          </div>
+          @if (cargandoAmenidades) {
+            <p class="texto-amenidades-vacio">Cargando amenidades…</p>
+          } @else if (amenidadesCatalogo.length === 0) {
+            <p class="texto-amenidades-vacio">
+              No hay recursos configurados. Créalos en Parámetros → Recursos.
+            </p>
+          } @else {
+            <div class="lista-pills-amenidades">
+              @for (amenidad of amenidadesCatalogo; track amenidad.tipo_recurso_id) {
+                <button
+                  type="button"
+                  class="pill-amenidad"
+                  [class.activa]="amenidadesNuevoEspacioVisual.includes(amenidad.tipo_recurso_id)"
+                  [disabled]="!puedeAlternarAmenidad(amenidad, amenidadesNuevoEspacioVisual)"
+                  (click)="alternarAmenidadNuevoEspacio(amenidad.tipo_recurso_id)"
+                >
+                  {{ amenidad.nombre }}
+                  <span class="stock-amenidad">
+                    {{ unidadesLibres(amenidad, amenidadesNuevoEspacioVisual) }} disp.
+                  </span>
+                </button>
+              }
+            </div>
+          }
         </div>
       </div>
 

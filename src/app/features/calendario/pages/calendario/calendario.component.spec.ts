@@ -9,6 +9,8 @@ import { AuthService } from '../../../../core/services/auth.service';
 import { routes } from '../../../../app.routes';
 import { sumarDiasFecha } from '../../../../shared/utils/fecha-colombia.util';
 import { CalendarioComponent } from './calendario.component';
+import { of } from 'rxjs';
+import { NotificacionesService } from '../../../../core/services/notificaciones.service';
 
 describe('CalendarioComponent', () => {
   let fixture: ComponentFixture<CalendarioComponent>;
@@ -40,7 +42,16 @@ describe('CalendarioComponent', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter(routes),
-        MessageService
+        MessageService,
+        {
+          provide: NotificacionesService,
+          useValue: {
+            resumen: () => of({ no_leidas: 0 }),
+            listar: () => of([]),
+            marcarTodasLeidas: () => of({ actualizadas: 0 }),
+            marcarLeida: () => of(null)
+          }
+        }
       ]
     }).compileComponents();
     httpTestingController = TestBed.inject(HttpTestingController);

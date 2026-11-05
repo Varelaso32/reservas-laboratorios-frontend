@@ -7,6 +7,7 @@ import { AuthService } from '../../../../core/services/auth.service';
 import { ReservasService } from '../../../../core/services/reservas.service';
 import { obtenerMensajeErrorApi } from '../../../../core/utils/api-error.util';
 import { PosSidebarComponent } from '../../../../shared/components/pos-sidebar/pos-sidebar.component';
+import { CampanaNotificacionesComponent } from '../../../../shared/components/campana-notificaciones/campana-notificaciones.component';
 import { ReservaResumen } from '../../../../shared/models/solicitud.model';
 import {
   fechaActualLargaColombia,
@@ -30,7 +31,7 @@ interface DiaCalendario {
 @Component({
   selector: 'app-calendario',
   standalone: true,
-  imports: [PosSidebarComponent, Toast],
+  imports: [PosSidebarComponent, Toast, CampanaNotificacionesComponent],
   templateUrl: './calendario.component.html',
   styleUrl: './calendario.component.scss'
 })

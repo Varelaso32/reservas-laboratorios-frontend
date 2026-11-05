@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output, inject } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
   FormControl,
@@ -10,12 +10,15 @@ import { Subscription } from 'rxjs';
 import { MessageService } from 'primeng/api';
 import { InputNumber } from 'primeng/inputnumber';
 import { AuthService } from '../../../../core/services/auth.service';
+import { ConfiguracionService } from '../../../../core/services/configuracion.service';
 import { EspaciosService } from '../../../../core/services/espacios.service';
 import { SolicitudesService } from '../../../../core/services/solicitudes.service';
 import { obtenerMensajeErrorApi } from '../../../../core/utils/api-error.util';
 import { Espacio } from '../../../../shared/models/espacio.model';
+import { ReglasEspacio, Responsable, TipoUso } from '../../../../shared/models/configuracion.model';
 import { SolicitudCrear, SolicitudCreada } from '../../../../shared/models/solicitud.model';
 import { obtenerColorIdentificadorEspacio } from '../../../../shared/utils/espacio-color.util';
+import { nombreRolReserva, puedePedirCupo as puedeSolicitarCupo, rolReservaDe } from '../../../../shared/utils/rol-reserva.util';
 
 type EstadoDisponibilidad =
   | 'neutro'
@@ -31,8 +34,9 @@ type EstadoDisponibilidad =
   templateUrl: './solicitud-reserva.component.html',
   styleUrl: './solicitud-reserva.component.scss'
 })
-export class SolicitudReservaComponent {
+export class SolicitudReservaComponent implements OnInit {
   private readonly authService = inject(AuthService);
+  private readonly configuracionService = inject(ConfiguracionService);
   private readonly espaciosService = inject(EspaciosService);
   private readonly solicitudesService = inject(SolicitudesService);
   private readonly messageService = inject(MessageService);
@@ -43,7 +47,13 @@ export class SolicitudReservaComponent {
 
   @Output() cerrar = new EventEmitter<void>();
 
-  tipoActividad = 'Clase';
+  tipoActividad = '';
+  tiposUso: TipoUso[] = [];
+  responsables: Responsable[] = [];
+  reglas: ReglasEspacio | null = null;
+  cargandoReglas = false;
+  tipoUsoSeleccionadoId: number | null = null;
+  responsableSeleccionadoId: number | null = null;
 
   mensajeDisponibilidad = '';
   disponible: boolean | null = null;
@@ -88,6 +98,12 @@ export class SolicitudReservaComponent {
     proposito: new FormControl(
       '',
       [Validators.required, Validators.maxLength(500), Validators.pattern(/\S/)]
+    ),
+
+    /** HU-30: motivo obligatorio para pedir el cupo de alguien de menor jerarquía */
+    motivoUrgencia: new FormControl(
+      '',
+      [Validators.maxLength(500)]
     )
 
   });
@@ -110,8 +126,123 @@ export class SolicitudReservaComponent {
     return this.usuarioActual?.rol === 'SOLICITANTE';
   }
 
-  seleccionarActividad(tipo: string) {
-    this.tipoActividad = tipo;
+  get exigeResponsable(): boolean {
+    return this.reglas?.requiere_responsable ?? false;
+  }
+
+  /** HU-30: rol de reserva del usuario (jerarquía distinta del permiso de plataforma). */
+  get rolReserva(): string {
+    return nombreRolReserva(rolReservaDe(this.usuarioActual?.cargo));
+  }
+
+  /** HU-30: solo Docente, Coordinador o Director pueden pedir el cupo de otro. */
+  get puedePedirCupo(): boolean {
+    return this.puedeCrearSolicitud && puedeSolicitarCupo(this.usuarioActual?.cargo);
+  }
+
+  /** El horario está ocupado y el usuario puede intentar la cesión (HU-30). */
+  get muestraMotivoUrgencia(): boolean {
+    return this.estadoDisponibilidad === 'no-disponible' && this.puedePedirCupo;
+  }
+
+  get motivoUrgenciaValor(): string {
+    return (this.formReserva.controls.motivoUrgencia.value ?? '').trim();
+  }
+
+  /** Resumen de las reglas del espacio para avisar antes de enviar (HU-21, HU-28, HU-33, HU-34). */
+  get resumenReglas(): string[] {
+    const reglas = this.reglas;
+    if (!reglas) {
+      return [];
+    }
+
+    const apertura = this.horaCorta(reglas.hora_apertura);
+    const cierre = this.horaCorta(reglas.hora_cierre);
+    const franja = apertura && cierre ? `${apertura} a ${cierre}` : '07:00 a 22:00 (horario institucional)';
+    const avisos = [`Opera ${this.textoDias(reglas.dias_operacion)} de ${franja}`];
+
+    if (reglas.duracion_maxima_min) {
+      avisos.push(`Duración máxima por uso: ${reglas.duracion_maxima_min} minutos`);
+    }
+    if (reglas.separacion_min > 0) {
+      avisos.push(`Separación mínima entre reservas: ${reglas.separacion_min} minutos`);
+    }
+    if (reglas.ocupacion_minima) {
+      avisos.push(`Mínimo ${reglas.ocupacion_minima} asistentes para aprovechar el espacio`);
+    }
+    if (reglas.max_usos_dia) {
+      avisos.push(`Máximo ${reglas.max_usos_dia} usos por día`);
+    }
+    if (reglas.requiere_responsable) {
+      avisos.push('Este espacio exige un responsable docente, coordinador o director');
+    }
+    if (reglas.admite_autorizacion_especial) {
+      avisos.push('Fuera de la franja la solicitud queda pendiente de autorización especial');
+    }
+
+    return avisos;
+  }
+
+  ngOnInit(): void {
+    if (this.espacio?.id) {
+      this.cargarReglas(this.espacio.id);
+    }
+  }
+
+  cargarReglas(espacioId: number): void {
+    this.cargandoReglas = true;
+    this.configuracionService.consultarReglas(espacioId).subscribe({
+      next: reglas => {
+        this.reglas = reglas;
+        this.tiposUso = reglas.tipos_uso;
+        this.tipoUsoSeleccionadoId = reglas.tipos_uso.length > 0 ? reglas.tipos_uso[0].id : null;
+        this.tipoActividad = reglas.tipos_uso.length > 0 ? reglas.tipos_uso[0].nombre : '';
+        this.cargandoReglas = false;
+        if (reglas.requiere_responsable) {
+          this.cargarResponsables();
+        }
+      },
+      error: () => {
+        // Sin la configuración el formulario sigue funcionando: el backend valida igual.
+        this.reglas = null;
+        this.tiposUso = [];
+        this.cargandoReglas = false;
+      }
+    });
+  }
+
+  private cargarResponsables(): void {
+    this.configuracionService.listarResponsables().subscribe({
+      next: responsables => {
+        this.responsables = responsables;
+      },
+      error: () => {
+        this.responsables = [];
+      }
+    });
+  }
+
+  seleccionarTipoUso(tipo: TipoUso): void {
+    this.tipoUsoSeleccionadoId = tipo.id;
+    this.tipoActividad = tipo.nombre;
+  }
+
+  seleccionarResponsable(event: Event): void {
+    const valor = (event.target as HTMLSelectElement).value;
+    this.responsableSeleccionadoId = valor ? Number(valor) : null;
+  }
+
+  private horaCorta(valor: string | null): string | null {
+    return valor ? valor.slice(0, 5) : null;
+  }
+
+  private textoDias(dias: number[] | undefined): string {
+    const nombres = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'];
+    const validos = (dias ?? []).filter(dia => dia >= 1 && dia <= 7);
+    if (validos.length === 0 || validos.length === 7) {
+      return 'todos los días';
+    }
+    return validos.map(dia => nombres[dia - 1]).join(', ');
   }
 
   filtrarTeclasAsistentes(event: KeyboardEvent): void {
@@ -163,6 +294,16 @@ export class SolicitudReservaComponent {
 
     if (!this.espacio || this.espacio.id === undefined || this.espacio.id === null) {
       this.mostrarErrorFormulario('Selecciona un espacio válido antes de continuar.');
+      return;
+    }
+
+    if (this.exigeResponsable && this.responsableSeleccionadoId === null) {
+      this.mostrarErrorFormulario('Selecciona el responsable de la actividad.');
+      return;
+    }
+
+    if (this.tiposUso.length > 0 && this.tipoUsoSeleccionadoId === null) {
+      this.mostrarErrorFormulario('Selecciona el tipo de actividad de la reserva.');
       return;
     }
 
@@ -232,8 +373,22 @@ export class SolicitudReservaComponent {
             this.notificar('warn', 'Horario no disponible', respuesta.mensaje);
           }
 
-          if (continuarAlConfirmar && respuesta.disponible) {
-            this.crearSolicitudReal();
+          if (continuarAlConfirmar) {
+            if (respuesta.disponible) {
+              this.crearSolicitudReal();
+            } else if (this.motivoUrgenciaValor) {
+              // HU-30: el horario está ocupado, pero un rol superior puede pedir el cupo.
+              // El backend decide si la rechaza o la deja en espera de cesión.
+              this.crearSolicitudReal();
+            } else {
+              this.notificar(
+                'warn',
+                'Horario no disponible',
+                this.puedePedirCupo
+                  ? 'El horario ya está ocupado. Si necesitas ese cupo con urgencia, indica el motivo y vuelve a confirmar: el titular decidirá si lo cede.'
+                  : respuesta.mensaje
+              );
+            }
           }
         },
         error: error => {
@@ -272,12 +427,22 @@ export class SolicitudReservaComponent {
       asistentes
     };
 
+    if (this.tipoUsoSeleccionadoId !== null) {
+      solicitud.tipo_uso_id = this.tipoUsoSeleccionadoId;
+    }
+    if (this.responsableSeleccionadoId !== null) {
+      solicitud.responsable_id = this.responsableSeleccionadoId;
+    }
+    if (this.motivoUrgenciaValor) {
+      solicitud.motivo_urgencia = this.motivoUrgenciaValor;
+    }
+
     this.cargandoSolicitud = true;
     this.solicitudesService.crearSolicitud(solicitud).subscribe({
       next: respuesta => {
         this.cargandoSolicitud = false;
         this.formReserva.reset();
-        this.tipoActividad = 'Clase';
+        this.reiniciarSeleccionActividad();
         this.limpiarEstadoDisponibilidad();
         this.solicitudCreada = respuesta;
       },
@@ -317,6 +482,12 @@ export class SolicitudReservaComponent {
     this.disponible = null;
     this.estadoDisponibilidad = 'neutro';
     this.ultimaConsultaKey = null;
+  }
+
+  private reiniciarSeleccionActividad(): void {
+    this.responsableSeleccionadoId = null;
+    this.tipoUsoSeleccionadoId = this.tiposUso.length > 0 ? this.tiposUso[0].id : null;
+    this.tipoActividad = this.tiposUso.length > 0 ? this.tiposUso[0].nombre : '';
   }
 
   private fechaHoraEnPasadoEnColombia(fecha: string, hora: string): boolean {

@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 
 import { API_BASE_URL } from '../config/api.config';
 import { ReservaDetalle, ReservaResumen } from '../../shared/models/solicitud.model';
+import { Asistencia } from '../../shared/models/sancion.model';
 
 @Injectable({ providedIn: 'root' })
 export class ReservasService {
@@ -43,9 +44,16 @@ export class ReservasService {
     return this.http.get<ReservaDetalle>(`${API_BASE_URL}/reservas/${reservaId}`);
   }
 
-  cancelarReserva(reservaId: number): Observable<ReservaResumen> {
+  cancelarReserva(reservaId: number, motivo: string): Observable<ReservaResumen> {
     return this.http.post<ReservaResumen>(
       `${API_BASE_URL}/reservas/${reservaId}/cancelar`,
+      { motivo }
+    );
+  }
+
+  registrarAsistencia(reservaId: number): Observable<Asistencia> {
+    return this.http.post<Asistencia>(
+      `${API_BASE_URL}/reservas/${reservaId}/asistencia`,
       null
     );
   }

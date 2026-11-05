@@ -150,6 +150,46 @@
   }
 }
 
+.acciones-encabezado {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.boton-recursos {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  gap: var(--space-8);
+  padding: 0 18px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--color-carbon);
+  background: var(--color-paper-white);
+  border: var(--outline-hairline);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+
+  &:hover {
+    color: var(--color-paper-white);
+    background: var(--color-carbon);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-carbon);
+    outline-offset: 2px;
+  }
+
+  i {
+    font-size: 10px;
+  }
+}
+
 /* ─── Resumen ─── */
 .resumen-dashboard {
   display: grid;
@@ -301,6 +341,42 @@
   }
 }
 
+.registrar-asistencia {
+  min-height: 30px;
+  padding: 0 14px;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--color-paper-white);
+  background: var(--color-text-primary, #111);
+  border: var(--outline-hairline);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: opacity 0.15s;
+
+  &:disabled {
+    cursor: wait;
+    opacity: 0.6;
+  }
+}
+
+.asistencia-registrada {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--color-success-text, #1d7a46);
+
+  i {
+    font-size: 12px;
+  }
+}
+
 /* ─── Diálogo de confirmación ─── */
 .dialogo-confirmacion-overlay {
   position: fixed;
@@ -333,6 +409,47 @@
     color: var(--color-text-muted);
     font-size: 13px;
     line-height: 1.5;
+  }
+
+  .campo-motivo {
+    display: grid;
+    gap: 6px;
+    margin-bottom: 20px;
+
+    label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: var(--tracking-label);
+      text-transform: uppercase;
+      color: var(--color-text-muted);
+    }
+
+    textarea {
+      width: 100%;
+      padding: 10px 12px;
+      font-family: inherit;
+      font-size: 13px;
+      line-height: 1.4;
+      color: inherit;
+      background: var(--color-paper-white);
+      border: var(--outline-hairline);
+      border-radius: var(--radius-card);
+      resize: vertical;
+
+      &.error {
+        border-color: var(--color-error-text);
+      }
+    }
+
+    .mensaje-error {
+      color: var(--color-error-text);
+      font-size: 11px;
+    }
+
+    .ayuda-motivo {
+      color: var(--color-text-muted);
+      font-size: 11px;
+    }
   }
 
   footer {
@@ -401,6 +518,13 @@
     font-size: 34px;
     font-weight: 700;
     line-height: 1;
+
+    .total-espacios {
+      font-family: var(--font-ui);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--color-text-muted);
+    }
   }
 
   small {
@@ -442,6 +566,11 @@
     margin: 5px 0 0;
     color: var(--color-text-subtle);
     font-size: 11px;
+  }
+
+  .nota-disponibles {
+    max-width: 520px;
+    color: var(--color-text-muted);
   }
 
   > a {
@@ -597,7 +726,8 @@
     padding: 12px 0;
   }
 
-  .cancelar-reserva {
+  .cancelar-reserva,
+  .registrar-asistencia {
     grid-column: 2 / -1;
     justify-self: start;
   }

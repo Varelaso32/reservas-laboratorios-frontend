@@ -28,7 +28,8 @@ describe('EspaciosService', () => {
 
   const mockEspacioAdmin: EspacioAdmin = {
     ...mockEspacio,
-    activo: true
+    activo: true,
+    amenidades: []
   };
 
   beforeEach(() => {

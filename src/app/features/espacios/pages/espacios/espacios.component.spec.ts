@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
 import { By } from '@angular/platform-browser';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { ActivatedRouteSnapshot, Router, RouterStateSnapshot, UrlTree, provideRouter } from '@angular/router';
 import { MessageService } from 'primeng/api';
 
@@ -11,6 +12,8 @@ import { authGuard } from '../../../../core/guards/auth.guard';
 import { API_BASE_URL } from '../../../../core/config/api.config';
 import { SolicitudReservaComponent } from '../../../reservas/pages/solicitud-reserva/solicitud-reserva.component';
 import { EspaciosComponent } from './espacios.component';
+import { of } from 'rxjs';
+import { NotificacionesService } from '../../../../core/services/notificaciones.service';
 
 describe('EspaciosComponent', () => {
   let component: EspaciosComponent;
@@ -35,7 +38,17 @@ describe('EspaciosComponent', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
-        { provide: MessageService, useValue: jasmine.createSpyObj('MessageService', ['add']) }
+        provideNoopAnimations(),
+        MessageService,
+        {
+          provide: NotificacionesService,
+          useValue: {
+            resumen: () => of({ no_leidas: 0 }),
+            listar: () => of([]),
+            marcarTodasLeidas: () => of({ actualizadas: 0 }),
+            marcarLeida: () => of(null)
+          }
+        }
       ]
     })
     .compileComponents();
@@ -97,6 +110,27 @@ describe('EspaciosComponent', () => {
     expect(component.modalReservaAbierto).toBeTrue();
     expect(modal.espacio?.id).toBe(42);
     expect(modal.espacio?.capacidad).toBe(25);
+
+    httpTestingController
+      .expectOne(`${API_BASE_URL}/configuracion/espacios/42`)
+      .flush({
+        espacio_id: 42,
+        nombre: 'Laboratorio de Redes',
+        tipo: 'LABORATORIO',
+        capacidad: 25,
+        activo: true,
+        hora_apertura: null,
+        hora_cierre: null,
+        dias_operacion: [1, 2, 3, 4, 5, 6, 7],
+        max_usos_dia: null,
+        duracion_maxima_min: null,
+        separacion_min: 0,
+        ocupacion_minima: null,
+        requiere_responsable: false,
+        admite_autorizacion_especial: false,
+        tipos_uso: []
+      });
+    fixture.detectChanges();
   });
 
   it('renders the authenticated name, initials, role and cargo without a hardcoded profile', () => {

@@ -12,14 +12,46 @@
       </span>
       <h2 id="titulo-solicitud-enviada">Solicitud enviada correctamente</h2>
       <p id="detalle-solicitud-enviada">
-        @if (solicitud.estado === 'PENDIENTE') {
+        @if (solicitud.estado === 'PENDIENTE_AUTORIZACION') {
+          El horario está fuera de la franja de operación del espacio, así que tu solicitud
+          queda pendiente de autorización especial. Te avisaremos cuando sea revisada.
+        } @else if (solicitud.estado === 'EN_ESPERA_CESION') {
+          El horario ya lo tenía {{ solicitud.titular }}. Como tu rol ({{ rolReserva }}) es de mayor
+          jerarquía, tu solicitud quedó en espera de que decida si cede el cupo. Te avisaremos por
+          la campana de notificaciones.
+        } @else if (solicitud.estado === 'RECHAZADA') {
+          El cupo de ese espacio y horario lo pidió primero {{ solicitud.titular }} y tiene una
+          jerarquía igual o superior a la tuya, así que la solicitud se rechazó automáticamente.
+        } @else if (solicitud.estado === 'PENDIENTE') {
           Tu solicitud está pendiente de aprobación por parte del administrador.
           Te notificaremos cuando sea revisada.
         } @else {
           {{ solicitud.mensaje }}
         }
       </p>
-      @if (solicitud.estado === 'PENDIENTE') {
+      @if (solicitud.avisos?.length) {
+        <ul class="avisos-exito">
+          @for (aviso of solicitud.avisos; track aviso) {
+            <li>{{ aviso }}</li>
+          }
+        </ul>
+      }
+      @if (solicitud.estado === 'PENDIENTE_AUTORIZACION') {
+        <span class="badge-pendiente badge-autorizacion">
+          <span class="punto-pendiente" aria-hidden="true"></span>
+          Pendiente de autorización especial
+        </span>
+      } @else if (solicitud.estado === 'EN_ESPERA_CESION') {
+        <span class="badge-pendiente badge-cesion">
+          <span class="punto-pendiente" aria-hidden="true"></span>
+          En espera de cesión del cupo
+        </span>
+      } @else if (solicitud.estado === 'RECHAZADA') {
+        <span class="badge-pendiente badge-rechazo">
+          <span class="punto-pendiente" aria-hidden="true"></span>
+          Rechazada por conflicto de cupo
+        </span>
+      } @else if (solicitud.estado === 'PENDIENTE') {
         <span class="badge-pendiente">
           <span class="punto-pendiente" aria-hidden="true"></span>
           Pendiente de aprobación
@@ -180,6 +212,34 @@
           </div>
         }
 
+        <!-- MOTIVO DE URGENCIA (HU-30) -->
+        @if (muestraMotivoUrgencia) {
+          <div class="campo campo-urgencia">
+            <label for="motivoUrgencia">MOTIVO DE URGENCIA</label>
+
+            <textarea
+              id="motivoUrgencia"
+              rows="2"
+              formControlName="motivoUrgencia"
+              placeholder="Explica por qué necesitas este horario aunque esté ocupado"
+            ></textarea>
+
+            <small class="ayuda-campo">
+              Como {{ rolReserva }} puedes pedir el cupo de un usuario de menor jerarquía. El
+              titular decidirá si lo cede; mientras tanto tu solicitud queda en espera.
+            </small>
+
+            @if (
+              formReserva.controls.motivoUrgencia.invalid &&
+              formReserva.controls.motivoUrgencia.touched
+            ) {
+              <small class="error-campo">
+                El motivo de urgencia admite hasta 500 caracteres.
+              </small>
+            }
+          </div>
+        }
+
         <!-- ASISTENTES -->
         <div class="campo campo-asistentes">
           <label for="asistentes">CANTIDAD DE ASISTENTES</label>
@@ -219,64 +279,68 @@
         </div>
 
 
+        <!-- REGLAS DEL ESPACIO (HU-21, HU-28, HU-33, HU-34) -->
+        @if (resumenReglas.length) {
+          <div class="reglas-espacio" aria-live="polite">
+            <span class="titulo-reglas">
+              <i class="pi pi-info-circle" aria-hidden="true"></i>
+              Reglas de este espacio
+            </span>
+            <ul>
+              @for (aviso of resumenReglas; track aviso) {
+                <li>{{ aviso }}</li>
+              }
+            </ul>
+          </div>
+        }
+
         <!-- TIPO DE ACTIVIDAD -->
-        <div class="campo">
+        @if (tiposUso.length) {
+          <div class="campo">
 
-          <span class="titulo-campo">TIPO DE ACTIVIDAD</span>
+            <span class="titulo-campo">TIPO DE ACTIVIDAD</span>
 
-          <div class="actividades">
+            <div class="actividades">
 
-            <button
-              type="button"
-              [class.activo]="tipoActividad === 'Clase'"
-              (click)="seleccionarActividad('Clase')"
-            >
-              Clase
-            </button>
+              @for (tipo of tiposUso; track tipo.id) {
+                <button
+                  type="button"
+                  [class.activo]="tipoUsoSeleccionadoId === tipo.id"
+                  (click)="seleccionarTipoUso(tipo)"
+                >
+                  {{ tipo.nombre }}
+                </button>
+              }
 
-            <button
-              type="button"
-              [class.activo]="tipoActividad === 'Reunión'"
-              (click)="seleccionarActividad('Reunión')"
-            >
-              Reunión
-            </button>
-
-            <button
-              type="button"
-              [class.activo]="tipoActividad === 'Tesis'"
-              (click)="seleccionarActividad('Tesis')"
-            >
-              Tesis
-            </button>
-
-            <button
-              type="button"
-              [class.activo]="tipoActividad === 'Evento'"
-              (click)="seleccionarActividad('Evento')"
-            >
-              Evento
-            </button>
-
-            <button
-              type="button"
-              [class.activo]="tipoActividad === 'Práctica'"
-              (click)="seleccionarActividad('Práctica')"
-            >
-              Práctica
-            </button>
-
-            <button
-              type="button"
-              [class.activo]="tipoActividad === 'Examen'"
-              (click)="seleccionarActividad('Examen')"
-            >
-              Examen
-            </button>
+            </div>
 
           </div>
+        }
 
-        </div>
+        <!-- RESPONSABLE (HU-32) -->
+        @if (exigeResponsable) {
+          <div class="campo">
+            <label for="responsable">RESPONSABLE DE LA ACTIVIDAD</label>
+
+            <select
+              id="responsable"
+              name="responsable"
+              [value]="responsableSeleccionadoId ?? ''"
+              (change)="seleccionarResponsable($event)"
+            >
+              <option value="">Selecciona un responsable</option>
+              @for (responsable of responsables; track responsable.id) {
+                <option [value]="responsable.id">{{ responsable.nombre }}</option>
+              }
+            </select>
+
+            @if (responsables.length === 0) {
+              <small class="error-campo">
+                No hay responsables disponibles; contacta al administrador del sistema.
+              </small>
+            }
+          </div>
+        }
 
 
         <!-- PROPÓSITO -->

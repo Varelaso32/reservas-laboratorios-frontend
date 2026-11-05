@@ -1,0 +1,122 @@
+<div class="dialogo-overlay" role="presentation">
+  <section
+    class="dialogo"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="titulo-solicitar-recursos"
+  >
+    <header class="dialogo-header">
+      <div>
+        <h2 id="titulo-solicitar-recursos">Solicitar recursos</h2>
+        <p>Elige la reserva y las unidades tecnológicas que necesitas. El horario es el de la reserva.</p>
+      </div>
+      <button
+        type="button"
+        class="boton-cerrar"
+        aria-label="Cerrar"
+        [disabled]="enviando"
+        (click)="cerrar()"
+      >
+        <i class="pi pi-times" aria-hidden="true"></i>
+      </button>
+    </header>
+
+    @if (cargandoReservas) {
+      <p class="estado-panel" role="status">Cargando tus reservas...</p>
+    } @else if (reservas.length === 0) {
+      <div class="estado-panel" role="status">
+        <p>No tienes reservas activas próximas a las que asociar recursos.</p>
+        <p class="ayuda">
+          Solo Docente, Coordinador y Director pueden solicitar recursos, y la reserva debe estar
+          confirmada y no haber terminado.
+        </p>
+      </div>
+    } @else {
+      <label class="campo">
+        <span>Reserva</span>
+        <select
+          [disabled]="cargandoDisponibilidad || enviando"
+          [ngModel]="reservaId"
+          (ngModelChange)="cambiarReserva($event)"
+        >
+          @for (reserva of reservas; track reserva.reserva_id) {
+            <option [value]="reserva.reserva_id">{{ etiquetaReserva(reserva) }}</option>
+          }
+        </select>
+      </label>
+
+      @if (cargandoDisponibilidad) {
+        <p class="estado-panel" role="status">Consultando disponibilidad...</p>
+      } @else if (disponibilidad) {
+        <div class="tabla-recursos" role="group" aria-label="Recursos disponibles en la reserva">
+          <div class="tabla-cabecera">
+            <span>Tipo</span>
+            <span>Disponibles</span>
+            <span>Cantidad</span>
+          </div>
+
+          @if (lineas.length === 0) {
+            <p class="estado-panel">
+              No hay tipos de recurso activos en el inventario. Pide al administrador que los registre.
+            </p>
+          } @else {
+            <ul class="lista-recursos">
+              @for (linea of lineas; track linea.tipo_recurso_id) {
+                <li [class.sin-stock]="linea.disponibles === 0">
+                  <span class="nombre-tipo">{{ linea.tipo }}</span>
+                  <span class="unidades">{{ linea.disponibles }}</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    [max]="linea.disponibles"
+                    [disabled]="linea.disponibles === 0 || enviando"
+                    [attr.aria-label]="'Cantidad de ' + linea.tipo"
+                    [(ngModel)]="linea.cantidad"
+                  />
+                </li>
+              }
+            </ul>
+          }
+        </div>
+
+        @if (hayExceso) {
+          <p class="aviso-error" role="alert">
+            La cantidad pedida supera las unidades disponibles de un tipo.
+          </p>
+        }
+
+        <label class="campo">
+          <span>Observación (opcional)</span>
+          <textarea
+            rows="3"
+            maxlength="300"
+            placeholder="Ej. Para la exposición del proyecto final"
+            [disabled]="enviando"
+            [(ngModel)]="observacion"
+          ></textarea>
+        </label>
+      }
+
+      @if (error) {
+        <p class="aviso-error" role="alert">{{ error }}</p>
+      }
+
+      <footer class="dialogo-footer">
+        <span class="resumen">Unidades pedidas: {{ totalSolicitado }}</span>
+        <button type="button" class="boton-secundario" [disabled]="enviando" (click)="cerrar()">
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="boton-principal"
+          [disabled]="!puedeEnviar"
+          [attr.aria-busy]="enviando"
+          (click)="enviar()"
+        >
+          {{ enviando ? 'Enviando…' : 'Enviar solicitud' }}
+        </button>
+      </footer>
+    }
+  </section>
+</div>

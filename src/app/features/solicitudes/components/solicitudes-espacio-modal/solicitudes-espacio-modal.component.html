@@ -49,6 +49,15 @@
                   <p>{{ solicitud.solicitante.email }}</p>
                 </div>
                 <div class="badges-solicitud">
+                  @if (solicitud.prioridad_etiqueta; as prioridad) {
+                    <span
+                      class="badge-prioridad"
+                      [class.prioridad-alta]="prioridad === 'ALTA'"
+                      [class.prioridad-media]="prioridad === 'MEDIA'"
+                      [class.prioridad-baja]="prioridad === 'BAJA'"
+                      [attr.title]="'Prioridad ' + prioridad + ' según el rol de reserva'"
+                    >{{ prioridad }}</span>
+                  }
                   <span class="badge-pendiente">Pendiente</span>
                   @if (solicitud.vencida) {
                     <span class="badge-vencida">Vencida</span>
