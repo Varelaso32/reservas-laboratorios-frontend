@@ -1,0 +1,324 @@
+/* Diálogo de solicitud de recursos (HU-44). */
+
+:host {
+  display: block;
+  color: var(--color-carbon);
+  font-family: var(--font-ui);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.dialogo-overlay {
+  position: fixed;
+  z-index: 1100;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgb(0 0 0 / 45%);
+}
+
+.dialogo {
+  display: grid;
+  gap: var(--space-16);
+  width: min(680px, 100%);
+  max-height: calc(100vh - 36px);
+  overflow-y: auto;
+  padding: 24px;
+  background: var(--color-paper-white);
+  border: var(--outline-hairline);
+  border-radius: var(--radius-card-lg);
+}
+
+.dialogo-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-16);
+
+  h2 {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 0.95;
+    text-transform: uppercase;
+  }
+
+  p {
+    margin: 8px 0 0;
+    max-width: 48ch;
+    color: var(--color-text-muted);
+    font-size: 12px;
+  }
+}
+
+.boton-cerrar {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  place-items: center;
+  background: var(--color-paper-white);
+  border: var(--outline-hairline);
+  border-radius: 50%;
+  color: var(--color-carbon);
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: var(--color-carbon);
+    color: var(--color-paper-white);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-carbon);
+    outline-offset: 2px;
+  }
+}
+
+.campo {
+  display: grid;
+  gap: 6px;
+
+  > span {
+    color: var(--color-text-muted);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+  }
+
+  select,
+  textarea {
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--color-sky-wash-soft);
+    border: var(--outline-hairline);
+    border-radius: var(--radius-card);
+    color: var(--color-carbon);
+    font-family: inherit;
+    font-size: 12px;
+    outline: 0;
+
+    &:focus {
+      box-shadow: inset 0 0 0 1px var(--color-carbon);
+    }
+  }
+
+  textarea {
+    resize: vertical;
+  }
+}
+
+/* Tabla de tipos con su stock en el horario de la reserva */
+.tabla-recursos {
+  overflow: hidden;
+  border: var(--outline-hairline);
+  border-radius: var(--radius-card);
+}
+
+.tabla-cabecera,
+.lista-recursos li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 110px 110px;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.tabla-cabecera {
+  padding: 8px 12px;
+  background: var(--color-sky-wash-soft);
+  border-bottom: 1px solid var(--color-soft-mist);
+  color: var(--color-text-muted);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+
+  span:nth-child(n + 2) {
+    text-align: center;
+  }
+}
+
+.lista-recursos {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    padding: 8px 12px;
+
+    & + li {
+      border-top: 1px solid var(--color-soft-mist);
+    }
+
+    &:hover {
+      background: var(--color-sky-wash-soft);
+    }
+
+    &.sin-stock {
+      color: var(--color-text-subtle);
+    }
+  }
+
+  .nombre-tipo {
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .unidades {
+    text-align: center;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  input {
+    width: 72px;
+    min-height: 34px;
+    margin: 0 auto;
+    padding: 6px 10px;
+    background: var(--color-paper-white);
+    border: var(--outline-hairline);
+    border-radius: 12px;
+    outline: 0;
+    color: var(--color-carbon);
+    font-family: inherit;
+    font-size: 12px;
+    text-align: center;
+
+    &:focus {
+      box-shadow: inset 0 0 0 1px var(--color-carbon);
+    }
+
+    &:disabled {
+      background: var(--color-soft-mist);
+      color: var(--color-text-subtle);
+      cursor: not-allowed;
+    }
+  }
+}
+
+.estado-panel {
+  margin: 0;
+  padding: 16px 20px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+
+  p {
+    margin: 0;
+  }
+
+  p + p {
+    margin-top: 6px;
+  }
+}
+
+.ayuda {
+  color: var(--color-text-subtle);
+  font-size: 11px;
+}
+
+.aviso-error {
+  margin: 0;
+  padding: 10px 12px;
+  background: var(--color-error-surface, #fdeaea);
+  border: 1px solid var(--color-error-text);
+  border-radius: var(--radius-card);
+  color: var(--color-error-text);
+  font-size: 12px;
+}
+
+.dialogo-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-8);
+  padding-top: var(--space-16);
+  border-top: 1px solid var(--color-soft-mist);
+
+  .resumen {
+    margin-right: auto;
+    color: var(--color-text-muted);
+    font-size: 11px;
+    font-weight: 600;
+  }
+}
+
+.boton-principal,
+.boton-secundario {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 18px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  transition: background-color 0.15s, color 0.15s;
+
+  &:focus-visible {
+    outline: 2px solid var(--color-carbon);
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    background: var(--color-soft-mist);
+    border-color: var(--color-concrete-gray);
+    color: var(--color-text-subtle);
+    cursor: not-allowed;
+  }
+}
+
+.boton-principal {
+  background: var(--color-carbon);
+  border: var(--outline-hairline);
+  color: var(--color-paper-white);
+
+  &:hover:not(:disabled) {
+    background: var(--color-paper-white);
+    color: var(--color-carbon);
+  }
+}
+
+.boton-secundario {
+  background: var(--color-paper-white);
+  border: var(--outline-hairline);
+  color: var(--color-carbon);
+
+  &:hover:not(:disabled) {
+    background: var(--color-carbon);
+    color: var(--color-paper-white);
+  }
+}
+
+@media (max-width: 560px) {
+  .dialogo {
+    padding: 18px;
+  }
+
+  .tabla-cabecera,
+  .lista-recursos li {
+    grid-template-columns: minmax(0, 1fr) 64px 72px;
+  }
+
+  .dialogo-footer {
+    justify-content: stretch;
+
+    .resumen {
+      width: 100%;
+      margin-right: 0;
+    }
+
+    .boton-principal,
+    .boton-secundario {
+      flex: 1;
+    }
+  }
+}
