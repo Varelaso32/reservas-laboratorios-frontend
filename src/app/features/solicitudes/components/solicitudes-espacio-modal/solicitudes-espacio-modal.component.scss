@@ -197,6 +197,7 @@
 
 .badge-pendiente,
 .badge-vencida,
+.badge-prioridad,
 .badge-resuelta {
   padding: 4px 11px;
   border: var(--outline-hairline);
@@ -216,6 +217,24 @@
 .badge-vencida {
   background: var(--color-ember);
   color: var(--color-paper-white);
+}
+
+/* HU-12: prioridad de la solicitud según el rol de reserva */
+.badge-prioridad {
+  background: var(--color-sky-wash);
+}
+
+.badge-prioridad.prioridad-alta {
+  background: var(--color-ember);
+  color: var(--color-paper-white);
+}
+
+.badge-prioridad.prioridad-media {
+  background: var(--color-sunburst);
+}
+
+.badge-prioridad.prioridad-baja {
+  background: var(--color-soft-mist);
 }
 
 .badge-aprobada {
