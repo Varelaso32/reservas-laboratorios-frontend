@@ -10,6 +10,13 @@ export interface Espacio {
 
 export interface EspacioAdmin extends Espacio {
   activo: boolean;
+  amenidades: AmenidadEspacio[];
+}
+
+/** Recurso instalado de forma fija en un espacio (HU-19 / HU-43). */
+export interface AmenidadEspacio {
+  tipo_recurso_id: number;
+  nombre: string;
 }
 
 export interface EspacioMetrica extends EspacioAdmin {
@@ -20,7 +27,9 @@ export interface EspacioMetrica extends EspacioAdmin {
   porcentaje_ocupacion: number | null;
 }
 
-export type EspacioActualizar = Partial<Pick<Espacio, 'nombre' | 'tipo' | 'capacidad' | 'ubicacion'>>;
+export type EspacioActualizar = Partial<Pick<Espacio, 'nombre' | 'tipo' | 'capacidad' | 'ubicacion'>> & {
+  amenidades?: number[];
+};
 
 export interface EspacioEstadoActualizar {
   activo: boolean;
@@ -31,6 +40,7 @@ export interface EspacioCrear {
   tipo: TipoEspacio;
   capacidad: number;
   ubicacion?: string | null;
+  amenidades?: number[];
 }
 
 export interface DisponibilidadEspacio {

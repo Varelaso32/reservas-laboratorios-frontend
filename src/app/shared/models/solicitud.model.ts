@@ -1,8 +1,15 @@
 import { Cargo } from '../../core/models/auth.models';
 import { TipoEspacio } from './espacio.model';
 
-export type EstadoSolicitud = 'PENDIENTE' | 'APROBADA' | 'RECHAZADA' | 'CANCELADA';
-export type EstadoReserva = 'ACTIVA' | 'CANCELADA';
+export type EstadoSolicitud =
+  | 'PENDIENTE'
+  | 'APROBADA'
+  | 'RECHAZADA'
+  | 'CANCELADA'
+  | 'PENDIENTE_AUTORIZACION'
+  | 'EN_ESPERA_CESION';
+export type EstadoReserva = 'ACTIVA' | 'CANCELADA' | 'NO_ASISTIO';
+export type EstadoAsistencia = 'PENDIENTE' | 'ASISTIO' | 'NO_ASISTIO';
 
 export interface SolicitanteResumen {
   id: number;
@@ -27,8 +34,14 @@ export interface SolicitudPendiente {
   inicio: string;
   fin: string;
   asistentes: number;
+  tipo_uso?: string | null;
+  responsable?: string | null;
+  fuera_de_franja?: boolean;
   creada_en: string;
   vencida: boolean;
+  /** HU-12: nivel de prioridad (0 a 3) y su etiqueta ALTA/MEDIA/BAJA. */
+  prioridad?: number;
+  prioridad_etiqueta?: 'ALTA' | 'MEDIA' | 'BAJA';
 }
 
 export interface SolicitudDetalle {
@@ -39,6 +52,9 @@ export interface SolicitudDetalle {
   inicio: string;
   fin: string;
   asistentes: number;
+  tipo_uso?: string | null;
+  responsable?: string | null;
+  fuera_de_franja?: boolean;
   creada_en: string;
   vencida: boolean;
   proposito: string;
@@ -46,6 +62,9 @@ export interface SolicitudDetalle {
   motivo_rechazo: string | null;
   decidido_por: string | null;
   fecha_decision: string | null;
+  /** HU-12: prioridad de la solicitud. */
+  prioridad?: number;
+  prioridad_etiqueta?: 'ALTA' | 'MEDIA' | 'BAJA';
 }
 
 export interface EstadoDetalleSolicitud {
@@ -74,6 +93,13 @@ export interface ReservaResumen {
   titular?: string;
   proposito?: string;
   asistentes?: number;
+  /** HU-38 / HU-39: estado de asistencia y ventana de registro. */
+  estado_asistencia?: EstadoAsistencia;
+  inicio_efectivo?: string | null;
+  tolerancia_hasta?: string | null;
+  puede_registrar_asistencia?: boolean;
+  /** HU-17: motivo registrado al cancelar. */
+  motivo_cancelacion?: string | null;
 }
 
 export interface SolicitudResuelta {
@@ -104,6 +130,11 @@ export interface ReservaDetalle {
   aprobada_por: string | null;
   fecha_aprobacion: string | null;
   creada_en: string;
+  estado_asistencia?: EstadoAsistencia;
+  inicio_efectivo?: string | null;
+  tolerancia_hasta?: string | null;
+  puede_registrar_asistencia?: boolean;
+  motivo_cancelacion?: string | null;
 }
 
 export interface AprobacionSolicitud {
@@ -129,6 +160,10 @@ export interface SolicitudCrear {
   proposito: string;
   asistentes: number;
   equipamiento?: string | null;
+  tipo_uso_id?: number | null;
+  responsable_id?: number | null;
+  /** HU-30: motivo obligatorio para pedir el cupo de alguien de menor jerarquía. */
+  motivo_urgencia?: string | null;
 }
 
 export interface SolicitudCreada {
@@ -141,8 +176,15 @@ export interface SolicitudCreada {
   asistentes: number;
   equipamiento: string | null;
   estado: EstadoSolicitud;
+  tipo_uso?: string | null;
+  responsable?: string | null;
+  fuera_de_franja?: boolean;
+  motivo_urgencia?: string | null;
+  /** HU-30: titular del cupo cuando hubo conflicto de jerarquía. */
+  titular?: string | null;
   motivo_rechazo: string | null;
   fecha_decision: string | null;
   creada_en: string;
   mensaje: string;
+  avisos?: string[];
 }
