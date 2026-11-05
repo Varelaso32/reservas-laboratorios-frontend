@@ -10,6 +10,8 @@ import { authGuard } from '../../../../core/guards/auth.guard';
 import { routes } from '../../../../app.routes';
 import { fechaColombia } from '../../../../shared/utils/fecha-colombia.util';
 import { DashboardComponent } from './dashboard.component';
+import { of } from 'rxjs';
+import { NotificacionesService } from '../../../../core/services/notificaciones.service';
 
 describe('DashboardComponent', () => {
   let fixture: ComponentFixture<DashboardComponent>;
@@ -41,7 +43,16 @@ describe('DashboardComponent', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter(routes),
-        MessageService
+        MessageService,
+        {
+          provide: NotificacionesService,
+          useValue: {
+            resumen: () => of({ no_leidas: 0 }),
+            listar: () => of([]),
+            marcarTodasLeidas: () => of({ actualizadas: 0 }),
+            marcarLeida: () => of(null)
+          }
+        }
       ]
     }).compileComponents();
     httpTestingController = TestBed.inject(HttpTestingController);
@@ -63,6 +74,14 @@ describe('DashboardComponent', () => {
     sessionStorage.setItem('usuario', JSON.stringify({ ...usuario, rol }));
     fixture = TestBed.createComponent(DashboardComponent);
     fixture.detectChanges();
+    // El dashboard pide el total de espacios para mostrar "disponibles de total"
+    httpTestingController
+      .expectOne(request => request.url === `${API_BASE_URL}/espacios/` && request.method === 'GET')
+      .flush([
+        espacio,
+        { ...espacio, id: 43, nombre: 'Auditorio Pequeño' },
+        { ...espacio, id: 44, nombre: 'CODESA' }
+      ]);
   }
 
   function obtenerDisponibilidad() {
@@ -138,6 +157,11 @@ describe('DashboardComponent', () => {
     expect(fixture.nativeElement.querySelector('.tarjeta-resumen:first-child small')?.textContent)
       .toContain('Reservas activas de tu cuenta');
     expect(texto).toContain('Validado');
+    const resumenDisponibles = fixture.nativeElement.querySelector(
+      '.tarjeta-resumen:nth-child(2) strong'
+    ) as HTMLElement;
+    expect(resumenDisponibles.textContent?.replace(/\s+/g, ' ').trim()).toBe('1 de 3');
+    expect(texto).toContain('Solo se listan los espacios abiertos en ese intervalo');
     expect(fixture.nativeElement.querySelectorAll('.tarjeta-espacio').length).toBe(1);
     expect(fixture.nativeElement.querySelector('.badge-disponible')?.textContent).toContain('Disponible');
     expect(fixture.nativeElement.querySelector('.boton-reservar')?.getAttribute('href')).toBe('/espacios');
@@ -186,10 +210,16 @@ describe('DashboardComponent', () => {
     expect(fixture.nativeElement.querySelector('.tarjeta-resumen strong')?.textContent?.trim()).toBe('1');
   });
 
-  it('confirms cancellation, posts without a body and refreshes the agenda and counter', () => {
+  it('confirms cancellation with a reason and refreshes the agenda and counter', () => {
+    // Reloj fijo a media mañana: con la hora real, cerca de medianoche la reserva
+    // "en 1 hora" caería en el día siguiente y no habría nada que cancelar.
+    const fechaReserva = fechaColombia(new Date());
+    jasmine.clock().install();
+    jasmine.clock().mockDate(new Date(`${fechaReserva}T10:00:00-05:00`));
+    relojInstalado = true;
     crearDashboard();
-    const inicio = new Date(Date.now() + 60 * 60_000).toISOString();
-    const fin = new Date(Date.now() + 2 * 60 * 60_000).toISOString();
+    const inicio = `${fechaReserva}T11:00:00`;
+    const fin = `${fechaReserva}T12:00:00`;
     obtenerDisponibilidad().flush([]);
     httpTestingController.expectOne(`${API_BASE_URL}/reservas/mias`).flush([{
       id: 81,
@@ -224,11 +254,17 @@ describe('DashboardComponent', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('[role="alertdialog"]')).toBeTruthy();
 
+    const motivo = fixture.nativeElement.querySelector('#motivo-cancelacion') as HTMLTextAreaElement;
+    expect(motivo).toBeTruthy();
+    motivo.value = 'Ya no puedo asistir';
+    motivo.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
     (fixture.nativeElement.querySelector('.boton-confirmar') as HTMLButtonElement).click();
     fixture.detectChanges();
     const request = httpTestingController.expectOne(`${API_BASE_URL}/reservas/81/cancelar`);
     expect(request.request.method).toBe('POST');
-    expect(request.request.body).toBeNull();
+    expect(request.request.body).toEqual({ motivo: 'Ya no puedo asistir' });
     expect((fixture.nativeElement.querySelector('.boton-confirmar') as HTMLButtonElement).disabled).toBeTrue();
     request.flush({
       id: 81,
@@ -320,6 +356,7 @@ describe('DashboardComponent', () => {
     fixture.detectChanges();
     (fixture.nativeElement.querySelector('.cancelar-reserva') as HTMLButtonElement).click();
     fixture.detectChanges();
+    fixture.componentInstance.motivoCancelacion = 'Cambio de planes';
     (fixture.nativeElement.querySelector('.boton-confirmar') as HTMLButtonElement).click();
 
     httpTestingController.expectOne(`${API_BASE_URL}/reservas/83/cancelar`).flush(
@@ -334,7 +371,7 @@ describe('DashboardComponent', () => {
       key: 'dashboard',
       severity: 'warn',
       summary: 'No se puede cancelar la reserva',
-      detail: 'La reserva ya inició y no se puede cancelar.'
+      detail: 'La reserva ya inició.'
     }));
     httpTestingController.expectNone(`${API_BASE_URL}/reservas/mias`);
   });
@@ -518,6 +555,7 @@ describe('DashboardComponent', () => {
 
     // 404 error
     fixture.componentInstance.abrirConfirmacionCancelacion(reservaFutura);
+    fixture.componentInstance.motivoCancelacion = 'Motivo de prueba';
     fixture.componentInstance.confirmarCancelacion();
     const req404 = httpTestingController.expectOne(`${API_BASE_URL}/reservas/99/cancelar`);
     req404.flush({ detail: 'No encontrada' }, { status: 404, statusText: 'Not Found' });
@@ -529,6 +567,7 @@ describe('DashboardComponent', () => {
 
     // 409 error
     fixture.componentInstance.abrirConfirmacionCancelacion(reservaFutura);
+    fixture.componentInstance.motivoCancelacion = 'Motivo de prueba';
     fixture.componentInstance.confirmarCancelacion();
     const req409 = httpTestingController.expectOne(`${API_BASE_URL}/reservas/99/cancelar`);
     req409.flush({ detail: 'Conflicto' }, { status: 409, statusText: 'Conflict' });
@@ -592,6 +631,9 @@ describe('DashboardComponent', () => {
     expect(fixture.componentInstance.mensajeAgendaNoDisponible).toBe('No hay reservas disponibles para mostrar.');
     httpTestingController.expectNone(`${API_BASE_URL}/reservas/mias`);
     httpTestingController.expectNone(`${API_BASE_URL}/reservas/`);
+    httpTestingController
+      .expectOne(request => request.url === `${API_BASE_URL}/espacios/` && request.method === 'GET')
+      .flush([]);
     obtenerDisponibilidad().flush([]);
   });
 });
