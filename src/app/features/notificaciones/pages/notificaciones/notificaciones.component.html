@@ -1,0 +1,232 @@
+<div class="aplicacion">
+  <app-pos-sidebar seccionActiva="notificaciones" />
+
+  <main class="contenido">
+    <p-toast key="notificaciones-modulo" position="bottom-right" />
+
+    <header class="topbar">
+      <div class="migas">
+        <i class="pi pi-bell" aria-hidden="true"></i>
+        <span>Notificaciones</span>
+      </div>
+
+      <div class="acciones-topbar">
+        <button type="button" class="boton-refrescar" [disabled]="cargando()" (click)="cargar()">
+          <i class="pi pi-refresh" aria-hidden="true"></i>
+          <span>Actualizar</span>
+        </button>
+        <div class="perfil" aria-label="Usuario actual">{{ inicialesUsuario }}</div>
+      </div>
+    </header>
+
+    <section class="pagina">
+      <header class="encabezado">
+        <div>
+          <h1>Notificaciones</h1>
+          <p>Historial de avisos de tus solicitudes, cesiones y autorizaciones.</p>
+        </div>
+      </header>
+
+      <div class="barra-filtros">
+        <div class="filtros" role="group" aria-label="Filtrar notificaciones">
+          <button
+            type="button"
+            class="chip"
+            [class.activo]="filtro() === 'todas'"
+            [attr.aria-pressed]="filtro() === 'todas'"
+            (click)="cambiarFiltro('todas')"
+          >
+            Todas
+            <span class="conteo">{{ notificaciones().length }}</span>
+          </button>
+          <button
+            type="button"
+            class="chip"
+            [class.activo]="filtro() === 'nuevas'"
+            [attr.aria-pressed]="filtro() === 'nuevas'"
+            (click)="cambiarFiltro('nuevas')"
+          >
+            Nuevas
+            <span class="conteo">{{ totalNuevas }}</span>
+          </button>
+        </div>
+
+        <button
+          type="button"
+          class="boton-secundario"
+          [disabled]="totalNuevas === 0"
+          (click)="marcarTodasLeidas()"
+        >
+          Marcar todas como leídas
+        </button>
+      </div>
+
+      @if (error()) {
+        <p class="panel-error" role="alert">{{ error() }}</p>
+      }
+
+      @if (cargando()) {
+        <p class="estado" role="status">Cargando notificaciones...</p>
+      } @else if (!visibles.length) {
+        <p class="estado" role="status">
+          {{ filtro() === 'nuevas' ? 'No tienes notificaciones nuevas.' : 'Todavía no tienes notificaciones.' }}
+        </p>
+      } @else {
+        <ul class="lista">
+          @for (notificacion of visibles; track notificacion.id) {
+            <li class="aviso" [class.no-leida]="!notificacion.leida">
+              <header class="aviso-cabecera">
+                <div class="aviso-titulo">
+                  <strong>{{ notificacion.titulo }}</strong>
+                  @if (!notificacion.leida) {
+                    <span class="pastilla-nueva">Nueva</span>
+                  }
+                </div>
+                <time [attr.datetime]="notificacion.creada_en">
+                  {{ fechaHoraLegible(notificacion.creada_en) }}
+                </time>
+              </header>
+
+              <p class="aviso-mensaje">{{ notificacion.mensaje }}</p>
+
+              @if (notificacion.detalle; as detalle) {
+                <dl class="detalle-solicitud">
+                  <div>
+                    <dt>Espacio</dt>
+                    <dd>{{ detalle.espacio }}</dd>
+                  </div>
+                  <div>
+                    <dt>Fecha</dt>
+                    <dd>{{ fechaLegible(detalle.inicio) }}</dd>
+                  </div>
+                  <div>
+                    <dt>Horario</dt>
+                    <dd>{{ horarioLegible(detalle.inicio, detalle.fin) }}</dd>
+                  </div>
+                  @if (muestraSolicitante(notificacion)) {
+                    <div>
+                      <dt>Quien solicita</dt>
+                      <dd>{{ detalle.solicitante }} · {{ rolLegible(detalle.rol_solicitante) }}</dd>
+                    </div>
+                  }
+                  @if (detalle.motivo_urgencia) {
+                    <div class="detalle-motivo">
+                      <dt>Motivo de urgencia</dt>
+                      <dd>{{ detalle.motivo_urgencia }}</dd>
+                    </div>
+                  }
+                  @if (detalle.motivo_rechazo) {
+                    <div class="detalle-motivo">
+                      <dt>Motivo del rechazo</dt>
+                      <dd>{{ detalle.motivo_rechazo }}</dd>
+                    </div>
+                  }
+                </dl>
+
+                @if (muestraEstado(notificacion)) {
+                  <p
+                    class="estado-aviso"
+                    [class.estado-rechazo]="esRechazo(notificacion)"
+                    [class.estado-aprobado]="!esRechazo(notificacion)"
+                  >
+                    {{ estadoLegible(notificacion) }}
+                  </p>
+                }
+
+                @if (puedeDecidir(notificacion)) {
+                  @if (decisionAbiertaId() === notificacion.id) {
+                    @if (modoDecision() === 'conservar') {
+                      <div class="decision">
+                        <label [for]="'motivo-conservar-' + notificacion.id">
+                          Motivo para conservar tu cupo
+                        </label>
+                        <textarea
+                          [id]="'motivo-conservar-' + notificacion.id"
+                          rows="2"
+                          maxlength="500"
+                          placeholder="Explica por qué necesitas conservar el horario"
+                          [(ngModel)]="motivoConservar"
+                        ></textarea>
+                        <div class="decision-botones">
+                          <button
+                            type="button"
+                            class="boton-primario"
+                            [disabled]="procesandoId() === notificacion.id"
+                            (click)="conservarCupo(notificacion)"
+                          >
+                            {{ procesandoId() === notificacion.id ? 'Guardando...' : 'Conservar mi cupo' }}
+                          </button>
+                          <button type="button" class="boton-secundario" (click)="cerrarDecision()">
+                            Cancelar
+                          </button>
+                        </div>
+                      </div>
+                    } @else {
+                      <div class="decision">
+                        <p class="decision-aviso">
+                          Si cedes, tu reserva se cancela y el cupo pasa a
+                          {{ detalle.solicitante }}. Esta acción no se puede deshacer.
+                        </p>
+                        <div class="decision-botones">
+                          <button
+                            type="button"
+                            class="boton-primario"
+                            [disabled]="procesandoId() === notificacion.id"
+                            (click)="cederCupo(notificacion)"
+                          >
+                            {{ procesandoId() === notificacion.id ? 'Cediendo...' : 'Sí, ceder el cupo' }}
+                          </button>
+                          <button type="button" class="boton-secundario" (click)="cerrarDecision()">
+                            Cancelar
+                          </button>
+                        </div>
+                      </div>
+                    }
+                  } @else {
+                    <div class="acciones-cesion">
+                      <button
+                        type="button"
+                        class="boton-primario"
+                        (click)="abrirDecision(notificacion, 'ceder')"
+                      >
+                        Ceder el cupo
+                      </button>
+                      <button
+                        type="button"
+                        class="boton-secundario"
+                        (click)="abrirDecision(notificacion, 'conservar')"
+                      >
+                        Conservar mi cupo
+                      </button>
+                    </div>
+                  }
+                }
+              }
+
+              <footer class="acciones-aviso">
+                @if (puedeRevisar(notificacion)) {
+                  <button type="button" class="boton-primario" (click)="revisar(notificacion)">
+                    {{
+                      notificacion.tipo === 'SOLICITUD_POR_AUTORIZAR'
+                        ? 'Revisar autorización'
+                        : 'Revisar solicitud'
+                    }}
+                  </button>
+                }
+                @if (!notificacion.leida) {
+                  <button
+                    type="button"
+                    class="boton-secundario"
+                    (click)="marcarLeida(notificacion)"
+                  >
+                    Marcar como leída
+                  </button>
+                }
+              </footer>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+  </main>
+</div>
