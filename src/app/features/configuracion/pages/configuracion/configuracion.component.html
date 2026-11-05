@@ -1,0 +1,246 @@
+<div class="aplicacion">
+  <app-pos-sidebar seccionActiva="configuracion" />
+
+  <main class="contenido">
+    <p-toast key="configuracion" position="bottom-right" />
+
+    <header class="topbar">
+      <div class="migas">
+        <i class="pi pi-cog" aria-hidden="true"></i>
+        <span>Configuración</span>
+      </div>
+
+      <div class="acciones-topbar">
+        <app-campana-notificaciones />
+        <div class="perfil" aria-label="Usuario actual">{{ inicialesUsuario }}</div>
+      </div>
+    </header>
+
+    <section class="pagina">
+      <header class="encabezado">
+        <div>
+          <h1>Configuración</h1>
+          <p>Gestiona los datos de tu cuenta: nombre, correo y contraseña.</p>
+        </div>
+      </header>
+
+      @if (usuario) {
+        <div class="paneles">
+          <section class="panel" aria-labelledby="titulo-datos">
+            <h2 id="titulo-datos"><i class="pi pi-id-card" aria-hidden="true"></i> Tus datos</h2>
+            <p class="ayuda">
+              El rol y el cargo los administra el sistema; aquí solo puedes cambiar tu nombre y tu correo.
+            </p>
+
+            <form [formGroup]="formularioDatos" (ngSubmit)="guardarDatos()" novalidate>
+              <div class="campo">
+                <label for="campo-nombre">Nombre completo</label>
+                <input
+                  id="campo-nombre"
+                  type="text"
+                  formControlName="nombre"
+                  autocomplete="name"
+                  maxlength="150"
+                  [class.error]="formularioDatos.get('nombre')?.touched && formularioDatos.get('nombre')?.invalid"
+                />
+                @if (formularioDatos.get('nombre')?.touched && formularioDatos.get('nombre')?.invalid) {
+                  <small class="mensaje-error" role="alert">Escribe tu nombre completo.</small>
+                }
+              </div>
+
+              <div class="campo">
+                <label for="campo-email">Correo institucional</label>
+                <input
+                  id="campo-email"
+                  type="email"
+                  formControlName="email"
+                  autocomplete="email"
+                  [class.error]="formularioDatos.get('email')?.touched && formularioDatos.get('email')?.invalid"
+                />
+                @if (formularioDatos.get('email')?.touched && formularioDatos.get('email')?.invalid) {
+                  <small class="mensaje-error" role="alert">Escribe un correo válido.</small>
+                }
+              </div>
+
+              <footer class="acciones-panel">
+                <button type="submit" class="boton-primario" [disabled]="guardandoDatos()">
+                  {{ guardandoDatos() ? 'Guardando...' : 'Guardar cambios' }}
+                </button>
+              </footer>
+            </form>
+          </section>
+
+          <section class="panel" aria-labelledby="titulo-clave">
+            <h2 id="titulo-clave">
+              <i class="pi pi-lock" aria-hidden="true"></i> Restablecer contraseña
+            </h2>
+            <p class="ayuda">
+              Para restablecerla confirma tu clave actual. La nueva debe tener entre 8 y 128 caracteres.
+            </p>
+
+            <form [formGroup]="formularioClave" (ngSubmit)="guardarClave()" novalidate>
+              <div class="campo">
+                <label for="campo-actual">Clave actual</label>
+                <input
+                  id="campo-actual"
+                  type="password"
+                  formControlName="claveActual"
+                  autocomplete="current-password"
+                  [class.error]=
+                    "formularioClave.get('claveActual')?.touched && formularioClave.get('claveActual')?.invalid"
+                />
+              </div>
+
+              <div class="campo">
+                <label for="campo-nueva">Clave nueva</label>
+                <input
+                  id="campo-nueva"
+                  type="password"
+                  formControlName="claveNueva"
+                  autocomplete="new-password"
+                  [class.error]="formularioClave.get('claveNueva')?.touched && formularioClave.get('claveNueva')?.invalid"
+                />
+                @if (formularioClave.get('claveNueva')?.touched && formularioClave.get('claveNueva')?.invalid) {
+                  <small class="mensaje-error" role="alert">La clave nueva debe tener entre 8 y 128 caracteres.</small>
+                }
+              </div>
+
+              <div class="campo">
+                <label for="campo-confirmacion">Confirmar clave nueva</label>
+                <input
+                  id="campo-confirmacion"
+                  type="password"
+                  formControlName="confirmacion"
+                  autocomplete="new-password"
+                  [class.error]="confirmacionNoCoincide"
+                />
+                @if (confirmacionNoCoincide) {
+                  <small class="mensaje-error" role="alert">Las claves no coinciden.</small>
+                }
+              </div>
+
+              <footer class="acciones-panel">
+                <button type="submit" class="boton-primario" [disabled]="guardandoClave()">
+                  {{ guardandoClave() ? 'Guardando...' : 'Cambiar contraseña' }}
+                </button>
+              </footer>
+            </form>
+          </section>
+
+          <section class="panel panel-sancion" id="mi-sancion" aria-labelledby="titulo-sancion">
+            <h2 id="titulo-sancion">
+              <i class="pi pi-shield" aria-hidden="true"></i> Mi sanción
+            </h2>
+            <p class="ayuda">
+              Registra tu asistencia dentro de la tolerancia de cada reserva. Los no-show generan
+              strikes y, al llegar al máximo, bloquean nuevas solicitudes.
+            </p>
+
+            @if (cargandoSancion) {
+              <p class="estado-sancion" role="status">Consultando tus strikes...</p>
+            } @else if (errorSancion) {
+              <p class="estado-sancion" role="status">{{ errorSancion }}</p>
+            } @else if (estadoSancion) {
+              @let estado = estadoSancion;
+              <div class="resumen-sancion">
+                <div class="dato-sancion">
+                  <span>Strikes activos</span>
+                  <strong>{{ estado.strikes_activos }} de {{ estado.max_strikes }}</strong>
+                </div>
+                <div class="dato-sancion">
+                  <span>Tolerancia</span>
+                  <strong>{{ estado.tolerancia_minutos }} min</strong>
+                </div>
+                <div class="dato-sancion">
+                  <span>Estado</span>
+                  <strong [class.bloqueado]="estado.bloqueado">
+                    {{ estado.bloqueado ? 'Bloqueado' : 'Habilitado' }}
+                  </strong>
+                </div>
+              </div>
+
+              @if (estado.bloqueado) {
+                <p class="aviso-bloqueo" role="alert">
+                  No puedes crear nuevas solicitudes hasta que el administrador acepte tu reactivación.
+                </p>
+              }
+
+              @if (estado.strikes.length === 0) {
+                <p class="estado-sancion">No tienes strikes registrados. ¡Sigue así!</p>
+              } @else {
+                <ul class="lista-strikes">
+                  @for (strike of estado.strikes; track strike.id) {
+                    <li [class.anulado]="strike.anulado">
+                      <div class="strike-info">
+                        <strong>{{ strike.espacio }}</strong>
+                        <span>
+                          {{ strike.inicio ? formatearFechaSancion(strike.inicio) : 'Reserva #' + strike.reserva_id }}
+                          · {{ strike.minutos_retraso }} min de retraso
+                        </span>
+                      </div>
+                      <span class="strike-estado">{{ strike.anulado ? 'Anulado' : 'Activo' }}</span>
+                    </li>
+                  }
+                </ul>
+              }
+
+              @if (estado.reactivacion; as reactivacion) {
+                <div class="reactivacion-estado" [class.aceptada]="reactivacion.estado === 'ACEPTADA'"
+                     [class.rechazada]="reactivacion.estado === 'RECHAZADA'">
+                  <strong>Reactivación {{ reactivacion.estado === 'PENDIENTE' ? 'en revisión' :
+                    (reactivacion.estado === 'ACEPTADA' ? 'aceptada' : 'rechazada') }}</strong>
+                  <p>{{ reactivacion.justificacion }}</p>
+                  @if (reactivacion.motivo_rechazo) {
+                    <p class="motivo-rechazo">Motivo del rechazo: {{ reactivacion.motivo_rechazo }}</p>
+                  }
+                </div>
+              } @else if (estado.bloqueado) {
+                <form class="form-reactivacion" (ngSubmit)="pedirReactivacion()" novalidate>
+                  <h3>Solicitar reactivación</h3>
+                  <p class="ayuda">
+                    Explica qué pasó y justifica cada strike activo. El Administrador del Sistema
+                    revisará tu caso.
+                  </p>
+                  <div class="campo">
+                    <label for="justificacion-general">Justificación general</label>
+                    <textarea
+                      id="justificacion-general"
+                      rows="3"
+                      maxlength="1000"
+                      placeholder="Explica tu situación (mínimo 10 caracteres)"
+                      [(ngModel)]="justificacionGeneral"
+                      name="justificacionGeneral"
+                    ></textarea>
+                  </div>
+
+                  @for (strike of strikesActivos; track strike.id) {
+                    <div class="campo">
+                      <label [for]="'justificacion-strike-' + strike.id">
+                        Justificación del strike del {{ formatearFechaSancion(strike.inicio) }}
+                      </label>
+                      <textarea
+                        [id]="'justificacion-strike-' + strike.id"
+                        rows="2"
+                        maxlength="500"
+                        placeholder="Explica por qué no asististe (mínimo 5 caracteres)"
+                        [name]="'justificacionStrike' + strike.id"
+                        [ngModel]="justificacionesStrike[strike.id] ?? ''"
+                        (ngModelChange)="justificacionesStrike[strike.id] = $event"
+                      ></textarea>
+                    </div>
+                  }
+
+                  <footer class="acciones-panel">
+                    <button type="submit" class="boton-primario" [disabled]="enviandoReactivacion">
+                      {{ enviandoReactivacion ? 'Enviando...' : 'Enviar solicitud' }}
+                    </button>
+                  </footer>
+                </form>
+              }
+            }
+          </section>
+        </div>
+      }
+    </section>
+  </main>
+</div>
