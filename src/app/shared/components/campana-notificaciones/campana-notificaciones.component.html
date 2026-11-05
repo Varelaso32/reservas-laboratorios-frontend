@@ -1,0 +1,182 @@
+<div class="campana">
+  <button
+    type="button"
+    class="boton-campana"
+    [class.con-avisos]="noLeidas() > 0"
+    [attr.aria-expanded]="abierto()"
+    [attr.aria-label]="etiquetaContador"
+    (click)="alternarPanel()"
+  >
+    <i class="pi pi-bell" aria-hidden="true"></i>
+    @if (noLeidas() > 0) {
+      <span class="contador" aria-hidden="true">{{ noLeidas() > 9 ? '9+' : noLeidas() }}</span>
+    }
+  </button>
+
+  @if (abierto()) {
+    <section class="panel" aria-label="Notificaciones">
+      <header class="panel-cabecera">
+        <h2>Notificaciones nuevas</h2>
+        <button type="button" class="ver-todas" (click)="verTodas()">
+          Ver todas
+        </button>
+      </header>
+
+      @if (error()) {
+        <p class="panel-error" role="alert">{{ error() }}</p>
+      }
+
+      @if (cargando()) {
+        <p class="panel-estado" role="status">Cargando notificaciones...</p>
+      } @else if (!notificaciones().length) {
+        <p class="panel-estado">No tienes notificaciones nuevas.</p>
+      } @else {
+        <ul class="lista">
+          @for (notificacion of notificaciones(); track notificacion.id) {
+            <li class="aviso" [class.no-leida]="!notificacion.leida">
+              <div class="aviso-cabecera">
+                <strong>{{ notificacion.titulo }}</strong>
+                <time [attr.datetime]="notificacion.creada_en">
+                  {{ fechaLegible(notificacion.creada_en) }}
+                </time>
+              </div>
+
+              <p class="aviso-mensaje">{{ notificacion.mensaje }}</p>
+
+              @if (notificacion.detalle; as detalle) {
+                <dl class="detalle-solicitud">
+                  <div>
+                    <dt>Espacio</dt>
+                    <dd>{{ detalle.espacio }}</dd>
+                  </div>
+                  <div>
+                    <dt>Fecha</dt>
+                    <dd>{{ fechaLegible(detalle.inicio) }}</dd>
+                  </div>
+                  <div>
+                    <dt>Horario</dt>
+                    <dd>{{ horarioLegible(detalle.inicio, detalle.fin) }}</dd>
+                  </div>
+                  @if (muestraSolicitante(notificacion)) {
+                    <div>
+                      <dt>Quien solicita</dt>
+                      <dd>{{ detalle.solicitante }} · {{ rolLegible(detalle.rol_solicitante) }}</dd>
+                    </div>
+                  }
+                  @if (detalle.motivo_urgencia) {
+                    <div class="detalle-motivo">
+                      <dt>Motivo de urgencia</dt>
+                      <dd>{{ detalle.motivo_urgencia }}</dd>
+                    </div>
+                  }
+                  @if (detalle.motivo_rechazo) {
+                    <div class="detalle-motivo">
+                      <dt>Motivo del rechazo</dt>
+                      <dd>{{ detalle.motivo_rechazo }}</dd>
+                    </div>
+                  }
+                </dl>
+
+                @if (muestraEstado(notificacion)) {
+                  <p
+                    class="estado-aviso"
+                    [class.estado-rechazo]="esRechazo(notificacion)"
+                    [class.estado-aprobado]="!esRechazo(notificacion)"
+                  >
+                    {{ estadoLegible(notificacion) }}
+                  </p>
+                }
+
+                @if (
+                  notificacion.tipo === 'CESION_SOLICITADA' &&
+                  detalle.estado === 'EN_ESPERA_CESION'
+                ) {
+                  @if (decisionAbiertaId() === notificacion.id) {
+                    @if (modoDecision() === 'conservar') {
+                      <div class="decision">
+                        <label [for]="'motivo-conservar-' + notificacion.id">
+                          Motivo para conservar tu cupo
+                        </label>
+                        <textarea
+                          [id]="'motivo-conservar-' + notificacion.id"
+                          rows="2"
+                          maxlength="500"
+                          placeholder="Explica por qué necesitas conservar el horario"
+                          [(ngModel)]="motivoConservar"
+                        ></textarea>
+                        <div class="decision-botones">
+                          <button
+                            type="button"
+                            class="boton-primario"
+                            [disabled]="procesandoId() === notificacion.id"
+                            (click)="conservarCupo(notificacion)"
+                          >
+                            {{ procesandoId() === notificacion.id ? 'Guardando...' : 'Conservar mi cupo' }}
+                          </button>
+                          <button type="button" class="boton-secundario" (click)="cerrarDecision()">
+                            Cancelar
+                          </button>
+                        </div>
+                      </div>
+                    } @else {
+                      <div class="decision">
+                        <p class="decision-aviso">
+                          Si cedes, tu reserva se cancela y el cupo pasa a
+                          {{ detalle.solicitante }}. Esta acción no se puede deshacer.
+                        </p>
+                        <div class="decision-botones">
+                          <button
+                            type="button"
+                            class="boton-primario"
+                            [disabled]="procesandoId() === notificacion.id"
+                            (click)="cederCupo(notificacion)"
+                          >
+                            {{ procesandoId() === notificacion.id ? 'Cediendo...' : 'Sí, ceder el cupo' }}
+                          </button>
+                          <button type="button" class="boton-secundario" (click)="cerrarDecision()">
+                            Cancelar
+                          </button>
+                        </div>
+                      </div>
+                    }
+                  } @else {
+                    <div class="acciones-cesion">
+                      <button
+                        type="button"
+                        class="boton-primario"
+                        (click)="abrirDecision(notificacion, 'ceder')"
+                      >
+                        Ceder el cupo
+                      </button>
+                      <button
+                        type="button"
+                        class="boton-secundario"
+                        (click)="abrirDecision(notificacion, 'conservar')"
+                      >
+                        Conservar mi cupo
+                      </button>
+                    </div>
+                  }
+                }
+              }
+
+              @if (puedeRevisar(notificacion)) {
+                <div class="acciones-revision">
+                  <button type="button" class="boton-primario" (click)="revisar(notificacion)">
+                    {{
+                      notificacion.tipo === 'SOLICITUD_POR_AUTORIZAR'
+                        ? 'Revisar autorización'
+                        : 'Revisar solicitud'
+                    }}
+                  </button>
+                </div>
+              }
+            </li>
+          }
+        </ul>
+      }
+    </section>
+  }
+
+  <p-toast key="notificaciones" position="bottom-right" />
+</div>
