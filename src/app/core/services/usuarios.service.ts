@@ -5,12 +5,16 @@ import type { Observable } from 'rxjs';
 
 import { API_BASE_URL } from '../config/api.config';
 import type {
+  ActualizarMiCuentaRequest,
   ActualizarUsuarioRequest,
   CambiarEstadoUsuarioRequest,
+  CambiarMiClaveRequest,
   CrearUsuarioRequest,
   FiltrosUsuarios,
   ListaUsuariosResponse,
-  UsuarioAdmin
+  ResultadoCambio,
+  UsuarioAdmin,
+  UsuarioDetalle
 } from '../models/usuarios.model';
 
 const USUARIOS_URL = `${API_BASE_URL}/usuarios/`;
@@ -67,5 +71,13 @@ export class UsuariosService {
 
   cambiarEstado(id: number, request: CambiarEstadoUsuarioRequest): Observable<UsuarioAdmin> {
     return this.http.patch<UsuarioAdmin>(`${USUARIOS_URL}${id}/estado`, request);
+  }
+
+  actualizarMiCuenta(request: ActualizarMiCuentaRequest): Observable<UsuarioDetalle> {
+    return this.http.patch<UsuarioDetalle>(`${USUARIOS_URL}mi-cuenta`, request);
+  }
+
+  cambiarMiClave(request: CambiarMiClaveRequest): Observable<ResultadoCambio> {
+    return this.http.patch<ResultadoCambio>(`${USUARIOS_URL}mi-cuenta/clave`, request);
   }
 }

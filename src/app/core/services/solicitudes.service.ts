@@ -13,6 +13,12 @@ import {
   SolicitudPendiente,
   SolicitudResuelta
 } from '../../shared/models/solicitud.model';
+import {
+  DecisionAutorizacion,
+  RespuestaAutorizacion,
+  SolicitudAutorizacion
+} from '../../shared/models/configuracion.model';
+import { DecisionCesion, RespuestaCesion } from '../../shared/models/notificacion.model';
 
 @Injectable({ providedIn: 'root' })
 export class SolicitudesService {
@@ -66,6 +72,30 @@ export class SolicitudesService {
     return this.http.post<RechazoSolicitud>(
       `${API_BASE_URL}/solicitudes/${solicitudId}/rechazar`,
       body
+    );
+  }
+
+  /** HU-35: solicitudes fuera de la franja que esperan autorización especial. */
+  consultarAutorizaciones(): Observable<SolicitudAutorizacion[]> {
+    return this.http.get<SolicitudAutorizacion[]>(`${API_BASE_URL}/solicitudes/autorizaciones`);
+  }
+
+  /** HU-35: conceder o negar la autorización especial de una solicitud. */
+  decidirAutorizacion(
+    solicitudId: number,
+    decision: DecisionAutorizacion
+  ): Observable<RespuestaAutorizacion> {
+    return this.http.post<RespuestaAutorizacion>(
+      `${API_BASE_URL}/solicitudes/${solicitudId}/autorizacion`,
+      decision
+    );
+  }
+
+  /** HU-31: el titular del cupo acepta o rechaza la cesión. */
+  decidirCesion(solicitudId: number, decision: DecisionCesion): Observable<RespuestaCesion> {
+    return this.http.post<RespuestaCesion>(
+      `${API_BASE_URL}/solicitudes/${solicitudId}/cesion`,
+      decision
     );
   }
 }
