@@ -1,0 +1,584 @@
+<div class="admin-app">
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-icon">R</div>
+      <div>
+        <strong>ReservaECCI</strong>
+        <small>Panel Admin</small>
+      </div>
+    </div>
+
+    <nav class="menu" aria-label="Panel Admin">
+            @if (usuarioActual?.rol === 'ADMIN') {
+        <a class="menu-item" routerLink="/admin/dashboard" routerLinkActive="activo" ariaCurrentWhenActive="page">
+          <i class="pi pi-th-large" aria-hidden="true"></i>
+          <span>Resumen</span>
+        </a>
+      }
+      <a class="menu-item" routerLink="/admin/espacios" routerLinkActive="activo" ariaCurrentWhenActive="page">
+        <i class="pi pi-building" aria-hidden="true"></i>
+        <span>Espacios</span>
+      </a>
+      @if (esAdministrador) {
+        <a class="menu-item" routerLink="/admin/usuarios" routerLinkActive="activo" ariaCurrentWhenActive="page">
+          <i class="pi pi-users" aria-hidden="true"></i>
+          <span>Usuarios</span>
+        </a>
+        <a class="menu-item" routerLink="/admin/sanciones" routerLinkActive="activo" ariaCurrentWhenActive="page">
+          <i class="pi pi-shield" aria-hidden="true"></i>
+          <span>Sanciones</span>
+        </a>
+      }
+            @if (usuarioActual?.rol === 'ADMIN') {
+        <a class="menu-item" routerLink="/admin/reportes" routerLinkActive="activo" ariaCurrentWhenActive="page">
+          <i class="pi pi-chart-bar" aria-hidden="true"></i>
+          <span>Reportes</span>
+        </a>
+      }
+
+      @if (esAdministrador) {
+        <div class="grupo-menu">
+          <button
+            type="button"
+            class="menu-item grupo"
+            aria-controls="submenu-parametros"
+            [class.abierto]="parametrosAbierto"
+            [attr.aria-expanded]="parametrosAbierto"
+            (click)="alternarParametros()"
+          >
+            <i class="pi pi-sliders-h" aria-hidden="true"></i>
+            <span>Parámetros</span>
+            <i class="pi pi-angle-down chevron" aria-hidden="true"></i>
+          </button>
+
+          @if (parametrosAbierto) {
+            <div class="submenu" id="submenu-parametros">
+              @for (enlace of enlacesParametros; track enlace.seccion) {
+                <a
+                  class="submenu-item"
+                  [routerLink]="enlace.ruta"
+                  routerLinkActive="activo"
+                  ariaCurrentWhenActive="page"
+                  [title]="enlace.etiqueta"
+                >
+                  <i class="pi {{ enlace.icono }}" aria-hidden="true"></i>
+                  <span>{{ enlace.etiqueta }}</span>
+                </a>
+              }
+            </div>
+          }
+        </div>
+      }
+
+      <div class="separador"></div>
+
+      <a class="menu-item vista-operador" routerLink="/espacios">
+        <i class="pi pi-arrow-left" aria-hidden="true"></i>
+        <span>Vista Operador</span>
+      </a>
+    </nav>
+
+    @if (usuarioActual; as usuario) {
+      <div class="usuario">
+        <div class="avatar">{{ inicialesUsuario }}</div>
+        <div class="usuario-info">
+          <strong>{{ usuario.nombre }}</strong>
+          <small>{{ usuario.rol }}</small>
+        </div>
+        <button
+          type="button"
+          class="logout"
+          aria-label="Cerrar sesión"
+          title="Cerrar sesión"
+          (click)="cerrarSesion()"
+        >
+          <i class="pi pi-sign-out" aria-hidden="true"></i>
+        </button>
+      </div>
+    }
+  </aside>
+
+  <main class="contenido">
+    <p-toast key="admin-parametros" position="bottom-right" />
+
+    <header class="topbar">
+      <div class="migas">
+        <i class="pi pi-sliders-h" aria-hidden="true"></i>
+        <span>{{ migaSeccion }}</span>
+      </div>
+      <div class="acciones-topbar">
+        <app-campana-notificaciones />
+        <div class="perfil" aria-label="Usuario actual">{{ inicialesUsuario }}</div>
+      </div>
+    </header>
+
+    <section class="pagina">
+      <div class="encabezado">
+        <div>
+          <h1>{{ tituloSeccion }}</h1>
+          <p>{{ descripcionSeccion }}</p>
+        </div>
+      </div>
+
+      @if (!esAdministrador) {
+        <div class="aviso-permiso" role="alert">
+          <i class="pi pi-lock" aria-hidden="true"></i>
+          Solo el Administrador del Sistema puede cambiar los parámetros.
+        </div>
+      }
+
+      <!-- ─── Parámetros · Reglas por espacio ─── -->
+      @if (seccion === 'reglas') {
+        <section class="panel" aria-labelledby="titulo-reglas-espacio">
+          <header class="panel-header">
+            <div>
+              <h2 id="titulo-reglas-espacio">Reglas por espacio</h2>
+              <p>Selecciona un espacio para ajustar su operación.</p>
+            </div>
+
+            <label class="selector-espacio">
+              <span class="sr-only">Espacio</span>
+              <select
+                [disabled]="cargandoEspacios || guardandoReglas"
+                [ngModel]="espacioSeleccionadoId"
+                (ngModelChange)="seleccionarEspacio($event)"
+              >
+                @for (espacio of espacios; track espacio.id) {
+                  <option [value]="espacio.id">
+                    {{ espacio.nombre }}{{ espacio.activo ? '' : ' (inactivo)' }}
+                  </option>
+                }
+              </select>
+            </label>
+          </header>
+
+          @if (cargandoEspacios) {
+            <p class="estado-panel" role="status">Cargando espacios...</p>
+          } @else if (errorEspacios) {
+            <div class="estado-panel error" role="alert">
+              <span>{{ errorEspacios }}</span>
+              <button type="button" (click)="cargarEspacios()">Reintentar</button>
+            </div>
+          } @else if (espacios.length === 0) {
+            <p class="estado-panel">No hay espacios registrados.</p>
+          } @else if (cargandoReglas) {
+            <p class="estado-panel" role="status">Cargando reglas del espacio...</p>
+          } @else if (errorReglas) {
+            <div class="estado-panel error" role="alert">
+              <span>{{ errorReglas }}</span>
+              <button type="button" (click)="seleccionarEspacio(espacioSeleccionadoId ?? 0)">Reintentar</button>
+            </div>
+          } @else if (reglas) {
+            <div class="formulario-reglas">
+              <div class="campo-grupo">
+                <span class="etiqueta-grupo">FRANJA DE OPERACIÓN</span>
+                <div class="fila-campos">
+                  <label class="campo-regla">
+                    <span>Apertura</span>
+                    <input type="time" [(ngModel)]="formulario.horaApertura" />
+                  </label>
+                  <label class="campo-regla">
+                    <span>Cierre</span>
+                    <input type="time" [(ngModel)]="formulario.horaCierre" />
+                  </label>
+                </div>
+                <p class="ayuda">
+                  Déjalas vacías para usar el horario institucional (07:00 a 22:00).
+                  Capacidad del espacio: {{ reglas.capacidad }} personas.
+                </p>
+              </div>
+
+              <div class="campo-grupo">
+                <span class="etiqueta-grupo">DÍAS OPERABLES</span>
+                <div class="dias">
+                  @for (dia of diasSemana; track dia.valor) {
+                    <button
+                      type="button"
+                      class="chip-dia"
+                      [class.activo]="formulario.dias.includes(dia.valor)"
+                      [attr.aria-pressed]="formulario.dias.includes(dia.valor)"
+                      (click)="alternarDia(dia.valor)"
+                    >
+                      {{ dia.nombre }}
+                    </button>
+                  }
+                </div>
+              </div>
+
+              <div class="campo-grupo">
+                <span class="etiqueta-grupo">LÍMITES DE USO</span>
+                <div class="fila-campos fila-cuatro">
+                  <label class="campo-regla">
+                    <span>Usos por día</span>
+                    <input type="number" min="1" step="1" [(ngModel)]="formulario.maxUsosDia" placeholder="Sin límite" />
+                  </label>
+                  <label class="campo-regla">
+                    <span>Duración máxima (min)</span>
+                    <input type="number" min="1" step="1" [(ngModel)]="formulario.duracionMaximaMin" placeholder="Sin límite" />
+                  </label>
+                  <label class="campo-regla">
+                    <span>Separación (min)</span>
+                    <input type="number" min="0" step="1" [(ngModel)]="formulario.separacionMin" />
+                  </label>
+                  <label class="campo-regla">
+                    <span>Ocupación mínima</span>
+                    <input type="number" min="1" step="1" [(ngModel)]="formulario.ocupacionMinima" placeholder="Sin mínimo" />
+                  </label>
+                </div>
+              </div>
+
+              <div class="campo-grupo">
+                <span class="etiqueta-grupo">ACTIVIDADES PERMITIDAS</span>
+                @if (cargandoTiposUso) {
+                  <p class="ayuda">Cargando tipos de uso...</p>
+                } @else if (tiposUso.length === 0) {
+                  <p class="ayuda">
+                    Aún no hay tipos de uso. Créalos en <a routerLink="/admin/parametros/tipos-uso">Tipos de uso</a>.
+                  </p>
+                } @else {
+                  <div class="chips-tipos">
+                    @for (tipo of tiposUso; track tipo.id) {
+                      <button
+                        type="button"
+                        class="chip-tipo"
+                        [class.activo]="formulario.tiposUsoIds.includes(tipo.id)"
+                        [class.inactivo]="!tipo.activo"
+                        [attr.aria-pressed]="formulario.tiposUsoIds.includes(tipo.id)"
+                        (click)="alternarTipoUso(tipo.id)"
+                      >
+                        {{ tipo.nombre }}
+                      </button>
+                    }
+                  </div>
+                  <p class="ayuda">
+                    Sin actividades marcadas el espacio no restringe la actividad de la solicitud.
+                  </p>
+                }
+              </div>
+
+              <div class="campo-grupo">
+                <span class="etiqueta-grupo">CONDICIONES ESPECIALES</span>
+                <label class="interruptor">
+                  <input type="checkbox" [(ngModel)]="formulario.requiereResponsable" />
+                  <span>Exigir responsable docente, coordinador o director (HU-32)</span>
+                </label>
+                <label class="interruptor">
+                  <input type="checkbox" [(ngModel)]="formulario.admiteAutorizacionEspecial" />
+                  <span>Admitir autorización especial fuera de la franja (HU-35)</span>
+                </label>
+              </div>
+            </div>
+
+            <footer class="panel-footer">
+              <button
+                type="button"
+                class="boton-secundario"
+                [disabled]="guardandoReglas || aplicandoPorTipo"
+                (click)="aplicarAlTipo()"
+              >
+                {{ aplicandoPorTipo ? 'Aplicando…' : 'Aplicar a todos los ' + reglas.tipo }}
+              </button>
+              <button
+                type="button"
+                class="boton-principal"
+                [disabled]="guardandoReglas || aplicandoPorTipo"
+                [attr.aria-busy]="guardandoReglas"
+                (click)="guardarReglas()"
+              >
+                {{ guardandoReglas ? 'Guardando…' : 'Guardar reglas' }}
+              </button>
+            </footer>
+          }
+        </section>
+      }
+
+      <!-- ─── Parámetros · Tipos de uso ─── -->
+      @if (seccion === 'tipos-uso') {
+        <section class="panel" aria-labelledby="titulo-tipos-uso">
+          <header class="panel-header">
+            <div>
+              <h2 id="titulo-tipos-uso">Catálogo de actividades</h2>
+              <p>Los tipos activos son los que se ofrecen al solicitar una reserva.</p>
+            </div>
+          </header>
+
+          <div class="nuevo-tipo">
+            <input
+              type="text"
+              maxlength="80"
+              placeholder="Ej. Examen final"
+              aria-label="Nombre del nuevo tipo de uso"
+              [(ngModel)]="nuevoTipoUso"
+              (keyup.enter)="crearTipoUso()"
+            />
+            <button
+              type="button"
+              class="boton-principal"
+              [disabled]="creandoTipoUso || !nuevoTipoUso.trim()"
+              (click)="crearTipoUso()"
+            >
+              {{ creandoTipoUso ? 'Creando…' : 'Crear tipo' }}
+            </button>
+          </div>
+
+          @if (cargandoTiposUso) {
+            <p class="estado-panel" role="status">Cargando tipos de uso...</p>
+          } @else if (tiposUso.length === 0) {
+            <p class="estado-panel">Aún no hay tipos de uso registrados.</p>
+          } @else {
+            <ul class="lista-tipos">
+              @for (tipo of tiposUso; track tipo.id) {
+                <li [class.inactivo]="!tipo.activo">
+                  <span class="nombre-tipo">{{ tipo.nombre }}</span>
+                  <span class="estado-tipo">{{ tipo.activo ? 'Activo' : 'Inactivo' }}</span>
+                  <button
+                    type="button"
+                    class="boton-mini"
+                    [disabled]="tipoUsoEnEdicionId !== null"
+                    (click)="alternarActivoTipoUso(tipo)"
+                  >
+                    {{ tipo.activo ? 'Desactivar' : 'Activar' }}
+                  </button>
+                </li>
+              }
+            </ul>
+          }
+        </section>
+      }
+
+      <!-- ─── Parámetros · Anticipación por rol ─── -->
+      @if (seccion === 'anticipacion') {
+        <section class="panel" aria-labelledby="titulo-anticipacion">
+          <header class="panel-header">
+            <div>
+              <h2 id="titulo-anticipacion">Anticipación por rol</h2>
+              <p>Deja el campo vacío para que el rol no tenga límite de anticipación.</p>
+            </div>
+          </header>
+
+          @if (cargandoAnticipacion) {
+            <p class="estado-panel" role="status">Cargando anticipación...</p>
+          } @else if (anticipacion.length === 0) {
+            <p class="estado-panel">No hay reglas de anticipación configuradas.</p>
+          } @else {
+            <ul class="lista-anticipacion">
+              @for (item of anticipacion; track item.rol) {
+                <li>
+                  <span class="rol">{{ nombreRol(item.rol) }}</span>
+                  <div class="control-rol">
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      placeholder="Sin límite"
+                      [attr.aria-label]="'Días máximos para ' + nombreRol(item.rol)"
+                      [ngModel]="item.dias_maximos"
+                      (ngModelChange)="item.dias_maximos = $event"
+                    />
+                    <span class="unidad">días</span>
+                    <button
+                      type="button"
+                      class="boton-mini"
+                      [disabled]="guardandoRol !== null"
+                      (click)="guardarAnticipacion(item)"
+                    >
+                      {{ guardandoRol === item.rol ? '…' : 'Guardar' }}
+                    </button>
+                  </div>
+                </li>
+              }
+            </ul>
+          }
+        </section>
+      }
+
+      <!-- ─── Parámetros · Sanciones ─── -->
+      @if (seccion === 'sanciones') {
+        <section class="panel" aria-labelledby="titulo-sanciones">
+          <header class="panel-header">
+            <div>
+              <h2 id="titulo-sanciones">Política vigente</h2>
+              <p>
+                La tolerancia es el tiempo que tiene el titular para registrar su asistencia.
+                Al vencer sin registro, la reserva queda como no-show y genera strikes.
+              </p>
+            </div>
+            @if (actualizadoSancionEn) {
+              <small class="actualizado">Última actualización: {{ fechaHistorial(actualizadoSancionEn) }}</small>
+            }
+          </header>
+
+          @if (cargandoSancion) {
+            <p class="estado-panel" role="status">Cargando política...</p>
+          } @else {
+            <form class="formulario-reglas" (ngSubmit)="guardarSanciones()" novalidate>
+              <div class="campo-grupo">
+                <span class="etiqueta-grupo">Tiempos de asistencia</span>
+                <div class="fila-sancion">
+                  <label class="campo-regla">
+                    <span>Tolerancia (min)</span>
+                    <input
+                      type="number"
+                      min="1"
+                      max="240"
+                      step="1"
+                      name="toleranciaMinutos"
+                      [(ngModel)]="parametrosSancion.toleranciaMinutos"
+                    />
+                  </label>
+                  <label class="campo-regla">
+                    <span>Aviso previo (min)</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="239"
+                      step="1"
+                      name="avisoMinutos"
+                      [(ngModel)]="parametrosSancion.avisoMinutos"
+                    />
+                  </label>
+                </div>
+                <p class="ayuda">
+                  El titular puede registrar su asistencia desde el inicio de la reserva y hasta
+                  que venza la tolerancia. Al pasar el aviso previo sin registro, recibe una notificación.
+                </p>
+              </div>
+
+              <div class="campo-grupo">
+                <span class="etiqueta-grupo">Strikes</span>
+                <div class="fila-sancion">
+                  <label class="campo-regla">
+                    <span>Minutos por strike</span>
+                    <input
+                      type="number"
+                      min="1"
+                      max="240"
+                      step="1"
+                      name="minutosPorStrike"
+                      [(ngModel)]="parametrosSancion.minutosPorStrike"
+                    />
+                  </label>
+                  <label class="campo-regla">
+                    <span>Máximo de strikes</span>
+                    <input
+                      type="number"
+                      min="1"
+                      max="20"
+                      step="1"
+                      name="maxStrikes"
+                      [(ngModel)]="parametrosSancion.maxStrikes"
+                    />
+                  </label>
+                </div>
+                <p class="ayuda">
+                  Cada bloque de minutos vencidos sin asistencia suma un strike. Al llegar al máximo,
+                  el usuario queda bloqueado para crear nuevas solicitudes.
+                </p>
+              </div>
+
+              <div class="campo-grupo campo-grupo-acciones">
+                <div class="grupo-cabecera">
+                  <span class="etiqueta-grupo">Acción por nivel de strikes</span>
+                  <button type="button" class="boton-mini" (click)="agregarAccionSancion()">
+                    <i class="pi pi-plus" aria-hidden="true"></i>
+                    Agregar nivel
+                  </button>
+                </div>
+
+                @if (parametrosSancion.acciones.length === 0) {
+                  <p class="ayuda">
+                    Sin niveles configurados: todos los strikes solo generan advertencia.
+                  </p>
+                } @else {
+                  <div class="tabla-acciones">
+                    <div class="tabla-cabecera" aria-hidden="true">
+                      <span>Nivel</span>
+                      <span>Acción</span>
+                      <span></span>
+                    </div>
+                    <ul class="lista-acciones">
+                      @for (accion of parametrosSancion.acciones; track $index) {
+                        <li>
+                          <input
+                            type="number"
+                            min="1"
+                            step="1"
+                            class="campo-nivel"
+                            [name]="'nivel' + $index"
+                            [attr.aria-label]="'Nivel de strikes ' + ($index + 1)"
+                            [(ngModel)]="accion.nivel"
+                          />
+                          <select
+                            class="campo-accion"
+                            [name]="'accion' + $index"
+                            [attr.aria-label]="'Acción para el nivel ' + accion.nivel"
+                            [(ngModel)]="accion.accion"
+                          >
+                            <option value="ADVERTENCIA">Solo advertencia</option>
+                            <option value="BLOQUEO">Bloqueo de solicitudes</option>
+                          </select>
+                          <button
+                            type="button"
+                            class="boton-quitar"
+                            [attr.aria-label]="'Quitar nivel ' + accion.nivel"
+                            (click)="quitarAccionSancion($index)"
+                          >
+                            <i class="pi pi-trash" aria-hidden="true"></i>
+                          </button>
+                        </li>
+                      }
+                    </ul>
+                  </div>
+                }
+                <p class="ayuda">
+                  El nivel indica cuántos strikes activos debe acumular el usuario para que se aplique la acción.
+                </p>
+              </div>
+
+              <footer class="panel-footer">
+                <button type="submit" class="boton-principal" [disabled]="guardandoSancion">
+                  {{ guardandoSancion ? 'Guardando…' : 'Guardar política' }}
+                </button>
+              </footer>
+            </form>
+          }
+        </section>
+      }
+
+      <!-- ─── Parámetros · Historial ─── -->
+      @if (seccion === 'historial') {
+        <section class="panel" aria-labelledby="titulo-historial">
+          <header class="panel-header">
+            <div>
+              <h2 id="titulo-historial">Últimos cambios</h2>
+              <p>Registro de auditoría de la configuración (HU-36.8, HU-37.6).</p>
+            </div>
+            <button type="button" class="boton-mini" [disabled]="cargandoHistorial" (click)="cargarHistorial()">
+              Actualizar
+            </button>
+          </header>
+
+          @if (cargandoHistorial) {
+            <p class="estado-panel" role="status">Cargando historial...</p>
+          } @else if (historial.length === 0) {
+            <p class="estado-panel">Todavía no hay cambios registrados.</p>
+          } @else {
+            <ul class="lista-historial">
+              @for (registro of historial; track registro.id) {
+                <li>
+                  <div class="historial-meta">
+                    <span class="entidad">{{ registro.entidad }}</span>
+                    <span class="espacio">{{ nombreEspacio(registro.espacio_id) }}</span>
+                    <time>{{ fechaHistorial(registro.fecha) }}</time>
+                  </div>
+                  <p class="detalle">{{ registro.detalle }}</p>
+                  <span class="usuario">por {{ registro.usuario }}</span>
+                </li>
+              }
+            </ul>
+          }
+        </section>
+      }
+    </section>
+  </main>
+</div>

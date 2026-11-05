@@ -1,0 +1,383 @@
+/* Configuración de cuenta — tarjetas blancas, trazo negro y botones pill. */
+
+:host {
+  display: block;
+  min-height: 100vh;
+  color: var(--color-carbon);
+  font-family: var(--font-ui);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.aplicacion {
+  display: flex;
+  min-height: 100vh;
+  background: var(--color-paper-white);
+}
+
+.contenido {
+  flex: 1;
+  min-width: 0;
+}
+
+.topbar {
+  display: flex;
+  height: 64px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 28px;
+  background: var(--color-paper-white);
+  border-bottom: var(--outline-hairline);
+}
+
+.migas {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+
+  i {
+    font-size: 12px;
+  }
+}
+
+.acciones-topbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-16);
+}
+
+.perfil {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--color-carbon);
+  color: var(--color-paper-white);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.pagina {
+  padding: 28px 32px 44px;
+}
+
+.encabezado {
+  margin-bottom: var(--space-20);
+
+  h1 {
+    margin: 0 0 var(--space-4);
+    font-family: var(--font-display);
+    font-size: var(--text-heading-sm);
+    letter-spacing: var(--tracking-body);
+    text-transform: uppercase;
+  }
+
+  p {
+    margin: 0;
+    color: var(--color-text-muted);
+    font-size: var(--text-body);
+  }
+}
+
+.paneles {
+  display: grid;
+  max-width: 900px;
+  gap: var(--space-16);
+}
+
+.panel {
+  padding: var(--space-24);
+  background: var(--color-paper-white);
+  border: var(--outline-hairline);
+  border-radius: var(--radius-card);
+
+  h2 {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    margin: 0 0 var(--space-4);
+    font-size: 18px;
+    font-weight: 800;
+
+    i {
+      font-size: 15px;
+    }
+  }
+
+  .ayuda {
+    margin: 0 0 var(--space-20);
+    color: var(--color-text-muted);
+    font-size: var(--text-caption);
+  }
+}
+
+.campo {
+  margin-bottom: var(--space-16);
+
+  label {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--color-text-muted);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+  }
+
+  input,
+  textarea {
+    width: 100%;
+    min-height: 44px;
+    padding: 0 14px;
+    background: var(--color-sky-wash-soft);
+    border: var(--outline-hairline);
+    border-radius: var(--radius-2xl);
+    color: var(--color-carbon);
+    font-family: inherit;
+    font-size: var(--text-body);
+
+    &::placeholder {
+      color: var(--color-text-subtle);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-carbon);
+      outline-offset: 2px;
+    }
+
+    &.error {
+      background: var(--color-sunburst);
+    }
+  }
+
+  textarea {
+    min-height: 84px;
+    padding: 10px 14px;
+    border-radius: var(--radius-card);
+    line-height: 1.45;
+    resize: vertical;
+  }
+}
+
+.mensaje-error {
+  margin-top: 6px;
+  color: var(--color-error-text);
+  font-size: var(--text-caption);
+  font-weight: 600;
+}
+
+.acciones-panel {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-20);
+}
+
+.boton-primario {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  padding: 0 22px;
+  background: var(--color-carbon);
+  border: var(--outline-hairline);
+  border-radius: var(--radius-pill);
+  color: var(--color-paper-white);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+
+  &:hover:not(:disabled) {
+    background: var(--color-paper-white);
+    color: var(--color-carbon);
+  }
+
+  &:disabled {
+    border-color: var(--color-concrete-gray);
+    color: var(--color-text-subtle);
+    cursor: not-allowed;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-carbon);
+    outline-offset: 2px;
+  }
+}
+
+/* ─── Mi sanción (HU-40 y HU-42) ─── */
+.panel-sancion {
+  .resumen-sancion {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-12);
+    margin-bottom: var(--space-16);
+  }
+
+  .dato-sancion {
+    display: grid;
+    gap: 4px;
+    padding: var(--space-12);
+    background: var(--color-sky-wash-soft);
+    border: var(--outline-hairline);
+    border-radius: var(--radius-card);
+
+    span {
+      color: var(--color-text-muted);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: var(--tracking-label);
+      text-transform: uppercase;
+    }
+
+    strong {
+      font-size: 16px;
+    }
+
+    strong.bloqueado {
+      color: var(--color-error-text);
+    }
+  }
+
+  .aviso-bloqueo {
+    margin: 0 0 var(--space-16);
+    padding: var(--space-12);
+    background: var(--color-sunburst);
+    border: var(--outline-hairline);
+    border-radius: var(--radius-card);
+    font-size: var(--text-caption);
+    font-weight: 600;
+  }
+
+  .estado-sancion {
+    margin: var(--space-12) 0;
+    color: var(--color-text-muted);
+    font-size: var(--text-caption);
+  }
+
+  .lista-strikes {
+    display: grid;
+    gap: var(--space-8);
+    margin: 0 0 var(--space-16);
+    padding: 0;
+    list-style: none;
+
+    li {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-12);
+      padding: var(--space-12);
+      background: var(--color-sky-wash-soft);
+      border: var(--outline-hairline);
+      border-radius: var(--radius-card);
+
+      &.anulado {
+        opacity: 0.55;
+      }
+    }
+
+    .strike-info {
+      display: grid;
+      gap: 2px;
+
+      strong {
+        font-size: var(--text-body);
+      }
+
+      span {
+        color: var(--color-text-muted);
+        font-size: var(--text-caption);
+      }
+    }
+
+    .strike-estado {
+      flex: 0 0 auto;
+      padding: 2px 10px;
+      background: var(--color-paper-white);
+      border: var(--outline-hairline);
+      border-radius: var(--radius-pill);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: var(--tracking-label);
+      text-transform: uppercase;
+    }
+  }
+
+  .reactivacion-estado {
+    padding: var(--space-12);
+    background: var(--color-sky-wash-soft);
+    border: var(--outline-hairline);
+    border-radius: var(--radius-card);
+
+    strong {
+      display: block;
+      margin-bottom: var(--space-4);
+      font-size: var(--text-body);
+    }
+
+    p {
+      margin: 0;
+      color: var(--color-text-muted);
+      font-size: var(--text-caption);
+    }
+
+    &.aceptada {
+      border-color: var(--color-mint-pop);
+    }
+
+    &.rechazada {
+      border-color: var(--color-error-text);
+    }
+
+    .motivo-rechazo {
+      margin-top: var(--space-8);
+      color: var(--color-error-text);
+      font-weight: 600;
+    }
+  }
+
+  .form-reactivacion {
+    padding-top: var(--space-12);
+    border-top: var(--outline-hairline);
+
+    h3 {
+      margin: 0 0 var(--space-4);
+      font-size: var(--text-body);
+      font-weight: 800;
+    }
+  }
+}
+
+@media (max-width: 720px) {
+  .pagina {
+    padding: 20px 16px 32px;
+  }
+
+  .panel-sancion .resumen-sancion {
+    grid-template-columns: 1fr;
+  }
+
+  .panel {
+    padding: var(--space-20) var(--space-16);
+  }
+
+  .acciones-panel {
+    justify-content: stretch;
+
+    .boton-primario {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+}
