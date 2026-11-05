@@ -1,0 +1,266 @@
+<p-toast key="admin-dashboard" position="bottom-right"></p-toast>
+
+<div class="admin-app">
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-icon">R</div>
+      <div>
+        <strong>ReservaECCI</strong>
+        <small>Panel Admin</small>
+      </div>
+    </div>
+
+    <nav class="menu" aria-label="Panel Admin">
+      <a class="menu-item activo" routerLink="/admin/dashboard" aria-current="page">
+        <i class="pi pi-th-large" aria-hidden="true"></i>
+        <span>Resumen</span>
+      </a>
+      <a class="menu-item" routerLink="/admin/espacios">
+        <i class="pi pi-building" aria-hidden="true"></i>
+        <span>Espacios</span>
+      </a>
+      <a class="menu-item" routerLink="/admin/usuarios">
+        <i class="pi pi-users" aria-hidden="true"></i>
+        <span>Usuarios</span>
+      </a>
+      <a class="menu-item" routerLink="/admin/sanciones">
+        <i class="pi pi-shield" aria-hidden="true"></i>
+        <span>Sanciones</span>
+      </a>
+      <a class="menu-item" routerLink="/admin/reportes">
+        <i class="pi pi-chart-bar" aria-hidden="true"></i>
+        <span>Reportes</span>
+      </a>
+
+      <div class="grupo-menu">
+        <button
+          type="button"
+          class="menu-item grupo"
+          aria-controls="submenu-parametros"
+          aria-expanded="true"
+        >
+          <i class="pi pi-sliders-h" aria-hidden="true"></i>
+          <span>Parámetros</span>
+        </button>
+        <div class="submenu" id="submenu-parametros">
+          <a class="submenu-item" routerLink="/admin/parametros/reglas">
+            <i class="pi pi-calendar-times" aria-hidden="true"></i>
+            <span>Reglas de reserva</span>
+          </a>
+          <a class="submenu-item" routerLink="/admin/parametros/tipos-uso">
+            <i class="pi pi-tags" aria-hidden="true"></i>
+            <span>Tipos de uso</span>
+          </a>
+          <a class="submenu-item" routerLink="/admin/parametros/anticipacion">
+            <i class="pi pi-clock" aria-hidden="true"></i>
+            <span>Anticipación</span>
+          </a>
+          <a class="submenu-item" routerLink="/admin/parametros/sanciones">
+            <i class="pi pi-shield" aria-hidden="true"></i>
+            <span>Sanciones</span>
+          </a>
+          <a class="submenu-item" routerLink="/admin/parametros/recursos">
+            <i class="pi pi-box" aria-hidden="true"></i>
+            <span>Recursos</span>
+          </a>
+          <a class="submenu-item" routerLink="/admin/parametros/historial">
+            <i class="pi pi-history" aria-hidden="true"></i>
+            <span>Historial</span>
+          </a>
+        </div>
+      </div>
+
+      <div class="separador"></div>
+
+      <a class="menu-item vista-operador" routerLink="/espacios">
+        <i class="pi pi-arrow-left" aria-hidden="true"></i>
+        <span>Vista Operador</span>
+      </a>
+    </nav>
+
+    @let usuario = usuarioActual;
+    @if (usuario) {
+      <div class="usuario">
+        <div class="avatar">{{ inicialesUsuario }}</div>
+        <div class="usuario-info">
+          <strong>{{ usuario.nombre }}</strong>
+          <small>Administrador</small>
+        </div>
+        <button type="button" class="logout" aria-label="Cerrar sesión" title="Cerrar sesión" (click)="cerrarSesion()">
+          <i class="pi pi-sign-out" aria-hidden="true"></i>
+        </button>
+      </div>
+    }
+  </aside>
+
+  <main class="contenido">
+    <header class="topbar">
+      <div class="migas">
+        <i class="pi pi-th-large" aria-hidden="true"></i>
+        <span>Resumen</span>
+      </div>
+      <div class="acciones-topbar">
+        <app-campana-notificaciones />
+        <button type="button" class="boton-mini" [disabled]="cargando" (click)="cargar()">
+          <i class="pi pi-refresh" aria-hidden="true"></i>
+          Actualizar
+        </button>
+      </div>
+    </header>
+
+    <section class="pagina">
+      <div class="encabezado">
+        <div>
+          <h1>Resumen</h1>
+          <p>Estado de la operación de hoy y comportamiento de los últimos siete días.</p>
+        </div>
+        <a class="boton-principal" routerLink="/admin/reportes">
+          <i class="pi pi-chart-bar" aria-hidden="true"></i>
+          Ir a reportes
+        </a>
+      </div>
+
+      @if (error) {
+        <div class="aviso-error" role="alert">
+          <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
+          <span>{{ error }}</span>
+          <button type="button" class="boton-secundario" (click)="cargar()">Reintentar</button>
+        </div>
+      }
+
+      <div class="indicadores">
+        <article class="indicador azul">
+          <span>Reservas hoy</span>
+          <strong>{{ datos?.reservas_hoy ?? 0 }}</strong>
+          <small>Reservas activas para hoy</small>
+        </article>
+        <article class="indicador sol">
+          <span>Solicitudes pendientes</span>
+          <strong>{{ datos?.pendientes ?? 0 }}</strong>
+          <small>Esperando revisión</small>
+        </article>
+        <article class="indicador ember">
+          <span>No-shows del mes</span>
+          <strong>{{ datos?.no_shows_mes ?? 0 }}</strong>
+          <small>Inasistencias acumuladas</small>
+        </article>
+        <article class="indicador menta">
+          <span>Ocupación hoy</span>
+          <strong>{{ porcentaje(datos?.ocupacion_hoy ?? 0) }}</strong>
+          <small>De los espacios activos</small>
+        </article>
+      </div>
+
+      <div class="columnas">
+        <section class="panel">
+          <div class="panel-titulo">
+            <h2>Próximas reservas</h2>
+            <small>{{ datos?.proximas_reservas?.length ?? 0 }} en agenda</small>
+          </div>
+
+          <div class="tabla-contenedor">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Espacio</th>
+                  <th scope="col">Solicitante</th>
+                  <th scope="col">Horario</th>
+                  <th scope="col">Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (reserva of datos?.proximas_reservas ?? []; track reserva.id) {
+                  <tr>
+                    <td class="destacado">{{ reserva.espacio }}</td>
+                    <td>{{ reserva.usuario }}</td>
+                    <td>{{ reserva.inicio }} – {{ reserva.fin }}</td>
+                    <td><span class="pastilla">{{ reserva.estado }}</span></td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="4" class="vacio">
+                      {{ cargando ? 'Cargando agenda…' : 'No hay reservas próximas.' }}
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-titulo">
+            <h2>Espacios más usados</h2>
+            <small>Últimos 30 días</small>
+          </div>
+
+          <div class="ranking">
+            @for (espacio of datos?.top_espacios ?? []; track espacio.espacio) {
+              <div class="ranking-fila">
+                <span>{{ espacio.espacio }}</span>
+                <span class="pista">
+                  <span
+                    class="relleno"
+                    [style.width.%]="anchoBarra(espacio.reservas, maximoTopEspacios)"
+                  ></span>
+                </span>
+                <strong>{{ espacio.reservas }}</strong>
+              </div>
+            } @empty {
+              <p class="vacio">{{ cargando ? 'Cargando…' : 'Sin reservas en el periodo.' }}</p>
+            }
+          </div>
+        </section>
+      </div>
+
+      <section class="panel">
+        <div class="panel-titulo">
+          <h2>Actividad de la semana</h2>
+          <small>{{ totalReservasSemana }} reservas · ocupación promedio {{ porcentaje(ocupacionPromedioSemana) }}</small>
+        </div>
+
+        <div class="semana">
+          @for (dia of serieSemanal; track dia.fecha) {
+            <div class="dia-semana">
+              <span class="valor">{{ dia.reservas }}</span>
+              <div class="columna">
+                <div
+                  class="barra"
+                  [style.height.%]="anchoBarra(dia.reservas, maximoReservasSemana)"
+                ></div>
+              </div>
+              <strong>{{ dia.dia }}</strong>
+              <small>{{ porcentaje(dia.tasa_ocupacion) }}</small>
+            </div>
+          } @empty {
+            <p class="vacio">{{ cargando ? 'Cargando serie…' : 'Sin actividad registrada.' }}</p>
+          }
+        </div>
+      </section>
+
+      <div class="accesos">
+        <a class="acceso" routerLink="/admin/espacios">
+          <i class="pi pi-building" aria-hidden="true"></i>
+          <div>
+            <strong>{{ datos?.espacios_activos ?? 0 }} espacios activos</strong>
+            <small>Administrar laboratorios y salas</small>
+          </div>
+        </a>
+        <a class="acceso" routerLink="/admin/usuarios">
+          <i class="pi pi-users" aria-hidden="true"></i>
+          <div>
+            <strong>{{ datos?.usuarios_activos ?? 0 }} usuarios activos</strong>
+            <small>Revisar cuentas y roles</small>
+          </div>
+        </a>
+        <a class="acceso" routerLink="/admin/parametros/recursos">
+          <i class="pi pi-box" aria-hidden="true"></i>
+          <div>
+            <strong>{{ datos?.recursos_pendientes ?? 0 }} recursos pendientes</strong>
+            <small>Solicitudes de recursos por decidir</small>
+          </div>
+        </a>
+      </div>
+    </section>
+  </main>
+</div>

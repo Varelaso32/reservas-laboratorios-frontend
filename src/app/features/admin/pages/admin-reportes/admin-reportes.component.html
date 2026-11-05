@@ -1,0 +1,354 @@
+<p-toast key="admin-reportes" position="bottom-right"></p-toast>
+
+<div class="admin-app">
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-icon">R</div>
+      <div>
+        <strong>ReservaECCI</strong>
+        <small>Panel Admin</small>
+      </div>
+    </div>
+
+    <nav class="menu" aria-label="Panel Admin">
+      <a class="menu-item" routerLink="/admin/dashboard">
+        <i class="pi pi-th-large" aria-hidden="true"></i>
+        <span>Resumen</span>
+      </a>
+      <a class="menu-item" routerLink="/admin/espacios">
+        <i class="pi pi-building" aria-hidden="true"></i>
+        <span>Espacios</span>
+      </a>
+      <a class="menu-item" routerLink="/admin/usuarios">
+        <i class="pi pi-users" aria-hidden="true"></i>
+        <span>Usuarios</span>
+      </a>
+      <a class="menu-item" routerLink="/admin/sanciones">
+        <i class="pi pi-shield" aria-hidden="true"></i>
+        <span>Sanciones</span>
+      </a>
+      <a class="menu-item activo" routerLink="/admin/reportes" aria-current="page">
+        <i class="pi pi-chart-bar" aria-hidden="true"></i>
+        <span>Reportes</span>
+      </a>
+
+      <div class="grupo-menu">
+        <button
+          type="button"
+          class="menu-item grupo"
+          aria-controls="submenu-parametros"
+          aria-expanded="true"
+        >
+          <i class="pi pi-sliders-h" aria-hidden="true"></i>
+          <span>Parámetros</span>
+        </button>
+        <div class="submenu" id="submenu-parametros">
+          <a class="submenu-item" routerLink="/admin/parametros/reglas">
+            <i class="pi pi-calendar-times" aria-hidden="true"></i>
+            <span>Reglas de reserva</span>
+          </a>
+          <a class="submenu-item" routerLink="/admin/parametros/tipos-uso">
+            <i class="pi pi-tags" aria-hidden="true"></i>
+            <span>Tipos de uso</span>
+          </a>
+          <a class="submenu-item" routerLink="/admin/parametros/anticipacion">
+            <i class="pi pi-clock" aria-hidden="true"></i>
+            <span>Anticipación</span>
+          </a>
+          <a class="submenu-item" routerLink="/admin/parametros/sanciones">
+            <i class="pi pi-shield" aria-hidden="true"></i>
+            <span>Sanciones</span>
+          </a>
+          <a class="submenu-item" routerLink="/admin/parametros/recursos">
+            <i class="pi pi-box" aria-hidden="true"></i>
+            <span>Recursos</span>
+          </a>
+          <a class="submenu-item" routerLink="/admin/parametros/historial">
+            <i class="pi pi-history" aria-hidden="true"></i>
+            <span>Historial</span>
+          </a>
+        </div>
+      </div>
+
+      <div class="separador"></div>
+
+      <a class="menu-item vista-operador" routerLink="/espacios">
+        <i class="pi pi-arrow-left" aria-hidden="true"></i>
+        <span>Vista Operador</span>
+      </a>
+    </nav>
+
+    @let usuario = usuarioActual;
+    @if (usuario) {
+      <div class="usuario">
+        <div class="avatar">{{ inicialesUsuario }}</div>
+        <div class="usuario-info">
+          <strong>{{ usuario.nombre }}</strong>
+          <small>Administrador</small>
+        </div>
+        <button type="button" class="logout" aria-label="Cerrar sesión" title="Cerrar sesión" (click)="cerrarSesion()">
+          <i class="pi pi-sign-out" aria-hidden="true"></i>
+        </button>
+      </div>
+    }
+  </aside>
+
+  <main class="contenido">
+    <header class="topbar">
+      <div class="migas">
+        <i class="pi pi-chart-bar" aria-hidden="true"></i>
+        <span>Reportes</span>
+      </div>
+      <div class="acciones-topbar">
+        <app-campana-notificaciones />
+        <button type="button" class="boton-mini" [disabled]="cargando" (click)="cargar()">
+          <i class="pi pi-refresh" aria-hidden="true"></i>
+          Actualizar
+        </button>
+      </div>
+    </header>
+
+    <section class="pagina">
+      <div class="encabezado">
+        <div>
+          <h1>Reportes</h1>
+          <p>
+            Consulta la operación de los espacios y descarga cada reporte en PDF o CSV.
+            Los archivos incluyen tu nombre, tu rol y la hora exacta de generación.
+          </p>
+        </div>
+
+        <div class="periodo">
+          <label>
+            <span>Desde</span>
+            <input type="date" name="desde" [(ngModel)]="desde" aria-label="Fecha inicial" />
+          </label>
+          <label>
+            <span>Hasta</span>
+            <input type="date" name="hasta" [(ngModel)]="hasta" aria-label="Fecha final" />
+          </label>
+          <button type="button" class="boton-principal" (click)="aplicarPeriodo()">Aplicar</button>
+          <button type="button" class="boton-secundario" (click)="usarSemanaActual()">Últimos 7 días</button>
+        </div>
+      </div>
+
+      <div class="periodo-activo">
+        <i class="pi pi-calendar" aria-hidden="true"></i>
+        <span>Periodo analizado: <strong>{{ periodoLegible }}</strong></span>
+      </div>
+
+      @if (error) {
+        <div class="aviso-error" role="alert">
+          <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
+          <span>{{ error }}</span>
+          <button type="button" class="boton-secundario" (click)="cargar()">Reintentar</button>
+        </div>
+      }
+
+      <div class="resumen">
+        <article class="tarjeta">
+          <span>Reservas</span>
+          <strong>{{ totalReservas }}</strong>
+          <small>En el periodo seleccionado</small>
+        </article>
+        <article class="tarjeta">
+          <span>Cancelaciones</span>
+          <strong>{{ totalCancelaciones }}</strong>
+          <small>Reservas canceladas</small>
+        </article>
+        <article class="tarjeta">
+          <span>No-shows</span>
+          <strong>{{ totalNoShows }}</strong>
+          <small>Inasistencias registradas</small>
+        </article>
+        <article class="tarjeta">
+          <span>Ocupación promedio</span>
+          <strong>{{ porcentaje(ocupacionPromedio) }}</strong>
+          <small>De los espacios activos</small>
+        </article>
+      </div>
+
+      <section class="bloque">
+        <div class="bloque-titulo">
+          <h2>Reportes disponibles</h2>
+          <small>{{ cargando ? 'Cargando…' : 'PDF con encabezado y metadatos · CSV listo para Excel' }}</small>
+        </div>
+
+        <div class="rejilla-reportes">
+          @for (reporte of reportes; track reporte.tipo) {
+            <article [class]="'reporte tono-' + reporte.tono">
+              <header>
+                <i class="pi {{ reporte.icono }}" aria-hidden="true"></i>
+                <div>
+                  <h3>{{ reporte.titulo }}</h3>
+                  <p>{{ reporte.descripcion }}</p>
+                </div>
+              </header>
+
+              @switch (reporte.tipo) {
+                @case ('ocupacion') {
+                  <ul class="mini-lista">
+                    @for (fila of ocupacionTop; track fila.espacio_id) {
+                      <li>
+                        <span>{{ fila.espacio }}</span>
+                        <strong>{{ porcentaje(fila.tasa_ocupacion) }}</strong>
+                      </li>
+                    } @empty {
+                      <li class="vacio">Sin datos en el periodo.</li>
+                    }
+                  </ul>
+                }
+                @case ('actividad') {
+                  <ul class="mini-lista">
+                    @for (fila of actividadTop; track fila.usuario_id) {
+                      <li>
+                        <span>{{ fila.nombre }}</span>
+                        <strong>{{ fila.reservas }} reservas</strong>
+                      </li>
+                    } @empty {
+                      <li class="vacio">Sin datos en el periodo.</li>
+                    }
+                  </ul>
+                }
+                @case ('no-shows') {
+                  <ul class="mini-lista">
+                    @for (fila of noShows.slice(0, 4); track fila.reserva_id) {
+                      <li>
+                        <span>{{ fila.espacio }}</span>
+                        <strong>{{ formatearFecha(fila.fecha) }}</strong>
+                      </li>
+                    } @empty {
+                      <li class="vacio">Sin inasistencias registradas.</li>
+                    }
+                  </ul>
+                }
+                @case ('picos') {
+                  <div class="barras">
+                    @for (franja of picos.por_franja; track franja.franja) {
+                      <div class="barra">
+                        <span>{{ franja.franja }}</span>
+                        <div class="pista">
+                          <div
+                            class="relleno"
+                            [style.width.%]="(franja.reservas / maximoFranja) * 100"
+                          ></div>
+                        </div>
+                        <strong>{{ franja.reservas }}</strong>
+                      </div>
+                    }
+                  </div>
+                }
+                @case ('auditoria') {
+                  <ul class="mini-lista">
+                    @for (fila of auditoriaReciente; track fila.fecha + fila.entidad) {
+                      <li>
+                        <span>{{ fila.usuario }} · {{ fila.accion }}</span>
+                        <strong>{{ formatearFechaHora(fila.fecha) }}</strong>
+                      </li>
+                    } @empty {
+                      <li class="vacio">Sin movimientos en el periodo.</li>
+                    }
+                  </ul>
+                }
+                @case ('resumen') {
+                  <ul class="mini-lista">
+                    <li>
+                      <span>Días con reservas</span>
+                      <strong>{{ diasConReservas }}</strong>
+                    </li>
+                    <li>
+                      <span>Mejor día</span>
+                      <strong>{{ mejorDia }}</strong>
+                    </li>
+                  </ul>
+                }
+              }
+
+              <footer>
+                <button
+                  type="button"
+                  class="boton-principal"
+                  [disabled]="cargando || exportando !== null"
+                  (click)="exportar(reporte.tipo, 'pdf')"
+                >
+                  <i class="pi pi-file-pdf" aria-hidden="true"></i>
+                  {{ exportando === reporte.tipo + '-pdf' ? 'Generando…' : 'PDF' }}
+                </button>
+                <button
+                  type="button"
+                  class="boton-secundario"
+                  [disabled]="cargando || exportando !== null"
+                  (click)="exportar(reporte.tipo, 'csv')"
+                >
+                  <i class="pi pi-file" aria-hidden="true"></i>
+                  {{ exportando === reporte.tipo + '-csv' ? 'Generando…' : 'CSV' }}
+                </button>
+              </footer>
+            </article>
+          }
+        </div>
+      </section>
+
+      <section class="bloque">
+        <div class="bloque-titulo">
+          <h2>Resumen semanal</h2>
+          <div class="acciones-tabla">
+            <small>Reservas, cancelaciones, no-shows y ocupación por día</small>
+            <button
+              type="button"
+              class="boton-secundario"
+              [disabled]="cargando || exportando !== null"
+              (click)="exportar('resumen', 'csv')"
+            >
+              <i class="pi pi-download" aria-hidden="true"></i>
+              Exportar CSV
+            </button>
+          </div>
+        </div>
+
+        <div class="tabla-contenedor">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Día</th>
+                <th scope="col">Fecha</th>
+                <th scope="col" class="numero">Reservas</th>
+                <th scope="col" class="numero">Cancelaciones</th>
+                <th scope="col" class="numero">No-shows</th>
+                <th scope="col" class="numero">Tasa de ocupación</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (dia of resumen; track dia.fecha) {
+                <tr>
+                  <td class="dia">{{ dia.dia }}</td>
+                  <td>{{ formatearFecha(dia.fecha) }}</td>
+                  <td class="numero">{{ dia.reservas }}</td>
+                  <td class="numero">{{ dia.cancelaciones }}</td>
+                  <td class="numero">{{ dia.no_shows }}</td>
+                  <td class="numero">
+                    <span class="medidor">
+                      <span class="medidor-pista">
+                        <span
+                          class="medidor-relleno"
+                          [style.width.%]="dia.tasa_ocupacion"
+                        ></span>
+                      </span>
+                      {{ porcentaje(dia.tasa_ocupacion) }}
+                    </span>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="6" class="vacio">
+                    {{ cargando ? 'Cargando resumen…' : 'No hay información para el periodo seleccionado.' }}
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+  </main>
+</div>
