@@ -9,6 +9,8 @@ import { API_BASE_URL } from '../../../../core/config/api.config';
 import { AuthService } from '../../../../core/services/auth.service';
 import { routes } from '../../../../app.routes';
 import { AdminEspaciosComponent } from './admin-espacios.component';
+import { of } from 'rxjs';
+import { NotificacionesService } from '../../../../core/services/notificaciones.service';
 
 describe('AdminEspaciosComponent', () => {
   let fixture: ComponentFixture<AdminEspaciosComponent>;
@@ -33,8 +35,8 @@ describe('AdminEspaciosComponent', () => {
     }
   ];
   const espaciosAdmin = [
-    { ...espacios[0], activo: true },
-    { ...espacios[1], activo: false }
+    { ...espacios[0], activo: true, amenidades: [] },
+    { ...espacios[1], activo: false, amenidades: [] }
   ];
   const metricas = [
     {
@@ -82,7 +84,16 @@ describe('AdminEspaciosComponent', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter(routes),
-        MessageService
+        MessageService,
+        {
+          provide: NotificacionesService,
+          useValue: {
+            resumen: () => of({ no_leidas: 0 }),
+            listar: () => of([]),
+            marcarTodasLeidas: () => of({ actualizadas: 0 }),
+            marcarLeida: () => of(null)
+          }
+        }
       ]
     }).compileComponents();
 
@@ -109,6 +120,36 @@ describe('AdminEspaciosComponent', () => {
 
     fixture = TestBed.createComponent(AdminEspaciosComponent);
     fixture.detectChanges();
+  }
+
+  function flushAmenidades(espacioId?: number): void {
+    const peticion = httpTestingController.expectOne(
+      request =>
+        request.url === `${API_BASE_URL}/recursos/amenidades` &&
+        (espacioId
+          ? request.params.get('espacio_id') === String(espacioId)
+          : !request.params.has('espacio_id'))
+    );
+    peticion.flush([
+      {
+        tipo_recurso_id: 1,
+        nombre: 'Proyector',
+        descripcion: null,
+        total: 3,
+        instalados: espacioId === 42 ? 1 : 0,
+        disponibles: espacioId === 42 ? 2 : 3,
+        instalado_aqui: espacioId === 42
+      },
+      {
+        tipo_recurso_id: 2,
+        nombre: 'Pizarra',
+        descripcion: null,
+        total: 1,
+        instalados: 0,
+        disponibles: 1,
+        instalado_aqui: false
+      }
+    ]);
   }
 
   function cargarEspacios(): void {
@@ -702,6 +743,7 @@ describe('AdminEspaciosComponent', () => {
     ) as HTMLButtonElement;
     editButton.click();
     fixture.detectChanges();
+    flushAmenidades(42);
 
     const nombre = fixture.nativeElement.querySelector('.overlay-admin input[type="text"]') as HTMLInputElement;
     nombre.value = 'Laboratorio Redes';
@@ -731,6 +773,7 @@ describe('AdminEspaciosComponent', () => {
     ) as HTMLButtonElement;
     editButton.click();
     fixture.detectChanges();
+    flushAmenidades(42);
 
     fixture.componentInstance.estadoEspacioVisual = 'Mantenimiento';
     fixture.detectChanges();
@@ -755,6 +798,7 @@ describe('AdminEspaciosComponent', () => {
     expect(nuevoBoton.disabled).toBeFalse();
     nuevoBoton.click();
     fixture.detectChanges();
+    flushAmenidades();
 
     expect(fixture.nativeElement.querySelector('#titulo-crear-espacio')?.textContent).toContain('Nuevo espacio');
     expect(fixture.componentInstance.modalCrearEspacioAbierto).toBeTrue();
@@ -772,6 +816,7 @@ describe('AdminEspaciosComponent', () => {
 
     (fixture.nativeElement.querySelector('.nuevo-espacio') as HTMLButtonElement).click();
     fixture.detectChanges();
+    flushAmenidades();
 
     fixture.componentInstance.formularioNuevoEspacio = {
       codigo: 'L105',
@@ -792,7 +837,8 @@ describe('AdminEspaciosComponent', () => {
       nombre: 'Laboratorio de Multimedia',
       tipo: 'LABORATORIO',
       capacidad: 25,
-      ubicacion: 'Edificio B, Piso 2'
+      ubicacion: 'Edificio B, Piso 2',
+      amenidades: []
     });
     postReq.flush({
       id: 99,
@@ -1049,18 +1095,24 @@ describe('AdminEspaciosComponent', () => {
     cargarEspacios();
     const comp = fixture.componentInstance;
 
-    const espacioEd = { ...espacios[0], ubicacion: 'Edificio C, Piso 3' };
+    const espacioEd = {
+      ...espacios[0],
+      activo: true,
+      amenidades: [{ tipo_recurso_id: 1, nombre: 'Proyector' }],
+      ubicacion: 'Edificio C, Piso 3'
+    };
     comp.abrirEdicion(espacioEd);
+    flushAmenidades(42);
     expect(comp.espacioEnEdicion).toEqual(espacioEd);
     expect(comp.edificioEspacioVisual).toBe('C');
     expect(comp.pisoEspacioVisual).toBe('Piso 3');
 
     // Toggle amenities
-    expect(comp.amenidadesSeleccionadasVisual).toContain('Proyector');
-    comp.alternarAmenidadVisual('Proyector');
-    expect(comp.amenidadesSeleccionadasVisual).not.toContain('Proyector');
-    comp.alternarAmenidadVisual('Proyector');
-    expect(comp.amenidadesSeleccionadasVisual).toContain('Proyector');
+    expect(comp.amenidadesSeleccionadasVisual).toContain(1);
+    comp.alternarAmenidadVisual(1);
+    expect(comp.amenidadesSeleccionadasVisual).not.toContain(1);
+    comp.alternarAmenidadVisual(1);
+    expect(comp.amenidadesSeleccionadasVisual).toContain(1);
 
     // Select color
     comp.seleccionarColorVisual('#ef4444');
@@ -1077,15 +1129,16 @@ describe('AdminEspaciosComponent', () => {
     const comp = fixture.componentInstance;
 
     comp.abrirCrearEspacio();
+    flushAmenidades();
     expect(comp.modalCrearEspacioAbierto).toBeTrue();
 
     comp.seleccionarColorNuevoEspacio('#10b981');
     expect(comp.colorNuevoEspacioVisual).toBe('#10b981');
 
-    comp.alternarAmenidadNuevoEspacio('WiFi');
-    expect(comp.amenidadesNuevoEspacioVisual).toContain('WiFi');
-    comp.alternarAmenidadNuevoEspacio('WiFi');
-    expect(comp.amenidadesNuevoEspacioVisual).not.toContain('WiFi');
+    comp.alternarAmenidadNuevoEspacio(1);
+    expect(comp.amenidadesNuevoEspacioVisual).toContain(1);
+    comp.alternarAmenidadNuevoEspacio(1);
+    expect(comp.amenidadesNuevoEspacioVisual).not.toContain(1);
 
     // Validation failure: invalid nombre or capacidad
     comp.formularioNuevoEspacio.nombre = '   ';
@@ -1128,6 +1181,7 @@ describe('AdminEspaciosComponent', () => {
 
     // Create space API error
     comp.abrirCrearEspacio();
+    flushAmenidades();
     comp.formularioNuevoEspacio.nombre = 'Lab Error';
     comp.formularioNuevoEspacio.capacidad = 20;
     comp.guardarNuevoEspacio();
@@ -1148,6 +1202,7 @@ describe('AdminEspaciosComponent', () => {
     const comp = fixture.componentInstance;
 
     comp.abrirEdicion(espacios[0]);
+    flushAmenidades(42);
 
     // Validation failure
     comp.formularioEspacio.nombre = '';
@@ -1168,6 +1223,7 @@ describe('AdminEspaciosComponent', () => {
 
     // Edit fields and status simultaneously
     comp.abrirEdicion(espacios[0]);
+    flushAmenidades(42);
     comp.formularioEspacio.nombre = 'Laboratorio Renovado';
     comp.estadoEspacioVisual = 'Mantenimiento';
     comp.guardarEdicion();
@@ -1186,6 +1242,7 @@ describe('AdminEspaciosComponent', () => {
 
     // Edit fields error handling (409 conflict)
     comp.abrirEdicion(espacios[0]);
+    flushAmenidades(42);
     comp.formularioEspacio.nombre = 'Nombre Conflicto';
     comp.guardarEdicion();
     const req409 = httpTestingController.expectOne(`${API_BASE_URL}/espacios/42`);
@@ -1197,6 +1254,7 @@ describe('AdminEspaciosComponent', () => {
 
     // Edit status only with error
     comp.abrirEdicion(espacios[0]);
+    flushAmenidades(42);
     comp.estadoEspacioVisual = 'Mantenimiento';
     comp.guardarEdicion();
     const reqStatusOnly = httpTestingController.expectOne(`${API_BASE_URL}/espacios/42/estado`);

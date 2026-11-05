@@ -1,37 +1,44 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { MessageService } from 'primeng/api';
 import { Toast } from 'primeng/toast';
 import { Subscription } from 'rxjs';
 
 import { AuthService } from '../../../../core/services/auth.service';
 import { EspaciosService } from '../../../../core/services/espacios.service';
+import { RecursosService } from '../../../../core/services/recursos.service';
 import { SolicitudesService } from '../../../../core/services/solicitudes.service';
 import { obtenerMensajeErrorApi } from '../../../../core/utils/api-error.util';
-import { Espacio, EspacioActualizar, EspacioCrear, EspacioMetrica, TipoEspacio } from '../../../../shared/models/espacio.model';
+import { AmenidadEspacio, Espacio, EspacioActualizar, EspacioAdmin, EspacioCrear, EspacioMetrica, TipoEspacio } from '../../../../shared/models/espacio.model';
+import { Amenidad } from '../../../../shared/models/recurso.model';
 import { obtenerColorIdentificadorEspacio } from '../../../../shared/utils/espacio-color.util';
 import { EstadoDetalleSolicitud, SolicitudPendiente, SolicitudResuelta } from '../../../../shared/models/solicitud.model';
 import { SolicitudesEspacioModalComponent } from '../../../solicitudes/components/solicitudes-espacio-modal/solicitudes-espacio-modal.component';
 import { fechaColombia } from '../../../../shared/utils/fecha-colombia.util';
 import { filtrarEspaciosPorTermino } from '../../../../shared/utils/espacio-filtro.util';
 import { obtenerInicialesUsuario } from '../../../../shared/utils/usuario-iniciales.util';
+import { CampanaNotificacionesComponent } from '../../../../shared/components/campana-notificaciones/campana-notificaciones.component';
 
 @Component({
   selector: 'app-admin-espacios',
-  imports: [FormsModule, RouterLink, Toast, SolicitudesEspacioModalComponent],
+  imports: [FormsModule, RouterLink, RouterLinkActive, Toast, SolicitudesEspacioModalComponent, CampanaNotificacionesComponent],
   templateUrl: './admin-espacios.component.html',
   styleUrl: './admin-espacios.component.scss'
 })
 export class AdminEspaciosComponent implements OnDestroy, OnInit {
   private readonly authService = inject(AuthService);
   private readonly espaciosService = inject(EspaciosService);
+  private readonly recursosService = inject(RecursosService);
   private readonly solicitudesService = inject(SolicitudesService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   private readonly messageService = inject(MessageService);
   private detalleSubscription = new Subscription();
   private aprobacionSubscription: Subscription | null = null;
+
+  parametrosAbierto = false;
 
   readonly columnas = 8;
   espacios: Espacio[] = [];
@@ -47,6 +54,7 @@ export class AdminEspaciosComponent implements OnDestroy, OnInit {
   cargandoConteos = false;
   errorConteos = false;
   espacioSeleccionado: Espacio | null = null;
+  private espacioPendienteDeAbrir: number | null = null;
   solicitudes: SolicitudPendiente[] = [];
   cargandoSolicitudes = false;
   errorSolicitudes: string | null = null;
@@ -76,16 +84,16 @@ export class AdminEspaciosComponent implements OnDestroy, OnInit {
     '#ec4899'  // rosa
   ];
 
-  readonly amenidadesFigma = [
-    'Proyector', 'Pizarra', 'TV', 'Videoconf.', 'Café', 'AC', 'Micrófono', 'GPU', 'Wifi'
-  ];
+  /** Catálogo de amenidades configurado por el admin en Parámetros → Recursos. */
+  amenidadesCatalogo: Amenidad[] = [];
+  cargandoAmenidades = false;
 
   codigoEspacioVisual = '';
   edificioEspacioVisual = 'A';
   pisoEspacioVisual = 'Piso 1';
   estadoEspacioVisual: 'Activo' | 'Mantenimiento' = 'Activo';
   colorSeleccionadoVisual = '#3b82f6';
-  amenidadesSeleccionadasVisual: string[] = ['Proyector', 'Pizarra', 'TV'];
+  amenidadesSeleccionadasVisual: number[] = [];
 
   modalCrearEspacioAbierto = false;
   creandoEspacio = false;
@@ -98,7 +106,7 @@ export class AdminEspaciosComponent implements OnDestroy, OnInit {
     estado: 'Activo' as 'Activo' | 'Mantenimiento'
   };
   colorNuevoEspacioVisual = '#3b82f6';
-  amenidadesNuevoEspacioVisual: string[] = [];
+  amenidadesNuevoEspacioVisual: number[] = [];
 
   filtrosHistorial: { estado?: 'APROBADA' | 'RECHAZADA'; fecha_desde?: string; fecha_hasta?: string } = {};
   terminoBusqueda = '';
@@ -175,6 +183,26 @@ export class AdminEspaciosComponent implements OnDestroy, OnInit {
     if (this.puedeConsultarSolicitudes) {
       this.cargarConteosPendientes();
     }
+    // Desde la campana de notificaciones se llega con ?espacio=<id>: se abre su bandeja
+    this.route.queryParamMap.subscribe(parametros => {
+      const espacioId = Number(parametros.get('espacio'));
+      if (Number.isInteger(espacioId) && espacioId > 0) {
+        this.espacioPendienteDeAbrir = espacioId;
+        this.abrirEspacioSolicitado();
+      }
+    });
+  }
+
+  private abrirEspacioSolicitado(): void {
+    if (this.espacioPendienteDeAbrir === null || this.espacioSeleccionado !== null) {
+      return;
+    }
+    const espacio = this.espacios.find(item => item.id === this.espacioPendienteDeAbrir);
+    if (!espacio) {
+      return;
+    }
+    this.espacioPendienteDeAbrir = null;
+    this.verSolicitudes(espacio);
   }
 
   cargarEspacios(): void {
@@ -191,6 +219,7 @@ export class AdminEspaciosComponent implements OnDestroy, OnInit {
           'activo' in espacio && typeof espacio.activo === 'boolean' ? espacio.activo : true
         ]));
         this.cargandoEspacios = false;
+        this.abrirEspacioSolicitado();
       },
       error: error => {
         this.errorEspacios = obtenerMensajeErrorApi(error) ??
@@ -388,6 +417,10 @@ export class AdminEspaciosComponent implements OnDestroy, OnInit {
     };
     this.codigoEspacioVisual = `L10${espacio.id}`;
     this.colorSeleccionadoVisual = this.obtenerColorEspacio(espacio.id);
+    this.amenidadesSeleccionadasVisual = ((espacio as EspacioAdmin).amenidades ?? []).map(
+      (amenidad: AmenidadEspacio) => amenidad.tipo_recurso_id
+    );
+    this.cargarAmenidades(espacio.id);
     const estaActivoEspacio = this.estaActivo(espacio.id);
     const estadoGuardado = this.estadosPersonalizadosEspacios.get(espacio.id);
     this.estadoEspacioVisual = estadoGuardado === 'Mantenimiento' || (!estadoGuardado && estaActivoEspacio === false)
@@ -402,11 +435,54 @@ export class AdminEspaciosComponent implements OnDestroy, OnInit {
     this.pisoEspacioVisual = matchPiso ? `Piso ${matchPiso[1]}` : 'Piso 1';
   }
 
-  alternarAmenidadVisual(amenidad: string): void {
-    if (this.amenidadesSeleccionadasVisual.includes(amenidad)) {
-      this.amenidadesSeleccionadasVisual = this.amenidadesSeleccionadasVisual.filter(a => a !== amenidad);
+  cargarAmenidades(espacioId?: number): void {
+    this.cargandoAmenidades = true;
+    this.recursosService.listarAmenidades(espacioId).subscribe({
+      next: amenidades => {
+        this.amenidadesCatalogo = amenidades;
+        this.cargandoAmenidades = false;
+      },
+      error: error => {
+        this.amenidadesCatalogo = [];
+        this.cargandoAmenidades = false;
+        this.messageService.add({
+          key: 'admin-espacios',
+          severity: 'error',
+          summary: 'No se pudieron cargar las amenidades',
+          detail: obtenerMensajeErrorApi(error) ??
+            'Revisa el catálogo en Parámetros → Recursos e intenta nuevamente.',
+          life: 6000
+        });
+      }
+    });
+  }
+
+  /** Unidades que quedarían libres si se aplica la selección actual. */
+  unidadesLibres(amenidad: Amenidad, seleccionadas: number[]): number {
+    const base = amenidad.disponibles + (amenidad.instalado_aqui ? 1 : 0);
+    return Math.max(0, base - (seleccionadas.includes(amenidad.tipo_recurso_id) ? 1 : 0));
+  }
+
+  puedeAlternarAmenidad(amenidad: Amenidad, seleccionadas: number[]): boolean {
+    return (
+      seleccionadas.includes(amenidad.tipo_recurso_id) ||
+      this.unidadesLibres(amenidad, seleccionadas) > 0
+    );
+  }
+
+  alternarAmenidadVisual(tipoRecursoId: number): void {
+    const amenidad = this.amenidadesCatalogo.find(
+      item => item.tipo_recurso_id === tipoRecursoId
+    );
+    if (!amenidad || !this.puedeAlternarAmenidad(amenidad, this.amenidadesSeleccionadasVisual)) {
+      return;
+    }
+    if (this.amenidadesSeleccionadasVisual.includes(tipoRecursoId)) {
+      this.amenidadesSeleccionadasVisual = this.amenidadesSeleccionadasVisual.filter(
+        id => id !== tipoRecursoId
+      );
     } else {
-      this.amenidadesSeleccionadasVisual = [...this.amenidadesSeleccionadasVisual, amenidad];
+      this.amenidadesSeleccionadasVisual = [...this.amenidadesSeleccionadasVisual, tipoRecursoId];
     }
   }
 
@@ -434,6 +510,7 @@ export class AdminEspaciosComponent implements OnDestroy, OnInit {
     };
     this.colorNuevoEspacioVisual = '#3b82f6';
     this.amenidadesNuevoEspacioVisual = [];
+    this.cargarAmenidades();
     this.modalCrearEspacioAbierto = true;
   }
 
@@ -447,11 +524,19 @@ export class AdminEspaciosComponent implements OnDestroy, OnInit {
     this.colorNuevoEspacioVisual = color;
   }
 
-  alternarAmenidadNuevoEspacio(amenidad: string): void {
-    if (this.amenidadesNuevoEspacioVisual.includes(amenidad)) {
-      this.amenidadesNuevoEspacioVisual = this.amenidadesNuevoEspacioVisual.filter(a => a !== amenidad);
+  alternarAmenidadNuevoEspacio(tipoRecursoId: number): void {
+    const amenidad = this.amenidadesCatalogo.find(
+      item => item.tipo_recurso_id === tipoRecursoId
+    );
+    if (!amenidad || !this.puedeAlternarAmenidad(amenidad, this.amenidadesNuevoEspacioVisual)) {
+      return;
+    }
+    if (this.amenidadesNuevoEspacioVisual.includes(tipoRecursoId)) {
+      this.amenidadesNuevoEspacioVisual = this.amenidadesNuevoEspacioVisual.filter(
+        id => id !== tipoRecursoId
+      );
     } else {
-      this.amenidadesNuevoEspacioVisual = [...this.amenidadesNuevoEspacioVisual, amenidad];
+      this.amenidadesNuevoEspacioVisual = [...this.amenidadesNuevoEspacioVisual, tipoRecursoId];
     }
   }
 
@@ -482,7 +567,8 @@ export class AdminEspaciosComponent implements OnDestroy, OnInit {
       nombre,
       tipo,
       capacidad,
-      ubicacion
+      ubicacion,
+      amenidades: this.amenidadesNuevoEspacioVisual
     };
 
     this.espaciosService.crear(payload).subscribe({
@@ -541,6 +627,14 @@ export class AdminEspaciosComponent implements OnDestroy, OnInit {
     if (this.formularioEspacio.tipo !== actual.tipo) cambios.tipo = this.formularioEspacio.tipo;
     if (this.formularioEspacio.capacidad !== actual.capacidad) cambios.capacidad = this.formularioEspacio.capacidad;
     if (ubicacion !== actual.ubicacion) cambios.ubicacion = ubicacion;
+    const amenidadesActuales = ((actual as EspacioAdmin).amenidades ?? [])
+      .map(amenidad => amenidad.tipo_recurso_id)
+      .sort((a, b) => a - b);
+    const amenidadesNuevas = [...this.amenidadesSeleccionadasVisual].sort((a, b) => a - b);
+    const cambioAmenidades =
+      amenidadesActuales.length !== amenidadesNuevas.length ||
+      amenidadesActuales.some((id, indice) => id !== amenidadesNuevas[indice]);
+    if (cambioAmenidades) cambios.amenidades = amenidadesNuevas;
     const activoActual = this.estaActivo(actual.id);
     const nuevoActivo = this.estadoEspacioVisual === 'Activo';
     const cambioEstado = activoActual !== null && activoActual !== nuevoActivo;
@@ -866,6 +960,10 @@ export class AdminEspaciosComponent implements OnDestroy, OnInit {
     this.detalleSubscription.unsubscribe();
     this.detalleSubscription = new Subscription();
     this.detallesSolicitudes = new Map();
+  }
+
+  alternarParametros(): void {
+    this.parametrosAbierto = !this.parametrosAbierto;
   }
 
   cerrarSesion(): void {

@@ -1,4 +1,5 @@
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MessageService } from 'primeng/api';
 import { Toast } from 'primeng/toast';
@@ -10,14 +11,17 @@ import { ReservasService } from '../../../../core/services/reservas.service';
 import { obtenerMensajeErrorApi } from '../../../../core/utils/api-error.util';
 import { Espacio } from '../../../../shared/models/espacio.model';
 import { ReservaDetalle, ReservaResumen } from '../../../../shared/models/solicitud.model';
+import { SolicitudRecurso } from '../../../../shared/models/recurso.model';
 import { PosSidebarComponent } from '../../../../shared/components/pos-sidebar/pos-sidebar.component';
+import { CampanaNotificacionesComponent } from '../../../../shared/components/campana-notificaciones/campana-notificaciones.component';
+import { SolicitarRecursosComponent } from '../../../recursos/components/solicitar-recursos/solicitar-recursos.component';
 import { fechaActualLargaColombia, fechaColombia, fechaReservaColombia, horaReservaColombia, instanteReservaColombia, obtenerRangoDisponibilidadActual } from '../../../../shared/utils/fecha-colombia.util';
 import { obtenerColorIdentificadorEspacio } from '../../../../shared/utils/espacio-color.util';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [PosSidebarComponent, RouterLink, Toast],
+  imports: [PosSidebarComponent, RouterLink, Toast, CampanaNotificacionesComponent, FormsModule, SolicitarRecursosComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
@@ -36,6 +40,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   reservasHoy: ReservaResumen[] = [];
   detallesReservas = new Map<number, ReservaDetalle>();
   espaciosDisponibles: Espacio[] = [];
+  totalEspacios = 0;
   mensajeAgendaNoDisponible: string | null = null;
   errorAgenda: string | null = null;
   errorDisponibles: string | null = null;
@@ -43,9 +48,37 @@ export class DashboardComponent implements OnInit, OnDestroy {
   fechaDisponibilidad: string | null = null;
   cancelandoReservaId: number | null = null;
   reservaCancelar: ReservaResumen | null = null;
+  motivoCancelacion = '';
+  errorMotivoCancelacion: string | null = null;
+  registrandoAsistenciaId: number | null = null;
+  dialogoRecursosAbierto = false;
 
   get rolUsuario(): string | null {
     return this.authService.obtenerUsuarioActual()?.rol ?? null;
+  }
+
+  /** Docente, Coordinador y Director pueden pedir recursos (HU-44). */
+  get puedePedirRecursos(): boolean {
+    const cargo = this.authService.obtenerUsuarioActual()?.cargo ?? null;
+    return cargo !== null && cargo !== 'ESTUDIANTE';
+  }
+
+  abrirDialogoRecursos(): void {
+    this.dialogoRecursosAbierto = true;
+  }
+
+  cerrarDialogoRecursos(): void {
+    this.dialogoRecursosAbierto = false;
+  }
+
+  alSolicitarRecursos(solicitud: SolicitudRecurso): void {
+    this.dialogoRecursosAbierto = false;
+    this.messageService.add({
+      key: 'dashboard',
+      severity: 'success',
+      summary: 'Solicitud de recursos enviada',
+      detail: `La solicitud #${solicitud.id} quedó pendiente de aprobación.`
+    });
   }
 
   get inicialesUsuario(): string {
@@ -61,7 +94,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.cargarAgenda();
+    this.cargarTotalEspacios();
     this.cargarEspaciosDisponibles();
+  }
+
+  private cargarTotalEspacios(): void {
+    this.subscriptions.add(this.espaciosService.listar().subscribe({
+      next: espacios => (this.totalEspacios = espacios.length),
+      // Si falla, la tarjeta muestra solo los disponibles; no bloquea el dashboard
+      error: () => (this.totalEspacios = 0)
+    }));
   }
 
   ngOnDestroy(): void {
@@ -103,13 +145,56 @@ export class DashboardComponent implements OnInit, OnDestroy {
   abrirConfirmacionCancelacion(reserva: ReservaResumen): void {
     if (this.cancelandoReservaId === null && this.puedeCancelarReserva(reserva)) {
       this.reservaCancelar = reserva;
+      this.motivoCancelacion = '';
+      this.errorMotivoCancelacion = null;
     }
   }
 
   cerrarConfirmacionCancelacion(): void {
     if (this.cancelandoReservaId === null) {
       this.reservaCancelar = null;
+      this.motivoCancelacion = '';
+      this.errorMotivoCancelacion = null;
     }
+  }
+
+  /** HU-38: solo el titular, dentro de la ventana de tolerancia. */
+  puedeRegistrarAsistencia(reserva: ReservaResumen): boolean {
+    return this.rolUsuario === 'SOLICITANTE' &&
+      reserva.estado === 'ACTIVA' &&
+      reserva.puede_registrar_asistencia === true;
+  }
+
+  registrarAsistencia(reserva: ReservaResumen): void {
+    if (this.registrandoAsistenciaId !== null) {
+      return;
+    }
+    this.registrandoAsistenciaId = reserva.id;
+    this.subscriptions.add(this.reservasService.registrarAsistencia(reserva.id).subscribe({
+      next: respuesta => {
+        this.registrandoAsistenciaId = null;
+        this.messageService.add({
+          key: 'dashboard',
+          severity: 'success',
+          summary: 'Asistencia registrada',
+          detail: respuesta.mensaje,
+          life: 5000
+        });
+        this.cargarAgenda();
+      },
+      error: error => {
+        this.registrandoAsistenciaId = null;
+        this.messageService.add({
+          key: 'dashboard',
+          severity: 'warn',
+          summary: 'No se pudo registrar la asistencia',
+          detail: obtenerMensajeErrorApi(error) ??
+            'La tolerancia pudo haber vencido. Actualiza la agenda e intenta de nuevo.',
+          life: 6000
+        });
+        this.cargarAgenda();
+      }
+    }));
   }
 
   confirmarCancelacion(): void {
@@ -122,16 +207,24 @@ export class DashboardComponent implements OnInit, OnDestroy {
       return;
     }
 
+    const motivo = this.motivoCancelacion.trim();
+    if (motivo.length < 5) {
+      this.errorMotivoCancelacion = 'Escribe el motivo (mínimo 5 caracteres).';
+      return;
+    }
+
+    this.errorMotivoCancelacion = null;
     this.cancelandoReservaId = reserva.id;
-    this.subscriptions.add(this.reservasService.cancelarReserva(reserva.id).subscribe({
+    this.subscriptions.add(this.reservasService.cancelarReserva(reserva.id, motivo).subscribe({
       next: () => {
         this.cancelandoReservaId = null;
         this.reservaCancelar = null;
+        this.motivoCancelacion = '';
         this.messageService.add({
           key: 'dashboard',
           severity: 'success',
           summary: 'Reserva cancelada',
-          detail: 'La reserva fue cancelada correctamente.',
+          detail: 'La reserva fue cancelada y el motivo quedó registrado.',
           life: 5000
         });
         this.cargarAgenda();
@@ -148,7 +241,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
           mensaje = 'La reserva no existe o no pertenece a tu cuenta.';
         } else if (conflicto) {
           summary = 'No se puede cancelar la reserva';
-          mensaje = 'La reserva ya inició y no se puede cancelar.';
+          mensaje = detalle ?? 'La reserva ya inició y no se puede cancelar.';
           severity = 'warn';
         }
         this.messageService.add({

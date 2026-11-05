@@ -84,4 +84,39 @@ describe('PosSidebarComponent', () => {
     expect(authServiceSpy.logout).toHaveBeenCalled();
     expect(router.navigateByUrl).toHaveBeenCalledWith('/login');
   });
+
+  it('muestra Configuración como enlace tambien para cualquier rol', () => {
+    const enlace = fixture.nativeElement.querySelector(
+      'a[routerLink="/configuracion"]'
+    ) as HTMLAnchorElement;
+    expect(enlace).toBeTruthy();
+    expect(enlace.textContent).toContain('Configuración');
+  });
+
+  it('muestra el módulo de notificaciones para cualquier rol', () => {
+    const enlace = fixture.nativeElement.querySelector(
+      'a[routerLink="/notificaciones"]'
+    ) as HTMLAnchorElement;
+    expect(enlace).toBeTruthy();
+    expect(enlace.textContent).toContain('Notificaciones');
+  });
+
+  it('no muestra la bandeja de autorizaciones si el usuario no tiene el permiso', () => {
+    const enlace = fixture.nativeElement.querySelector('a[routerLink="/autorizaciones"]');
+    expect(enlace).toBeNull();
+  });
+
+  it('muestra la bandeja de autorizaciones si el usuario puede autorizar fuera de franja', () => {
+    authServiceSpy.obtenerUsuarioActual.and.returnValue({
+      ...mockUsuario,
+      puede_autorizar_especial: true
+    });
+    fixture.detectChanges();
+
+    const enlace = fixture.nativeElement.querySelector(
+      'a[routerLink="/autorizaciones"]'
+    ) as HTMLAnchorElement;
+    expect(enlace).toBeTruthy();
+    expect(enlace.textContent).toContain('Autorizaciones');
+  });
 });

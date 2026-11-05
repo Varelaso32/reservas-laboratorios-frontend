@@ -93,6 +93,83 @@
   background: var(--color-carbon);
 }
 
+.badge-autorizacion {
+  background: var(--color-sky-wash);
+}
+
+.badge-cesion {
+  background: var(--color-lavender);
+}
+
+.badge-rechazo {
+  background: var(--color-soft-mist);
+}
+
+.avisos-exito {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+  font-size: 11px;
+  color: var(--color-text-muted);
+
+  li {
+    display: flex;
+    gap: 6px;
+    padding: 4px 0;
+    border-bottom: 1px solid var(--color-soft-mist);
+
+    &:last-child {
+      border-bottom: 0;
+    }
+
+    &::before {
+      content: '·';
+      font-weight: 700;
+      color: var(--color-carbon);
+    }
+  }
+}
+
+/* Resumen de reglas del espacio (HU-21, HU-28, HU-33, HU-34) */
+.reglas-espacio {
+  padding: 12px 14px;
+  background: var(--color-sky-wash-soft);
+  border: var(--outline-hairline);
+  border-radius: var(--radius-2xl);
+
+  .titulo-reglas {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-carbon);
+  }
+
+  ul {
+    margin: 8px 0 0;
+    padding: 0;
+    list-style: none;
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--color-text-muted);
+  }
+
+  li {
+    display: flex;
+    gap: 6px;
+
+    &::before {
+      content: '·';
+      font-weight: 700;
+      color: var(--color-carbon);
+    }
+  }
+}
+
 .cerrar-exito {
   width: 58px;
   min-height: 32px;
@@ -232,6 +309,7 @@
 }
 
 .campo input,
+.campo select,
 .campo textarea {
   width: 100%;
   min-height: 38px;
@@ -307,6 +385,20 @@
 
 .error-campo {
   color: var(--color-error-text);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+/* HU-30: pedir el cupo de un usuario de menor jerarquía */
+.campo-urgencia {
+  padding: 12px;
+  background: var(--color-lavender);
+  border: var(--outline-hairline);
+  border-radius: var(--radius-2xl);
+}
+
+.ayuda-campo {
+  color: var(--color-text-muted);
   font-size: 11px;
   line-height: 1.4;
 }

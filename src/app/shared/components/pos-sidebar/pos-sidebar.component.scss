@@ -2,10 +2,15 @@
    superficie blanca, trazo negro de 1px, items en pill. */
 
 :host {
+  position: sticky;
+  top: 0;
   display: block;
   flex: 0 0 236px;
   width: 236px;
+  height: 100vh;
   min-height: 100vh;
+  align-self: flex-start;
+  overflow-y: auto;
   background: var(--color-paper-white);
   border-right: var(--outline-hairline);
   font-family: var(--font-ui);
