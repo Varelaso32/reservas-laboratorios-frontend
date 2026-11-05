@@ -1,0 +1,326 @@
+<p-toast position="bottom-right"></p-toast>
+<div class="admin-app">
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-icon">R</div>
+      <div>
+        <strong>ReservaECCI</strong>
+        <small>Panel Admin</small>
+      </div>
+    </div>
+
+    <nav class="menu" aria-label="Panel Admin">
+            @if (usuarioActual?.rol === 'ADMIN') {
+        <a class="menu-item" routerLink="/admin/dashboard" routerLinkActive="activo" ariaCurrentWhenActive="page">
+          <i class="pi pi-th-large" aria-hidden="true"></i>
+          <span>Resumen</span>
+        </a>
+      }
+      <a class="menu-item" routerLink="/admin/espacios">
+        <i class="pi pi-building" aria-hidden="true"></i>
+        <span>Espacios</span>
+      </a>
+      <a class="menu-item" routerLink="/admin/usuarios">
+        <i class="pi pi-users" aria-hidden="true"></i>
+        <span>Usuarios</span>
+      </a>
+      <a class="menu-item activo" routerLink="/admin/sanciones" aria-current="page">
+        <i class="pi pi-shield" aria-hidden="true"></i>
+        <span>Sanciones</span>
+      </a>
+            @if (usuarioActual?.rol === 'ADMIN') {
+        <a class="menu-item" routerLink="/admin/reportes" routerLinkActive="activo" ariaCurrentWhenActive="page">
+          <i class="pi pi-chart-bar" aria-hidden="true"></i>
+          <span>Reportes</span>
+        </a>
+      }
+      <div class="grupo-menu">
+        <button
+          type="button"
+          class="menu-item grupo"
+          aria-controls="submenu-parametros"
+          [class.abierto]="parametrosAbierto"
+          [attr.aria-expanded]="parametrosAbierto"
+          (click)="alternarParametros()"
+        >
+          <i class="pi pi-sliders-h" aria-hidden="true"></i>
+          <span>Parámetros</span>
+          <i class="pi pi-angle-down chevron" aria-hidden="true"></i>
+        </button>
+
+        @if (parametrosAbierto) {
+          <div class="submenu" id="submenu-parametros">
+            <a class="submenu-item" routerLink="/admin/parametros/reglas" title="Reglas de reserva">
+              <i class="pi pi-calendar-times" aria-hidden="true"></i>
+              <span>Reglas de reserva</span>
+            </a>
+            <a class="submenu-item" routerLink="/admin/parametros/tipos-uso" title="Tipos de uso">
+              <i class="pi pi-tags" aria-hidden="true"></i>
+              <span>Tipos de uso</span>
+            </a>
+            <a class="submenu-item" routerLink="/admin/parametros/anticipacion" title="Anticipación">
+              <i class="pi pi-clock" aria-hidden="true"></i>
+              <span>Anticipación</span>
+            </a>
+            <a class="submenu-item" routerLink="/admin/parametros/sanciones" title="Sanciones">
+              <i class="pi pi-shield" aria-hidden="true"></i>
+              <span>Sanciones</span>
+            </a>
+            <a class="submenu-item" routerLink="/admin/parametros/recursos" title="Recursos">
+              <i class="pi pi-box" aria-hidden="true"></i>
+              <span>Recursos</span>
+            </a>
+            <a class="submenu-item" routerLink="/admin/parametros/historial" title="Historial">
+              <i class="pi pi-history" aria-hidden="true"></i>
+              <span>Historial</span>
+            </a>
+          </div>
+        }
+      </div>
+
+      <div class="separador"></div>
+
+      <a class="menu-item vista-operador" routerLink="/espacios">
+        <i class="pi pi-arrow-left" aria-hidden="true"></i>
+        <span>Vista Operador</span>
+      </a>
+    </nav>
+
+    @if (usuarioActual; as usuario) {
+      <div class="usuario">
+        <div class="avatar">{{ inicialesUsuario }}</div>
+        <div class="usuario-info">
+          <strong>{{ usuario.nombre }}</strong>
+          <small>Administrador</small>
+        </div>
+        <button
+          type="button"
+          class="logout"
+          aria-label="Cerrar sesión"
+          title="Cerrar sesión"
+          (click)="cerrarSesion()"
+        >
+          <i class="pi pi-sign-out" aria-hidden="true"></i>
+        </button>
+      </div>
+    }
+  </aside>
+
+  <main class="contenido">
+    <header class="topbar">
+      <div class="migas">
+        <i class="pi pi-shield" aria-hidden="true"></i>
+        <span>Admin · Sanciones</span>
+      </div>
+      <div class="acciones-topbar">
+        <button type="button" class="boton-mini" [disabled]="procesando" (click)="procesarVencidas()">
+          {{ procesando ? 'Procesando…' : 'Procesar vencidas' }}
+        </button>
+        <div class="perfil" aria-label="Usuario actual">{{ inicialesUsuario }}</div>
+      </div>
+    </header>
+
+    <section class="pagina">
+      <header class="encabezado">
+        <div>
+          <h1>Sanciones</h1>
+          <p>
+            Usuarios con strikes por no-show, su detalle y las solicitudes de reactivación
+            pendientes de decisión (HU-42).
+          </p>
+        </div>
+      </header>
+
+      @if (cargando) {
+        <p class="estado-panel" role="status">Cargando reporte...</p>
+      } @else if (error) {
+        <p class="estado-panel error" role="status">{{ error }}</p>
+      } @else if (reporte) {
+        @let datos = reporte;
+        <div class="resumen">
+          <article class="tarjeta">
+            <span>Usuarios con strikes</span>
+            <strong>{{ datos.total_usuarios }}</strong>
+          </article>
+          <article class="tarjeta">
+            <span>Bloqueados</span>
+            <strong>{{ datos.total_bloqueados }}</strong>
+          </article>
+          <article class="tarjeta">
+            <span>Reactivaciones pendientes</span>
+            <strong>{{ datos.reactivaciones_pendientes.length }}</strong>
+          </article>
+          <button type="button" class="boton-filtro" [class.activo]="soloBloqueados" (click)="alternarFiltro()">
+            <i class="pi pi-filter" aria-hidden="true"></i>
+            {{ soloBloqueados ? 'Ver todos' : 'Solo bloqueados' }}
+          </button>
+        </div>
+
+        <section class="panel" aria-labelledby="titulo-reactivaciones">
+          <header class="panel-header">
+            <div>
+              <h2 id="titulo-reactivaciones">Reactivaciones pendientes</h2>
+              <p>El usuario justificó cada strike activo y espera tu decisión.</p>
+            </div>
+          </header>
+
+          @if (datos.reactivaciones_pendientes.length === 0) {
+            <p class="estado-panel">No hay solicitudes de reactivación pendientes.</p>
+          } @else {
+            <ul class="lista-reactivaciones">
+              @for (reactivacion of datos.reactivaciones_pendientes; track reactivacion.id) {
+                <li>
+                  <header>
+                    <div>
+                      <strong>{{ reactivacion.usuario }}</strong>
+                      <small>Solicitada {{ formatearFecha(reactivacion.creada_en) }}</small>
+                    </div>
+                    <span class="badge-pendiente">Pendiente</span>
+                  </header>
+
+                  <p class="justificacion">{{ reactivacion.justificacion }}</p>
+
+                  <div class="strikes-justificados">
+                    <h3>Justificación por strike</h3>
+                    <ul>
+                      @for (strike of strikesDeReactivacion(reactivacion); track strike.id) {
+                        <li>
+                          <div>
+                            <strong>{{ strike.espacio }}</strong>
+                            <span>
+                              {{ formatearFecha(strike.inicio) }} · {{ strike.minutos_retraso }} min
+                            </span>
+                          </div>
+                          <p>{{ justificacionDe(reactivacion, strike.id) }}</p>
+                        </li>
+                      }
+                    </ul>
+                  </div>
+
+                  <footer>
+                    <button type="button" class="boton-rechazar" (click)="abrirDecision(reactivacion, true)">
+                      Rechazar
+                    </button>
+                    <button type="button" class="boton-aceptar" (click)="abrirDecision(reactivacion)">
+                      Aceptar
+                    </button>
+                  </footer>
+                </li>
+              }
+            </ul>
+          }
+        </section>
+
+        <section class="panel" aria-labelledby="titulo-usuarios">
+          <header class="panel-header">
+            <div>
+              <h2 id="titulo-usuarios">Usuarios sancionados</h2>
+              <p>Strikes activos por usuario y el detalle de cada no-show.</p>
+            </div>
+          </header>
+
+          @if (datos.usuarios.length === 0) {
+            <p class="estado-panel">Todavía no hay usuarios con strikes.</p>
+          } @else {
+            <div class="tabla-usuarios">
+              @for (usuario of datos.usuarios; track usuario.usuario_id) {
+                <article class="fila-usuario" [class.bloqueado]="usuario.bloqueado">
+                  <header>
+                    <div>
+                      <strong>{{ usuario.nombre }}</strong>
+                      <small>{{ usuario.email }} · {{ usuario.cargo ?? usuario.rol }}</small>
+                    </div>
+                    <div class="marcadores">
+                      <span class="badge-strikes">{{ usuario.strikes_activos }} strike(s)</span>
+                      @if (usuario.bloqueado) {
+                        <span class="badge-bloqueado">Bloqueado</span>
+                      } @else {
+                        <span class="badge-habilitado">Habilitado</span>
+                      }
+                    </div>
+                  </header>
+
+                  <ul class="strikes">
+                    @for (strike of usuario.strikes; track strike.id) {
+                      <li [class.anulado]="strike.anulado">
+                        <span class="espacio">{{ strike.espacio }}</span>
+                        <span class="fecha">{{ formatearFecha(strike.inicio) }}</span>
+                        <span class="retraso">{{ strike.minutos_retraso }} min</span>
+                        <span class="estado">{{ strike.anulado ? 'Anulado' : 'Activo' }}</span>
+                      </li>
+                    }
+                  </ul>
+                </article>
+              }
+            </div>
+          }
+        </section>
+      }
+    </section>
+  </main>
+</div>
+
+@if (decision) {
+  <div class="dialogo-overlay">
+    <section
+      class="dialogo"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="titulo-decision"
+    >
+      <h2 id="titulo-decision">
+        {{ decision.rechazando ? 'Rechazar reactivación' : 'Aceptar reactivación' }}
+      </h2>
+      <p>
+        {{ decision.reactivacion.usuario }} ·
+        {{ decision.rechazando ? 'Indica el motivo del rechazo.' : 'Selecciona los strikes que se anulan.' }}
+      </p>
+
+      @if (decision.rechazando) {
+        <div class="campo">
+          <label for="motivo-rechazo">Motivo del rechazo</label>
+          <textarea
+            id="motivo-rechazo"
+            rows="3"
+            maxlength="500"
+            placeholder="Explica por qué no procede la reactivación"
+            [(ngModel)]="decision.motivo"
+          ></textarea>
+        </div>
+      } @else {
+        <ul class="seleccion-strikes">
+          @for (strike of strikesDeReactivacion(decision.reactivacion); track strike.id) {
+            <li>
+              <label>
+                <input
+                  type="checkbox"
+                  [checked]="decision.strikesAnular.includes(strike.id)"
+                  (change)="alternarStrikeAnular(strike.id)"
+                />
+                <span>
+                  <strong>{{ strike.espacio }}</strong>
+                  {{ formatearFecha(strike.inicio) }} · {{ strike.minutos_retraso }} min
+                </span>
+              </label>
+            </li>
+          }
+        </ul>
+      }
+
+      <footer>
+        <button type="button" class="boton-secundario" [disabled]="guardandoDecision" (click)="cerrarDecision()">
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="boton-confirmar"
+          [disabled]="guardandoDecision"
+          [attr.aria-busy]="guardandoDecision"
+          (click)="confirmarDecision()"
+        >
+          {{ guardandoDecision ? 'Guardando…' : (decision.rechazando ? 'Rechazar' : 'Aceptar') }}
+        </button>
+      </footer>
+    </section>
+  </div>
+}
