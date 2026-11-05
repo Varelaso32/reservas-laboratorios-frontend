@@ -10,10 +10,12 @@
     </div>
 
     <nav class="menu" aria-label="Panel Admin">
-      <span class="menu-item inactivo" aria-disabled="true">
-        <i class="pi pi-th-large" aria-hidden="true"></i>
-        <span>Resumen</span>
-      </span>
+            @if (usuarioActual?.rol === 'ADMIN') {
+        <a class="menu-item" routerLink="/admin/dashboard" routerLinkActive="activo" ariaCurrentWhenActive="page">
+          <i class="pi pi-th-large" aria-hidden="true"></i>
+          <span>Resumen</span>
+        </a>
+      }
       <a class="menu-item" routerLink="/admin/espacios">
         <i class="pi pi-building" aria-hidden="true"></i>
         <span>Espacios</span>
@@ -22,14 +24,61 @@
         <i class="pi pi-users" aria-hidden="true"></i>
         <span>Usuarios</span>
       </a>
-      <span class="menu-item inactivo" aria-disabled="true">
-        <i class="pi pi-chart-bar" aria-hidden="true"></i>
-        <span>Reportes</span>
-      </span>
-      <span class="menu-item inactivo" aria-disabled="true">
-        <i class="pi pi-cog" aria-hidden="true"></i>
-        <span>Configuración</span>
-      </span>
+      <a class="menu-item" routerLink="/admin/sanciones">
+        <i class="pi pi-shield" aria-hidden="true"></i>
+        <span>Sanciones</span>
+      </a>
+            @if (usuarioActual?.rol === 'ADMIN') {
+        <a class="menu-item" routerLink="/admin/reportes" routerLinkActive="activo" ariaCurrentWhenActive="page">
+          <i class="pi pi-chart-bar" aria-hidden="true"></i>
+          <span>Reportes</span>
+        </a>
+      }
+      @if (usuarioActual?.rol === 'ADMIN') {
+        <div class="grupo-menu">
+          <button
+            type="button"
+            class="menu-item grupo"
+            aria-controls="submenu-parametros"
+            [class.abierto]="parametrosAbierto"
+            [attr.aria-expanded]="parametrosAbierto"
+            (click)="alternarParametros()"
+          >
+            <i class="pi pi-sliders-h" aria-hidden="true"></i>
+            <span>Parámetros</span>
+            <i class="pi pi-angle-down chevron" aria-hidden="true"></i>
+          </button>
+
+          @if (parametrosAbierto) {
+            <div class="submenu" id="submenu-parametros">
+              <a class="submenu-item" routerLink="/admin/parametros/reglas" title="Reglas de reserva">
+                <i class="pi pi-calendar-times" aria-hidden="true"></i>
+                <span>Reglas de reserva</span>
+              </a>
+              <a class="submenu-item" routerLink="/admin/parametros/tipos-uso" title="Tipos de uso">
+                <i class="pi pi-tags" aria-hidden="true"></i>
+                <span>Tipos de uso</span>
+              </a>
+              <a class="submenu-item" routerLink="/admin/parametros/anticipacion" title="Anticipación">
+                <i class="pi pi-clock" aria-hidden="true"></i>
+                <span>Anticipación</span>
+              </a>
+              <a class="submenu-item" routerLink="/admin/parametros/sanciones" title="Sanciones">
+                <i class="pi pi-shield" aria-hidden="true"></i>
+                <span>Sanciones</span>
+              </a>
+              <a class="submenu-item" routerLink="/admin/parametros/recursos" title="Recursos">
+                <i class="pi pi-box" aria-hidden="true"></i>
+                <span>Recursos</span>
+              </a>
+              <a class="submenu-item" routerLink="/admin/parametros/historial" title="Historial">
+                <i class="pi pi-history" aria-hidden="true"></i>
+                <span>Historial</span>
+              </a>
+            </div>
+          }
+        </div>
+      }
 
       <div class="separador"></div>
 
@@ -66,7 +115,7 @@
         <input type="search" placeholder="Buscar usuarios..." aria-label="Buscar usuarios" disabled />
       </label>
       <div class="acciones-topbar">
-        <i class="pi pi-bell" aria-hidden="true"></i>
+        <app-campana-notificaciones />
         <div class="perfil" aria-label="Usuario actual">{{ inicialesUsuario }}</div>
       </div>
     </header>
