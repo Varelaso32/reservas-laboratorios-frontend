@@ -41,7 +41,7 @@ interface DevolucionEnCurso {
 }
 
 /**
- * Catálogo de recursos con stock, solicitudes y préstamos (HU-43 a HU-46).
+ * Catálogo de recursos con stock, solicitudes y préstamos.
  * Vive dentro de Parámetros → Recursos. Solo para el Administrador del Sistema.
  */
 @Component({
@@ -198,7 +198,7 @@ export class AdminRecursosComponent implements OnInit {
     });
   }
 
-  /* ─── Decisiones de solicitudes (HU-45) ─── */
+  /* ─── Decisiones de solicitudes ─── */
   abrirDecision(solicitud: SolicitudRecurso, aprobando: boolean): void {
     this.decision = { solicitud, aprobando, motivo: '' };
   }
@@ -247,7 +247,7 @@ export class AdminRecursosComponent implements OnInit {
       });
   }
 
-  /* ─── Entrega y devolución (HU-46) ─── */
+  /* ─── Entrega y devolución ─── */
   registrarEntrega(prestamo: PrestamoRecurso): void {
     if (this.guardando) {
       return;
@@ -320,7 +320,7 @@ export class AdminRecursosComponent implements OnInit {
       });
   }
 
-  /* ─── Catálogo de recursos (HU-43) ─── */
+  /* ─── Catálogo de recursos ─── */
   nuevoTipo(): void {
     this.tipoEnEdicion = null;
     this.formularioTipo = { nombre: '', descripcion: '', cantidad: 1 };

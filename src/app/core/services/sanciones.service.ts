@@ -13,7 +13,7 @@ import {
   ReporteSanciones
 } from '../../shared/models/sancion.model';
 
-/** Strikes, sanciones y reactivación (HU-40, HU-41 y HU-42). */
+/** Strikes, sanciones y reactivación. */
 @Injectable({ providedIn: 'root' })
 export class SancionesService {
   private readonly http = inject(HttpClient);

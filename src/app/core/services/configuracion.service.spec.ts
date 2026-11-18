@@ -72,18 +72,18 @@ describe('ConfiguracionService', () => {
     req.flush([]);
   });
 
-  it('debe consultar el historial con el límite por defecto y el espacio opcional', () => {
+  it('debe consultar el historial paginado con el límite por defecto y el espacio opcional', () => {
     service.consultarHistorial().subscribe();
     httpTesting
-      .expectOne(`${API_BASE_URL}/configuracion/historial?limite=20`)
-      .flush([]);
+      .expectOne(`${API_BASE_URL}/configuracion/historial?limite=10&skip=0`)
+      .flush({ total: 0, items: [] });
 
-    service.consultarHistorial(5, 10).subscribe();
+    service.consultarHistorial(5, 10, 30).subscribe();
     const req = httpTesting.expectOne(
-      `${API_BASE_URL}/configuracion/historial?limite=10&espacio_id=5`
+      `${API_BASE_URL}/configuracion/historial?limite=10&skip=30&espacio_id=5`
     );
     expect(req.request.method).toBe('GET');
-    req.flush([]);
+    req.flush({ total: 0, items: [] });
   });
 
   it('debe listar los responsables de espacio', () => {

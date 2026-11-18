@@ -39,7 +39,7 @@ export interface SolicitudPendiente {
   fuera_de_franja?: boolean;
   creada_en: string;
   vencida: boolean;
-  /** HU-12: nivel de prioridad (0 a 3) y su etiqueta ALTA/MEDIA/BAJA. */
+  /** Nivel de prioridad (0 a 3) y su etiqueta ALTA/MEDIA/BAJA. */
   prioridad?: number;
   prioridad_etiqueta?: 'ALTA' | 'MEDIA' | 'BAJA';
 }
@@ -62,7 +62,7 @@ export interface SolicitudDetalle {
   motivo_rechazo: string | null;
   decidido_por: string | null;
   fecha_decision: string | null;
-  /** HU-12: prioridad de la solicitud. */
+  /** Prioridad de la solicitud. */
   prioridad?: number;
   prioridad_etiqueta?: 'ALTA' | 'MEDIA' | 'BAJA';
 }
@@ -93,12 +93,12 @@ export interface ReservaResumen {
   titular?: string;
   proposito?: string;
   asistentes?: number;
-  /** HU-38 / HU-39: estado de asistencia y ventana de registro. */
+  /** Estado de asistencia y ventana de registro. */
   estado_asistencia?: EstadoAsistencia;
   inicio_efectivo?: string | null;
   tolerancia_hasta?: string | null;
   puede_registrar_asistencia?: boolean;
-  /** HU-17: motivo registrado al cancelar. */
+  /** Motivo registrado al cancelar. */
   motivo_cancelacion?: string | null;
 }
 
@@ -162,7 +162,7 @@ export interface SolicitudCrear {
   equipamiento?: string | null;
   tipo_uso_id?: number | null;
   responsable_id?: number | null;
-  /** HU-30: motivo obligatorio para pedir el cupo de alguien de menor jerarquía. */
+  /** Motivo obligatorio para pedir el cupo de alguien de menor jerarquía. */
   motivo_urgencia?: string | null;
 }
 
@@ -180,7 +180,7 @@ export interface SolicitudCreada {
   responsable?: string | null;
   fuera_de_franja?: boolean;
   motivo_urgencia?: string | null;
-  /** HU-30: titular del cupo cuando hubo conflicto de jerarquía. */
+  /** Titular del cupo cuando hubo conflicto de jerarquía. */
   titular?: string | null;
   motivo_rechazo: string | null;
   fecha_decision: string | null;

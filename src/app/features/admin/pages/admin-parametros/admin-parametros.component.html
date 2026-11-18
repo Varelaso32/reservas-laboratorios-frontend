@@ -255,18 +255,6 @@
                   </p>
                 }
               </div>
-
-              <div class="campo-grupo">
-                <span class="etiqueta-grupo">CONDICIONES ESPECIALES</span>
-                <label class="interruptor">
-                  <input type="checkbox" [(ngModel)]="formulario.requiereResponsable" />
-                  <span>Exigir responsable docente, coordinador o director (HU-32)</span>
-                </label>
-                <label class="interruptor">
-                  <input type="checkbox" [(ngModel)]="formulario.admiteAutorizacionEspecial" />
-                  <span>Admitir autorización especial fuera de la franja (HU-35)</span>
-                </label>
-              </div>
             </div>
 
             <footer class="panel-footer">
@@ -551,7 +539,7 @@
           <header class="panel-header">
             <div>
               <h2 id="titulo-historial">Últimos cambios</h2>
-              <p>Registro de auditoría de la configuración (HU-36.8, HU-37.6).</p>
+              <p>Registro de auditoría de la configuración.</p>
             </div>
             <button type="button" class="boton-mini" [disabled]="cargandoHistorial" (click)="cargarHistorial()">
               Actualizar
@@ -563,19 +551,52 @@
           } @else if (historial.length === 0) {
             <p class="estado-panel">Todavía no hay cambios registrados.</p>
           } @else {
-            <ul class="lista-historial">
-              @for (registro of historial; track registro.id) {
-                <li>
-                  <div class="historial-meta">
-                    <span class="entidad">{{ registro.entidad }}</span>
-                    <span class="espacio">{{ nombreEspacio(registro.espacio_id) }}</span>
-                    <time>{{ fechaHistorial(registro.fecha) }}</time>
-                  </div>
-                  <p class="detalle">{{ registro.detalle }}</p>
-                  <span class="usuario">por {{ registro.usuario }}</span>
-                </li>
-              }
-            </ul>
+            <div class="tabla-historial-contenedor">
+              <table class="tabla-historial">
+                <thead>
+                  <tr>
+                    <th scope="col">Entidad</th>
+                    <th scope="col">Espacio</th>
+                    <th scope="col">Detalle</th>
+                    <th scope="col">Usuario</th>
+                    <th scope="col">Fecha</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (registro of historial; track registro.id) {
+                    <tr>
+                      <td><span class="etiqueta-entidad">{{ registro.entidad }}</span></td>
+                      <td class="celda-espacio">{{ nombreEspacio(registro.espacio_id) }}</td>
+                      <td class="celda-detalle">{{ registro.detalle }}</td>
+                      <td class="celda-usuario">{{ registro.usuario }}</td>
+                      <td class="celda-fecha"><time>{{ fechaHistorial(registro.fecha) }}</time></td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+
+            <div class="paginacion" aria-label="Paginación del historial">
+              <span>Mostrando {{ primeraFilaHistorial }}–{{ ultimaFilaHistorial }} de {{ totalHistorial }}</span>
+              <div class="controles-paginacion">
+                <button
+                  type="button"
+                  aria-label="Página anterior"
+                  [disabled]="!hayPaginaHistorialAnterior || cargandoHistorial"
+                  (click)="irPaginaHistorialAnterior()"
+                >
+                  <i class="pi pi-chevron-left" aria-hidden="true"></i>
+                </button>
+                <button
+                  type="button"
+                  aria-label="Página siguiente"
+                  [disabled]="!hayPaginaHistorialSiguiente || cargandoHistorial"
+                  (click)="irPaginaHistorialSiguiente()"
+                >
+                  <i class="pi pi-chevron-right" aria-hidden="true"></i>
+                </button>
+              </div>
+            </div>
           }
         </section>
       }

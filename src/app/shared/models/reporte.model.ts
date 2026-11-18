@@ -1,4 +1,4 @@
-/** Reportes y tablero administrativo (HU-15, HU-24, HU-36). */
+/** Reportes y tablero administrativo. */
 
 export type TipoReporte =
   | 'resumen'

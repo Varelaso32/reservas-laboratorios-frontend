@@ -1,4 +1,5 @@
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { MessageService } from 'primeng/api';
 import { Toast } from 'primeng/toast';
 import { Subscription } from 'rxjs';
@@ -31,7 +32,7 @@ interface DiaCalendario {
 @Component({
   selector: 'app-calendario',
   standalone: true,
-  imports: [PosSidebarComponent, Toast, CampanaNotificacionesComponent],
+  imports: [FormsModule, PosSidebarComponent, Toast, CampanaNotificacionesComponent],
   templateUrl: './calendario.component.html',
   styleUrl: './calendario.component.scss'
 })
@@ -46,6 +47,7 @@ export class CalendarioComponent implements OnInit, OnDestroy {
   readonly horas = Array.from({ length: 24 }, (_, indice) => indice);
   semanaInicio = obtenerInicioSemana(this.hoy);
   reservas: ReservaResumen[] = [];
+  terminoBusqueda = '';
   cargando = false;
   errorCarga: string | null = null;
 
@@ -119,7 +121,7 @@ export class CalendarioComponent implements OnInit, OnDestroy {
   }
 
   reservasDelDia(fecha: string): ReservaResumen[] {
-    return this.reservas.filter(reserva => {
+    return this.reservasFiltradas.filter(reserva => {
       if (reserva.estado !== 'ACTIVA') {
         return false;
       }
@@ -127,6 +129,29 @@ export class CalendarioComponent implements OnInit, OnDestroy {
       const fin = this.minutosEnFecha(reserva.fin, fecha);
       return inicio < 24 * 60 && fin > 0;
     });
+  }
+
+  get reservasFiltradas(): ReservaResumen[] {
+    const consulta = this.terminoBusqueda.trim().toLowerCase();
+    if (!consulta) {
+      return this.reservas;
+    }
+    return this.reservas.filter(reserva => {
+      const nombre = reserva.espacio.nombre.toLowerCase();
+      const tipo = (reserva.espacio.tipo ?? '').toLowerCase();
+      const ubicacion = (reserva.espacio.ubicacion ?? '').toLowerCase();
+      return (
+        nombre.includes(consulta) || tipo.includes(consulta) || ubicacion.includes(consulta)
+      );
+    });
+  }
+
+  get hayReservasVisibles(): boolean {
+    return this.diasSemana.some(dia => this.reservasDelDia(dia.fecha).length > 0);
+  }
+
+  limpiarBusqueda(): void {
+    this.terminoBusqueda = '';
   }
 
   hora(valor: string): string {

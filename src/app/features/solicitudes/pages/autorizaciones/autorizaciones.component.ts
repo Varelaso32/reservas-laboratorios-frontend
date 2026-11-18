@@ -12,7 +12,7 @@ import { fechaDesdeClaveColombia, horaReservaColombia } from '../../../../shared
 import { obtenerInicialesUsuario } from '../../../../shared/utils/usuario-iniciales.util';
 
 /**
- * Bandeja de autorización especial (HU-35).
+ * Bandeja de autorización especial.
  * Muestra las solicitudes que quedaron fuera de la franja de operación y permite
  * autorizarlas (vuelven al flujo normal) o negarlas con un motivo obligatorio.
  */

@@ -16,7 +16,7 @@ import {
   TipoReporte
 } from '../../shared/models/reporte.model';
 
-/** Reportes analíticos y tablero del administrador (HU-15, HU-24, HU-36). */
+/** Reportes analíticos y tablero del administrador. */
 @Injectable({ providedIn: 'root' })
 export class ReportesService {
   private readonly http = inject(HttpClient);

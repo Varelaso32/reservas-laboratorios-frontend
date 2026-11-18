@@ -5,10 +5,10 @@ import { Observable } from 'rxjs';
 import { API_BASE_URL } from '../config/api.config';
 import {
   AnticipacionRol,
+  PaginaHistorialConfiguracion,
   ReglasEspacio,
   ReglasEspacioActualizar,
   ReglasPorTipoIn,
-  RegistroConfiguracion,
   Responsable,
   TipoUso,
   TipoUsoActualizar,
@@ -16,7 +16,7 @@ import {
 } from '../../shared/models/configuracion.model';
 import { TipoEspacio } from '../../shared/models/espacio.model';
 
-/** Configuración de reglas de reserva (HU-21, HU-22, HU-32, HU-36 y HU-37). */
+/** Configuración de reglas de reserva. */
 @Injectable({ providedIn: 'root' })
 export class ConfiguracionService {
   private readonly http = inject(HttpClient);
@@ -64,12 +64,16 @@ export class ConfiguracionService {
     );
   }
 
-  consultarHistorial(espacioId?: number, limite = 20): Observable<RegistroConfiguracion[]> {
-    let params = new HttpParams().set('limite', limite);
+  consultarHistorial(
+    espacioId?: number,
+    limite = 10,
+    skip = 0
+  ): Observable<PaginaHistorialConfiguracion> {
+    let params = new HttpParams().set('limite', limite).set('skip', skip);
     if (espacioId !== undefined) {
       params = params.set('espacio_id', espacioId);
     }
-    return this.http.get<RegistroConfiguracion[]>(
+    return this.http.get<PaginaHistorialConfiguracion>(
       `${API_BASE_URL}/configuracion/historial`,
       { params }
     );

@@ -100,7 +100,7 @@ export class SolicitudReservaComponent implements OnInit {
       [Validators.required, Validators.maxLength(500), Validators.pattern(/\S/)]
     ),
 
-    /** HU-30: motivo obligatorio para pedir el cupo de alguien de menor jerarquía */
+    /** Motivo obligatorio para pedir el cupo de alguien de menor jerarquía */
     motivoUrgencia: new FormControl(
       '',
       [Validators.maxLength(500)]
@@ -130,17 +130,17 @@ export class SolicitudReservaComponent implements OnInit {
     return this.reglas?.requiere_responsable ?? false;
   }
 
-  /** HU-30: rol de reserva del usuario (jerarquía distinta del permiso de plataforma). */
+  /** Rol de reserva del usuario (jerarquía distinta del permiso de plataforma). */
   get rolReserva(): string {
     return nombreRolReserva(rolReservaDe(this.usuarioActual?.cargo));
   }
 
-  /** HU-30: solo Docente, Coordinador o Director pueden pedir el cupo de otro. */
+  /** Solo Docente, Coordinador o Director pueden pedir el cupo de otro. */
   get puedePedirCupo(): boolean {
     return this.puedeCrearSolicitud && puedeSolicitarCupo(this.usuarioActual?.cargo);
   }
 
-  /** El horario está ocupado y el usuario puede intentar la cesión (HU-30). */
+  /** El horario está ocupado y el usuario puede intentar la cesión. */
   get muestraMotivoUrgencia(): boolean {
     return this.estadoDisponibilidad === 'no-disponible' && this.puedePedirCupo;
   }
@@ -149,7 +149,7 @@ export class SolicitudReservaComponent implements OnInit {
     return (this.formReserva.controls.motivoUrgencia.value ?? '').trim();
   }
 
-  /** Resumen de las reglas del espacio para avisar antes de enviar (HU-21, HU-28, HU-33, HU-34). */
+  /** Resumen de las reglas del espacio para avisar antes de enviar. */
   get resumenReglas(): string[] {
     const reglas = this.reglas;
     if (!reglas) {
@@ -377,7 +377,7 @@ export class SolicitudReservaComponent implements OnInit {
             if (respuesta.disponible) {
               this.crearSolicitudReal();
             } else if (this.motivoUrgenciaValor) {
-              // HU-30: el horario está ocupado, pero un rol superior puede pedir el cupo.
+              // El horario está ocupado, pero un rol superior puede pedir el cupo.
               // El backend decide si la rechaza o la deja en espera de cesión.
               this.crearSolicitudReal();
             } else {

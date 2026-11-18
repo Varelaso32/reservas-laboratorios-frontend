@@ -6,7 +6,22 @@
     <header class="topbar-pos">
       <label class="buscador-pos">
         <i class="pi pi-search" aria-hidden="true"></i>
-        <input type="search" placeholder="Buscar espacios, reservas..." aria-label="Buscar espacios y reservas" />
+        <input
+          type="search"
+          placeholder="Buscar espacios, reservas..."
+          aria-label="Buscar espacios y reservas"
+          [(ngModel)]="terminoBusqueda"
+        />
+        @if (terminoBusqueda) {
+          <button
+            type="button"
+            class="boton-limpiar-busqueda"
+            aria-label="Limpiar búsqueda"
+            (click)="limpiarBusqueda()"
+          >
+            <i class="pi pi-times" aria-hidden="true"></i>
+          </button>
+        }
       </label>
       <div class="acciones-topbar">
         <app-campana-notificaciones />
@@ -42,6 +57,11 @@
         @if (cargando) {
           <p class="estado-calendario" role="status">Cargando reservas...</p>
         } @else {
+          @if (terminoBusqueda && !hayReservasVisibles) {
+            <p class="estado-calendario" role="status">
+              Ningún espacio coincide con "{{ terminoBusqueda }}" en esta semana.
+            </p>
+          }
           <div class="rejilla-calendario" role="grid">
             <div class="esquina-calendario" role="columnheader"></div>
             @for (dia of diasSemana; track dia.fecha) {

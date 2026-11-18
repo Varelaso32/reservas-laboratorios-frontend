@@ -48,7 +48,7 @@ export function puedeRevisar(notificacion: Notificacion): boolean {
   );
 }
 
-/** Los avisos de recursos se atienden en el panel de recursos (HU-44 a HU-46). */
+/** Los avisos de recursos se atienden en el panel de recursos. */
 export function esAvisoDeRecursos(notificacion: Notificacion): boolean {
   return notificacion.tipo.startsWith('RECURSO_');
 }

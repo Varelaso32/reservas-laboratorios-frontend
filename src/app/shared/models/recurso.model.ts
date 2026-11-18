@@ -1,4 +1,4 @@
-/** Recursos tecnológicos asociados a una reserva (HU-43 a HU-46). */
+/** Recursos tecnológicos asociados a una reserva. */
 
 export type EstadoRecurso = 'EN_FUNCIONAMIENTO' | 'FALLIDO';
 
@@ -11,7 +11,7 @@ export type EstadoSolicitudRecurso =
 
 export type EstadoAsignacion = 'ASIGNADA' | 'ENTREGADA' | 'DEVUELTA' | 'CANCELADA';
 
-/** Tipo de recurso con su stock global (HU-43). */
+/** Tipo de recurso con su stock global. */
 export interface TipoRecurso {
   id: number;
   nombre: string;
@@ -40,7 +40,7 @@ export interface TipoRecursoActualizar {
   cantidad?: number;
 }
 
-/** Recurso del catálogo visto como amenidad de un espacio (HU-19 / HU-43). */
+/** Recurso del catálogo visto como amenidad de un espacio. */
 export interface Amenidad {
   tipo_recurso_id: number;
   nombre: string;
@@ -63,7 +63,7 @@ export interface StockTipo {
   fallidos: number;
 }
 
-/** Unidad física del inventario (HU-43). */
+/** Unidad física del inventario. */
 export interface Recurso {
   id: number;
   tipo_recurso_id: number;
@@ -98,7 +98,7 @@ export interface RecursoEstadoCambio {
   comentario: string;
 }
 
-/** Disponibilidad de recursos en el horario de una reserva (HU-44). */
+/** Disponibilidad de recursos en el horario de una reserva. */
 export interface DisponibilidadRecursos {
   reserva_id: number;
   espacio: string;
@@ -107,7 +107,7 @@ export interface DisponibilidadRecursos {
   tipos: StockTipo[];
 }
 
-/** Reserva propia a la que se pueden asociar recursos (HU-44). */
+/** Reserva propia a la que se pueden asociar recursos. */
 export interface ReservaElegibleRecursos {
   reserva_id: number;
   espacio_id: number;
@@ -176,7 +176,7 @@ export interface DevolucionRecurso {
   comentario?: string | null;
 }
 
-/** Préstamo de una unidad concreta (HU-46). */
+/** Préstamo de una unidad concreta. */
 export interface PrestamoRecurso {
   id: number;
   solicitud_recurso_id: number;

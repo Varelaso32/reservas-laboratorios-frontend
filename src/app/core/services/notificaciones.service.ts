@@ -9,7 +9,7 @@ import {
   NotificacionesResumen
 } from '../../shared/models/notificacion.model';
 
-/** Notificaciones internas del usuario (HU-31). */
+/** Notificaciones internas del usuario. */
 @Injectable({ providedIn: 'root' })
 export class NotificacionesService {
   private readonly http = inject(HttpClient);
