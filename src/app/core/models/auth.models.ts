@@ -8,12 +8,20 @@ export type Cargo =
   | 'ADMINISTRADOR_SALA'
   | 'ADMINISTRADOR_SISTEMA';
 
+/**
+ * Jerarquía de reserva, de menor a mayor. Es distinta de `Rol`, que es el
+ * permiso dentro de la plataforma.
+ */
+export type RolReserva = 'ESTUDIANTE' | 'DOCENTE' | 'COORDINADOR' | 'DIRECTOR';
+
 export interface Usuario {
   id: number;
   nombre: string;
   email: string;
   rol: Rol;
   cargo: Cargo | null;
+  /** Puede decidir solicitudes fuera de la franja de operación. */
+  puede_autorizar_especial?: boolean;
 }
 
 export interface RespuestaLogin {

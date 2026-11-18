@@ -3,7 +3,7 @@ import { Component, inject } from '@angular/core';
 import type { OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import type { NgForm } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { MessageService } from 'primeng/api';
 import { Toast } from 'primeng/toast';
 
@@ -16,6 +16,7 @@ import type {
 import { AuthService } from '../../../../core/services/auth.service';
 import { UsuariosService } from '../../../../core/services/usuarios.service';
 import { obtenerMensajeErrorApi } from '../../../../core/utils/api-error.util';
+import { CampanaNotificacionesComponent } from '../../../../shared/components/campana-notificaciones/campana-notificaciones.component';
 
 type FiltroUsuario = 'todos' | 'docentes' | 'estudiantes' | 'operadores';
 type PerfilPresentacion = 'ESTUDIANTE' | 'DOCENTE' | 'DEPARTAMENTO' | 'OPERADOR' | 'ADMINISTRADOR';
@@ -51,7 +52,7 @@ const PERFILES: Record<PerfilPresentacion, ConfiguracionPerfil> = {
 @Component({
   selector: 'app-admin-usuarios',
   standalone: true,
-  imports: [FormsModule, RouterLink, Toast],
+  imports: [FormsModule, RouterLink, RouterLinkActive, Toast, CampanaNotificacionesComponent],
   templateUrl: './admin-usuarios.component.html',
   styleUrl: './admin-usuarios.component.scss'
 })
@@ -60,6 +61,8 @@ export class AdminUsuariosComponent implements OnInit {
   private readonly usuariosService = inject(UsuariosService);
   private readonly messageService = inject(MessageService);
   private readonly router = inject(Router);
+
+  parametrosAbierto = false;
 
   readonly filtros: FiltroOpcion[] = [
     { id: 'todos', etiqueta: 'Todos' },
@@ -349,6 +352,10 @@ export class AdminUsuariosComponent implements OnInit {
     }
   }
 
+
+  alternarParametros(): void {
+    this.parametrosAbierto = !this.parametrosAbierto;
+  }
 
   cerrarSesion(): void {
     this.authService.logout();

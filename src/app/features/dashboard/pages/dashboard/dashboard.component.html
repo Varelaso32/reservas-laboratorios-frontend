@@ -9,7 +9,7 @@
         <input type="search" placeholder="Buscar espacios, reservas..." aria-label="Buscar espacios y reservas" />
       </label>
       <div class="acciones-topbar">
-        <i class="pi pi-bell" aria-hidden="true"></i>
+        <app-campana-notificaciones />
         <div class="perfil-pos" aria-label="Usuario actual">{{ inicialesUsuario }}</div>
       </div>
     </header>
@@ -20,10 +20,18 @@
           <h1>Dashboard</h1>
           <p>{{ fechaActual }}</p>
         </div>
-        <a class="boton-reservar" routerLink="/espacios">
-          <i class="pi pi-plus" aria-hidden="true"></i>
-          Reservar espacio
-        </a>
+        <div class="acciones-encabezado">
+          @if (puedePedirRecursos) {
+            <button type="button" class="boton-recursos" (click)="abrirDialogoRecursos()">
+              <i class="pi pi-box" aria-hidden="true"></i>
+              Solicitar recursos
+            </button>
+          }
+          <a class="boton-reservar" routerLink="/espacios">
+            <i class="pi pi-plus" aria-hidden="true"></i>
+            Reservar espacio
+          </a>
+        </div>
       </header>
 
       <div class="resumen-dashboard">
@@ -61,6 +69,21 @@
                     <strong>{{ formatearHora(reserva.inicio) }} – {{ formatearHora(reserva.fin) }}</strong>
                     <span [class]="obtenerClaseEstado(reserva)">{{ obtenerEstadoReserva(reserva) }}</span>
                   </div>
+                  @if (puedeRegistrarAsistencia(reserva)) {
+                    <button
+                      type="button"
+                      class="registrar-asistencia"
+                      [disabled]="registrandoAsistenciaId !== null"
+                      [attr.aria-busy]="registrandoAsistenciaId === reserva.id"
+                      (click)="registrarAsistencia(reserva)"
+                    >
+                      {{ registrandoAsistenciaId === reserva.id ? 'Registrando…' : 'Registrar asistencia' }}
+                    </button>
+                  } @else if (reserva.estado_asistencia === 'ASISTIO') {
+                    <span class="asistencia-registrada">
+                      <i class="pi pi-check-circle" aria-hidden="true"></i> Asistencia registrada
+                    </span>
+                  }
                   @if (puedeCancelarReserva(reserva)) {
                     <button
                       type="button"
@@ -104,7 +127,14 @@
               <strong aria-label="Disponibilidad no disponible">—</strong>
               <small>Sin información disponible</small>
             } @else {
-              <strong>{{ espaciosDisponibles.length }}</strong>
+              <strong
+                [attr.aria-label]="
+                  'Espacios disponibles ahora: ' + espaciosDisponibles.length +
+                  (totalEspacios ? ' de ' + totalEspacios : '')
+                "
+              >
+                {{ espaciosDisponibles.length }}@if (totalEspacios) {<span class="total-espacios"> de {{ totalEspacios }}</span>}
+              </strong>
               <small>Validado {{ intervaloDisponibilidad }} · {{ fechaDisponibilidad }}</small>
             }
           </section>
@@ -118,6 +148,9 @@
             @if (intervaloDisponibilidad) {
               <p>Disponibilidad para {{ intervaloDisponibilidad }} · {{ fechaDisponibilidad }}</p>
             }
+            <p class="nota-disponibles">
+              Solo se listan los espacios abiertos en ese intervalo; los demás están cerrados u ocupados.
+            </p>
           </div>
           <a routerLink="/espacios">Ver todos <i class="pi pi-angle-right" aria-hidden="true"></i></a>
         </header>
@@ -167,6 +200,26 @@
       <p id="descripcion-cancelar-reserva">
         La reserva de {{ reservaCancelar.espacio.nombre }} será cancelada.
       </p>
+      <div class="campo-motivo">
+        <label for="motivo-cancelacion">Motivo de la cancelación</label>
+        <textarea
+          id="motivo-cancelacion"
+          rows="3"
+          maxlength="500"
+          placeholder="Explica por qué cancelas (mínimo 5 caracteres)"
+          [class.error]="errorMotivoCancelacion"
+          [(ngModel)]="motivoCancelacion"
+          [attr.aria-invalid]="errorMotivoCancelacion ? 'true' : null"
+          [attr.aria-describedby]="errorMotivoCancelacion ? 'error-motivo-cancelacion' : null"
+        ></textarea>
+        @if (errorMotivoCancelacion) {
+          <small id="error-motivo-cancelacion" class="mensaje-error" role="alert">
+            {{ errorMotivoCancelacion }}
+          </small>
+        } @else {
+          <small class="ayuda-motivo">El motivo queda asociado a la reserva y en el historial.</small>
+        }
+      </div>
       <footer>
         <button
           type="button"
@@ -184,4 +237,8 @@
       </footer>
     </section>
   </div>
+}
+
+@if (dialogoRecursosAbierto) {
+  <app-solicitar-recursos (cerrado)="cerrarDialogoRecursos()" (solicitado)="alSolicitarRecursos($event)" />
 }

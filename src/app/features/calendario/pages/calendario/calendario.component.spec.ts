@@ -9,6 +9,8 @@ import { AuthService } from '../../../../core/services/auth.service';
 import { routes } from '../../../../app.routes';
 import { sumarDiasFecha } from '../../../../shared/utils/fecha-colombia.util';
 import { CalendarioComponent } from './calendario.component';
+import { of } from 'rxjs';
+import { NotificacionesService } from '../../../../core/services/notificaciones.service';
 
 describe('CalendarioComponent', () => {
   let fixture: ComponentFixture<CalendarioComponent>;
@@ -40,7 +42,16 @@ describe('CalendarioComponent', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter(routes),
-        MessageService
+        MessageService,
+        {
+          provide: NotificacionesService,
+          useValue: {
+            resumen: () => of({ no_leidas: 0 }),
+            listar: () => of([]),
+            marcarTodasLeidas: () => of({ actualizadas: 0 }),
+            marcarLeida: () => of(null)
+          }
+        }
       ]
     }).compileComponents();
     httpTestingController = TestBed.inject(HttpTestingController);
@@ -100,7 +111,7 @@ describe('CalendarioComponent', () => {
     expect(fixture.nativeElement.textContent).toContain(component.etiquetaSemana);
     expect(bloque.textContent).toContain('Laboratorio de Redes');
     expect(bloque.getAttribute('aria-label')).toContain('09:00 a 10:00');
-    expect(getComputedStyle(bloque.querySelector('strong') as HTMLElement).fontSize).toBe('9px');
+    expect(getComputedStyle(bloque.querySelector('strong') as HTMLElement).fontSize).toBe('10px');
     expect(getComputedStyle(bloque.querySelector('strong') as HTMLElement).webkitLineClamp).toBe('2');
     expect(Number.parseFloat(bloque.style.top)).toBeCloseTo((9 / 24) * 100, 1);
     expect(Number.parseFloat(bloque.style.height)).toBeCloseTo((1 / 24) * 100, 1);
@@ -238,6 +249,53 @@ describe('CalendarioComponent', () => {
     (fixture.nativeElement.querySelector('[aria-label="Semana siguiente"]') as HTMLButtonElement).click();
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelectorAll('.bloque-reserva').length).toBe(0);
+  });
+
+  it('filters the calendar by the search term and can clear it', () => {
+    crearCalendario();
+    const diaReserva = component.diasSemana[6].fecha;
+    httpTestingController.expectOne(`${API_BASE_URL}/reservas/mias`).flush([
+      {
+        id: 61,
+        estado: 'ACTIVA',
+        espacio,
+        inicio: `${diaReserva}T22:00:00-05:00`,
+        fin: `${diaReserva}T23:00:00-05:00`,
+        solicitud_id: 17
+      },
+      {
+        id: 62,
+        estado: 'ACTIVA',
+        espacio: {
+          id: 77,
+          nombre: 'Sala de Juntas',
+          tipo: 'SALA' as const,
+          capacidad: 12,
+          ubicacion: 'Bloque C, piso 1'
+        },
+        inicio: `${diaReserva}T22:00:00-05:00`,
+        fin: `${diaReserva}T23:00:00-05:00`,
+        solicitud_id: 18
+      }
+    ]);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('.bloque-reserva').length).toBe(2);
+
+    component.terminoBusqueda = 'redes';
+    fixture.detectChanges();
+    const visibles = fixture.nativeElement.querySelectorAll('.bloque-reserva');
+    expect(visibles.length).toBe(1);
+    expect(visibles[0].textContent).toContain('Laboratorio de Redes');
+
+    component.terminoBusqueda = 'sin coincidencias';
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('.bloque-reserva').length).toBe(0);
+    expect(fixture.nativeElement.textContent).toContain('Ningún espacio coincide con "sin coincidencias"');
+
+    (fixture.nativeElement.querySelector('.boton-limpiar-busqueda') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(component.terminoBusqueda).toBe('');
+    expect(fixture.nativeElement.querySelectorAll('.bloque-reserva').length).toBe(2);
   });
 
   it('shows a backend error message in a bottom-right Toast', () => {
