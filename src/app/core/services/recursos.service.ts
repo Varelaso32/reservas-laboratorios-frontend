@@ -23,7 +23,7 @@ import {
   TipoRecursoCrear
 } from '../../shared/models/recurso.model';
 
-/** Inventario, solicitudes, préstamos y devoluciones de recursos (HU-43 a HU-46). */
+/** Inventario, solicitudes, préstamos y devoluciones de recursos. */
 @Injectable({ providedIn: 'root' })
 export class RecursosService {
   private readonly http = inject(HttpClient);

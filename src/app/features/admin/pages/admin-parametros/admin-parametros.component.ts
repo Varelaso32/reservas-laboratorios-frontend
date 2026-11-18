@@ -29,8 +29,6 @@ interface FormularioReglas {
   duracionMaximaMin: number | null;
   separacionMin: number;
   ocupacionMinima: number | null;
-  requiereResponsable: boolean;
-  admiteAutorizacionEspecial: boolean;
   tiposUsoIds: number[];
 }
 
@@ -52,7 +50,7 @@ interface EnlaceParametros {
 }
 
 /**
- * Parámetros del sistema (HU-21, HU-22, HU-32, HU-35, HU-36 y HU-37).
+ * Parámetros del sistema.
  * Cada pantalla de parametrización es una ruta propia dentro de /admin/parametros.
  * Solo para el Administrador del Sistema.
  */
@@ -134,6 +132,9 @@ export class AdminParametrosComponent implements OnInit {
 
   historial: RegistroConfiguracion[] = [];
   cargandoHistorial = false;
+  readonly tamanoPaginaHistorial = 10;
+  paginaHistorial = 0;
+  totalHistorial = 0;
 
   constructor() {
     const seccion = this.route.snapshot.data['seccion'] as SeccionParametros | undefined;
@@ -266,8 +267,6 @@ export class AdminParametrosComponent implements OnInit {
           duracionMaximaMin: reglas.duracion_maxima_min,
           separacionMin: reglas.separacion_min,
           ocupacionMinima: reglas.ocupacion_minima,
-          requiereResponsable: reglas.requiere_responsable,
-          admiteAutorizacionEspecial: reglas.admite_autorizacion_especial,
           tiposUsoIds: reglas.tipos_uso.map(tipo => tipo.id)
         };
         this.cargandoReglas = false;
@@ -383,14 +382,12 @@ export class AdminParametrosComponent implements OnInit {
       duracion_maxima_min: this.formulario.duracionMaximaMin,
       separacion_min: this.formulario.separacionMin ?? 0,
       ocupacion_minima: this.formulario.ocupacionMinima,
-      requiere_responsable: this.formulario.requiereResponsable,
-      admite_autorizacion_especial: this.formulario.admiteAutorizacionEspecial,
       tipos_uso_ids: [...this.formulario.tiposUsoIds]
     };
   }
 
   // ------------------------------------------------------------------------- //
-  // Tipos de uso (HU-22)
+  // Tipos de uso
   // ------------------------------------------------------------------------- //
   cargarTiposUso(): void {
     this.cargandoTiposUso = true;
@@ -459,7 +456,7 @@ export class AdminParametrosComponent implements OnInit {
   }
 
   // ------------------------------------------------------------------------- //
-  // Anticipación por rol (HU-37)
+  // Anticipación por rol
   // ------------------------------------------------------------------------- //
   cargarAnticipacion(): void {
     this.cargandoAnticipacion = true;
@@ -514,7 +511,7 @@ export class AdminParametrosComponent implements OnInit {
   }
 
   // ------------------------------------------------------------------------- //
-  // Tolerancia y sanciones (HU-39, HU-40 y HU-41)
+  // Tolerancia y sanciones
   // ------------------------------------------------------------------------- //
   cargarSanciones(): void {
     this.cargandoSancion = true;
@@ -613,20 +610,71 @@ export class AdminParametrosComponent implements OnInit {
   }
 
   // ------------------------------------------------------------------------- //
-  // Historial (HU-36.8, HU-37.6)
+  // Historial
   // ------------------------------------------------------------------------- //
+  get primeraFilaHistorial(): number {
+    return this.totalHistorial === 0
+      ? 0
+      : this.paginaHistorial * this.tamanoPaginaHistorial + 1;
+  }
+
+  get ultimaFilaHistorial(): number {
+    return Math.min(
+      (this.paginaHistorial + 1) * this.tamanoPaginaHistorial,
+      this.totalHistorial
+    );
+  }
+
+  get hayPaginaHistorialAnterior(): boolean {
+    return this.paginaHistorial > 0;
+  }
+
+  get hayPaginaHistorialSiguiente(): boolean {
+    return this.ultimaFilaHistorial < this.totalHistorial;
+  }
+
   cargarHistorial(): void {
     this.cargandoHistorial = true;
-    this.configuracionService.consultarHistorial(undefined, 20).subscribe({
-      next: historial => {
-        this.historial = historial;
-        this.cargandoHistorial = false;
-      },
-      error: () => {
-        this.historial = [];
-        this.cargandoHistorial = false;
-      }
-    });
+    this.configuracionService
+      .consultarHistorial(
+        undefined,
+        this.tamanoPaginaHistorial,
+        this.paginaHistorial * this.tamanoPaginaHistorial
+      )
+      .subscribe({
+        next: pagina => {
+          this.historial = pagina.items;
+          this.totalHistorial = pagina.total;
+          // Si la página quedó vacía (por ejemplo, tras un refresco), retrocede.
+          if (this.historial.length === 0 && this.paginaHistorial > 0) {
+            this.paginaHistorial--;
+            this.cargarHistorial();
+            return;
+          }
+          this.cargandoHistorial = false;
+        },
+        error: () => {
+          this.historial = [];
+          this.totalHistorial = 0;
+          this.cargandoHistorial = false;
+        }
+      });
+  }
+
+  irPaginaHistorialAnterior(): void {
+    if (!this.hayPaginaHistorialAnterior || this.cargandoHistorial) {
+      return;
+    }
+    this.paginaHistorial--;
+    this.cargarHistorial();
+  }
+
+  irPaginaHistorialSiguiente(): void {
+    if (!this.hayPaginaHistorialSiguiente || this.cargandoHistorial) {
+      return;
+    }
+    this.paginaHistorial++;
+    this.cargarHistorial();
   }
 
   nombreRol(rol: string): string {
@@ -670,8 +718,6 @@ export class AdminParametrosComponent implements OnInit {
       duracionMaximaMin: null,
       separacionMin: 0,
       ocupacionMinima: null,
-      requiereResponsable: false,
-      admiteAutorizacionEspecial: false,
       tiposUsoIds: []
     };
   }

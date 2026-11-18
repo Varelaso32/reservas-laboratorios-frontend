@@ -34,7 +34,7 @@ interface DefinicionReporte {
 }
 
 /**
- * Módulo de reportes del Administrador (HU-15, HU-24, HU-36).
+ * Módulo de reportes del Administrador.
  * Seis reportes con descarga en PDF o CSV y resumen semanal.
  */
 @Component({

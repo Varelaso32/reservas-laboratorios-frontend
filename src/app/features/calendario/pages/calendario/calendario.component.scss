@@ -68,6 +68,20 @@
     outline: 2px solid var(--color-carbon);
     outline-offset: 1px;
   }
+
+  .boton-limpiar-busqueda {
+    display: flex;
+    align-items: center;
+    padding: 0;
+    color: var(--color-text-subtle);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+
+    &:hover {
+      color: var(--color-carbon);
+    }
+  }
 }
 
 .perfil-pos {

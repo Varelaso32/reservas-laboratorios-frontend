@@ -1,4 +1,4 @@
-/** Contratos de asistencia, strikes y reactivación (HU-38 a HU-42). */
+/** Contratos de asistencia, strikes y reactivación. */
 
 export type EstadoReactivacion = 'PENDIENTE' | 'ACEPTADA' | 'RECHAZADA';
 export type AccionNivelSancion = 'ADVERTENCIA' | 'BLOQUEO';

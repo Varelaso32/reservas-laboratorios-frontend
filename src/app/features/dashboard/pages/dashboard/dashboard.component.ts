@@ -57,7 +57,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return this.authService.obtenerUsuarioActual()?.rol ?? null;
   }
 
-  /** Docente, Coordinador y Director pueden pedir recursos (HU-44). */
+  /** Docente, Coordinador y Director pueden pedir recursos. */
   get puedePedirRecursos(): boolean {
     const cargo = this.authService.obtenerUsuarioActual()?.cargo ?? null;
     return cargo !== null && cargo !== 'ESTUDIANTE';
@@ -158,7 +158,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
   }
 
-  /** HU-38: solo el titular, dentro de la ventana de tolerancia. */
+  /** Solo el titular, dentro de la ventana de tolerancia. */
   puedeRegistrarAsistencia(reserva: ReservaResumen): boolean {
     return this.rolUsuario === 'SOLICITANTE' &&
       reserva.estado === 'ACTIVA' &&

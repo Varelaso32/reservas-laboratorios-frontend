@@ -1,7 +1,7 @@
 import { Cargo } from '../../core/models/auth.models';
 import { TipoEspacio } from './espacio.model';
 
-/** Nivel de reserva del usuario (HU-30, HU-32, HU-37). Se deriva del cargo. */
+/** Nivel de reserva del usuario. Se deriva del cargo. */
 export type RolReserva = 'ESTUDIANTE' | 'DOCENTE' | 'COORDINADOR' | 'DIRECTOR';
 
 export interface TipoUso {
@@ -76,6 +76,12 @@ export interface RegistroConfiguracion {
   fecha: string;
 }
 
+/** Página del historial de configuración. */
+export interface PaginaHistorialConfiguracion {
+  total: number;
+  items: RegistroConfiguracion[];
+}
+
 export interface SolicitanteAutorizacion {
   id: number;
   nombre: string;
@@ -92,7 +98,7 @@ export interface EspacioAutorizacion {
   ubicacion: string | null;
 }
 
-/** Solicitud fuera de la franja de operación que espera autorización especial (HU-35). */
+/** Solicitud fuera de la franja de operación que espera autorización especial. */
 export interface SolicitudAutorizacion {
   id: number;
   estado: string;

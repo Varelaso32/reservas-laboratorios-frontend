@@ -122,7 +122,8 @@ export const routes: Routes = [
   },
   {
     path: 'solicitud-reserva',
-    component: SolicitudReservaComponent
+    component: SolicitudReservaComponent,
+    canActivate: [authGuard]
   },
   {
     path: 'configuracion',
@@ -135,5 +136,9 @@ export const routes: Routes = [
     loadComponent: () => import('./features/notificaciones/pages/notificaciones/notificaciones.component')
       .then(modulo => modulo.NotificacionesComponent),
     canActivate: [authGuard]
+  },
+  {
+    path: '**',
+    redirectTo: 'espacios'
   }
 ];

@@ -13,7 +13,7 @@ export interface EspacioAdmin extends Espacio {
   amenidades: AmenidadEspacio[];
 }
 
-/** Recurso instalado de forma fija en un espacio (HU-19 / HU-43). */
+/** Recurso instalado de forma fija en un espacio. */
 export interface AmenidadEspacio {
   tipo_recurso_id: number;
   nombre: string;

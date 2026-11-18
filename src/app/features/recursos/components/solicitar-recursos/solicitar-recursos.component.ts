@@ -21,7 +21,7 @@ interface LineaSolicitud {
 }
 
 /**
- * Diálogo para pedir recursos tecnológicos de una reserva propia (HU-44).
+ * Diálogo para pedir recursos tecnológicos de una reserva propia.
  * El horario es el de la reserva y no se puede editar.
  */
 @Component({

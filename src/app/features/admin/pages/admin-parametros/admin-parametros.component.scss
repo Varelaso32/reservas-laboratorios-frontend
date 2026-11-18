@@ -575,27 +575,7 @@
   }
 }
 
-.interruptor {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-8);
-  padding: 6px 0;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  font-size: 11px;
-  line-height: 1.5;
-
-  input {
-    width: 16px;
-    height: 16px;
-    flex: 0 0 16px;
-    margin: 1px 0 0;
-    accent-color: var(--color-carbon);
-    cursor: pointer;
-  }
-}
-
-/* ─── Sanciones (HU-39 a HU-41) ─── */
+/* ─── Sanciones ─── */
 .actualizado {
   color: var(--color-text-subtle);
   font-size: 10px;
@@ -940,66 +920,132 @@
 }
 
 /* ─── Historial ─── */
-.lista-historial {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-
-  li {
-    padding: 12px 20px;
-    border-bottom: 1px solid var(--color-soft-mist);
-
-    &:last-child {
-      border-bottom: 0;
-    }
-  }
+.tabla-historial-contenedor {
+  overflow-x: auto;
+  background: var(--color-paper-white);
+  border: var(--outline-hairline);
+  border-radius: var(--radius-card);
 }
 
-.historial-meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-8);
-  font-size: 10px;
+.tabla-historial {
+  width: 100%;
+  min-width: 780px;
+  border-collapse: collapse;
+  text-align: left;
 
-  .entidad {
-    padding: 2px 10px;
-    background: var(--color-lavender);
-    border: var(--outline-hairline);
-    border-radius: var(--radius-pill);
-    color: var(--color-carbon);
+  th,
+  td {
+    padding: 12px 14px;
+    vertical-align: top;
+    border-bottom: 1px solid var(--color-soft-mist);
+  }
+
+  th {
+    background: var(--color-sky-wash-soft);
+    color: var(--color-text-muted);
+    font-size: 9px;
     font-weight: 700;
     letter-spacing: var(--tracking-label);
     text-transform: uppercase;
+    white-space: nowrap;
   }
 
-  .espacio {
-    color: var(--color-carbon);
-    font-weight: 600;
+  td {
+    color: var(--color-text-muted);
+    font-size: 11px;
+    line-height: 1.5;
   }
+
+  tbody tr:last-child td {
+    border-bottom: 0;
+  }
+
+  tbody tr:hover td {
+    background: var(--color-sky-wash-soft);
+  }
+}
+
+.etiqueta-entidad {
+  display: inline-block;
+  padding: 3px 10px;
+  background: var(--color-lavender);
+  border: var(--outline-hairline);
+  border-radius: var(--radius-pill);
+  color: var(--color-carbon);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.celda-espacio {
+  color: var(--color-carbon);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.celda-detalle {
+  min-width: 240px;
+}
+
+.celda-usuario {
+  white-space: nowrap;
+}
+
+.celda-fecha {
+  color: var(--color-text-subtle);
+  white-space: nowrap;
 
   time {
-    margin-left: auto;
-    color: var(--color-text-subtle);
+    font-variant-numeric: tabular-nums;
   }
 }
 
-.historial-detalle,
-.detalle {
-  margin: 6px 0 0;
-  color: var(--color-text-muted);
+/* ─── Paginación ─── */
+.paginacion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+  padding: 16px 2px 4px;
+  color: var(--color-text-subtle);
   font-size: 11px;
-  line-height: 1.5;
 }
 
-.lista-historial .usuario {
-  display: block;
-  margin-top: 4px;
-  padding: 0;
-  background: none;
-  border: 0;
-  color: var(--color-text-subtle);
-  font-size: 10px;
+.controles-paginacion {
+  display: flex;
+  gap: var(--space-8);
+
+  button {
+    display: grid;
+    width: 32px;
+    height: 32px;
+    place-items: center;
+    padding: 0;
+    background: var(--color-paper-white);
+    border: var(--outline-hairline);
+    border-radius: var(--radius-pill);
+    color: var(--color-carbon);
+    cursor: pointer;
+    transition: background-color 0.15s, color 0.15s;
+
+    &:hover:not(:disabled) {
+      background: var(--color-carbon);
+      color: var(--color-paper-white);
+    }
+
+    &:disabled {
+      border-color: var(--color-concrete-gray);
+      color: var(--color-concrete-gray);
+      cursor: not-allowed;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-carbon);
+      outline-offset: 2px;
+    }
+  }
 }
 
 .sr-only {

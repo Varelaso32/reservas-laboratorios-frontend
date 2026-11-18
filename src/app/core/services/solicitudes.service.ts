@@ -75,12 +75,12 @@ export class SolicitudesService {
     );
   }
 
-  /** HU-35: solicitudes fuera de la franja que esperan autorización especial. */
+  /** Solicitudes fuera de la franja que esperan autorización especial. */
   consultarAutorizaciones(): Observable<SolicitudAutorizacion[]> {
     return this.http.get<SolicitudAutorizacion[]>(`${API_BASE_URL}/solicitudes/autorizaciones`);
   }
 
-  /** HU-35: conceder o negar la autorización especial de una solicitud. */
+  /** Conceder o negar la autorización especial de una solicitud. */
   decidirAutorizacion(
     solicitudId: number,
     decision: DecisionAutorizacion
@@ -91,7 +91,7 @@ export class SolicitudesService {
     );
   }
 
-  /** HU-31: el titular del cupo acepta o rechaza la cesión. */
+  /** El titular del cupo acepta o rechaza la cesión. */
   decidirCesion(solicitudId: number, decision: DecisionCesion): Observable<RespuestaCesion> {
     return this.http.post<RespuestaCesion>(
       `${API_BASE_URL}/solicitudes/${solicitudId}/cesion`,

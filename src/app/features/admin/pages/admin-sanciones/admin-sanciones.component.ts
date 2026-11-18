@@ -18,7 +18,7 @@ interface DecisionEnCurso {
 }
 
 /**
- * Reporte de sancionados y reactivaciones (HU-42).
+ * Reporte de sancionados y reactivaciones.
  * Solo para el Administrador del Sistema.
  */
 @Component({

@@ -251,6 +251,53 @@ describe('CalendarioComponent', () => {
     expect(fixture.nativeElement.querySelectorAll('.bloque-reserva').length).toBe(0);
   });
 
+  it('filters the calendar by the search term and can clear it', () => {
+    crearCalendario();
+    const diaReserva = component.diasSemana[6].fecha;
+    httpTestingController.expectOne(`${API_BASE_URL}/reservas/mias`).flush([
+      {
+        id: 61,
+        estado: 'ACTIVA',
+        espacio,
+        inicio: `${diaReserva}T22:00:00-05:00`,
+        fin: `${diaReserva}T23:00:00-05:00`,
+        solicitud_id: 17
+      },
+      {
+        id: 62,
+        estado: 'ACTIVA',
+        espacio: {
+          id: 77,
+          nombre: 'Sala de Juntas',
+          tipo: 'SALA' as const,
+          capacidad: 12,
+          ubicacion: 'Bloque C, piso 1'
+        },
+        inicio: `${diaReserva}T22:00:00-05:00`,
+        fin: `${diaReserva}T23:00:00-05:00`,
+        solicitud_id: 18
+      }
+    ]);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('.bloque-reserva').length).toBe(2);
+
+    component.terminoBusqueda = 'redes';
+    fixture.detectChanges();
+    const visibles = fixture.nativeElement.querySelectorAll('.bloque-reserva');
+    expect(visibles.length).toBe(1);
+    expect(visibles[0].textContent).toContain('Laboratorio de Redes');
+
+    component.terminoBusqueda = 'sin coincidencias';
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('.bloque-reserva').length).toBe(0);
+    expect(fixture.nativeElement.textContent).toContain('Ningún espacio coincide con "sin coincidencias"');
+
+    (fixture.nativeElement.querySelector('.boton-limpiar-busqueda') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(component.terminoBusqueda).toBe('');
+    expect(fixture.nativeElement.querySelectorAll('.bloque-reserva').length).toBe(2);
+  });
+
   it('shows a backend error message in a bottom-right Toast', () => {
     crearCalendario();
     httpTestingController.expectOne(`${API_BASE_URL}/reservas/mias`).flush(

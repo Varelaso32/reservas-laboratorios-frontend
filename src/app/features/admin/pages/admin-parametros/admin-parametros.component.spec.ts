@@ -155,6 +155,9 @@ describe('AdminParametrosComponent', () => {
     expect(component.espacioSeleccionadoId).toBe(1);
     expect(component.reglas?.nombre).toBe('Laboratorio de Redes');
     expect(fixture.nativeElement.querySelector('#titulo-reglas-espacio')).toBeTruthy();
+    expect(fixture.nativeElement.textContent).not.toContain('CONDICIONES ESPECIALES');
+    expect(fixture.nativeElement.textContent).not.toContain('Exigir responsable');
+    expect(fixture.nativeElement.textContent).not.toContain('Autorización especial');
   });
 
   it('abre el grupo Parámetros por defecto para mostrar la pantalla activa', () => {
@@ -211,8 +214,8 @@ describe('AdminParametrosComponent', () => {
     expect(put.request.method).toBe('PUT');
     expect(put.request.body.dias_operacion).toEqual([1, 2, 3, 4, 5, 7]);
     expect(put.request.body.tipos_uso_ids).toEqual([5]);
-    expect(put.request.body.requiere_responsable).toBeTrue();
-    expect(put.request.body.admite_autorizacion_especial).toBeTrue();
+    expect(put.request.body.requiere_responsable).toBeUndefined();
+    expect(put.request.body.admite_autorizacion_especial).toBeUndefined();
     put.flush({ ...reglas, dias_operacion: [1, 2, 3, 4, 5, 7] });
 
     expect(component.guardandoReglas).toBeFalse();
@@ -322,35 +325,70 @@ describe('AdminParametrosComponent', () => {
     httpTestingController.expectNone(`${API_BASE_URL}/configuracion/anticipacion/ESTUDIANTE`);
   });
 
-  it('muestra el historial con el nombre del espacio', () => {
+  it('muestra el historial en una tabla paginada de 10 en 10', () => {
     httpTestingController = TestBed.inject(HttpTestingController);
     seccion = 'historial';
     crearComponente();
     responderEspacios();
+
+    const primeraPagina = Array.from({ length: 10 }, (_, indice) => ({
+      id: indice + 1,
+      entidad: 'REGLAS',
+      espacio_id: 1,
+      usuario: 'Super Administrador',
+      detalle: `Cambio ${indice + 1}`,
+      fecha: '2026-10-20T14:30:00-05:00'
+    }));
 
     httpTestingController
       .expectOne(
         request =>
           request.method === 'GET' &&
           request.url === `${API_BASE_URL}/configuracion/historial` &&
-          request.params.get('limite') === '20'
+          request.params.get('limite') === '10' &&
+          request.params.get('skip') === '0'
       )
-      .flush([
-        {
-          id: 1,
-          entidad: 'REGLAS',
-          espacio_id: 1,
-          usuario: 'Super Administrador',
-          detalle: 'Franja 08:00 a 18:00',
-          fecha: '2026-10-20T14:30:00-05:00'
-        }
-      ]);
+      .flush({ total: 11, items: primeraPagina });
     fixture.detectChanges();
 
-    const item = fixture.nativeElement.querySelector('.lista-historial li') as HTMLElement;
-    expect(item.textContent).toContain('Laboratorio de Redes');
-    expect(item.textContent).toContain('Franja 08:00 a 18:00');
-    expect(item.textContent).toContain('Super Administrador');
+    const filas = fixture.nativeElement.querySelectorAll('.tabla-historial tbody tr');
+    expect(filas.length).toBe(10);
+    expect(filas[0].textContent).toContain('Laboratorio de Redes');
+    expect(filas[0].textContent).toContain('Cambio 1');
+    expect(filas[0].textContent).toContain('Super Administrador');
+    expect(fixture.nativeElement.querySelector('.paginacion').textContent).toContain(
+      'Mostrando 1–10 de 11'
+    );
+
+    component.irPaginaHistorialSiguiente();
+    httpTestingController
+      .expectOne(
+        request =>
+          request.method === 'GET' &&
+          request.url === `${API_BASE_URL}/configuracion/historial` &&
+          request.params.get('limite') === '10' &&
+          request.params.get('skip') === '10'
+      )
+      .flush({
+        total: 11,
+        items: [
+          {
+            id: 11,
+            entidad: 'SANCIONES',
+            espacio_id: null,
+            usuario: 'Super Administrador',
+            detalle: 'Tolerancia 10 min',
+            fecha: '2026-10-19T09:00:00-05:00'
+          }
+        ]
+      });
+    fixture.detectChanges();
+
+    expect(component.paginaHistorial).toBe(1);
+    expect(fixture.nativeElement.querySelectorAll('.tabla-historial tbody tr').length).toBe(1);
+    expect(fixture.nativeElement.querySelector('.paginacion').textContent).toContain(
+      'Mostrando 11–11 de 11'
+    );
   });
 
   it('no pide datos ni muestra el formulario si el usuario no es administrador', () => {
