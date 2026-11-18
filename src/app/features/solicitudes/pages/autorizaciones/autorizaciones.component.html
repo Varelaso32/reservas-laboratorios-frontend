@@ -1,0 +1,180 @@
+<div class="aplicacion">
+  <app-pos-sidebar seccionActiva="autorizaciones" />
+
+  <main class="contenido">
+    <p-toast key="autorizaciones" position="bottom-right" />
+
+    <header class="topbar">
+      <div class="migas">
+        <i class="pi pi-shield" aria-hidden="true"></i>
+        <span>Autorizaciones especiales</span>
+      </div>
+
+      <div class="acciones-topbar">
+        <button
+          type="button"
+          class="boton-refrescar"
+          [disabled]="cargando"
+          (click)="cargarSolicitudes()"
+        >
+          <i class="pi pi-refresh" aria-hidden="true"></i>
+          <span>Actualizar</span>
+        </button>
+        <div class="perfil">{{ inicialesUsuario }}</div>
+      </div>
+    </header>
+
+    <section class="pagina">
+      <div class="encabezado">
+        <div>
+          <h1>Autorizaciones especiales</h1>
+          <p>
+            Solicitudes fuera de la franja de operación. Al autorizarlas vuelven al flujo normal
+            de aprobación; al negarlas quedan rechazadas con el motivo que escribas.
+          </p>
+        </div>
+
+        @if (!cargando && !errorCarga) {
+          <span class="contador" [class.sin-pendientes]="solicitudes.length === 0">
+            {{ solicitudes.length }}
+            {{ solicitudes.length === 1 ? 'pendiente' : 'pendientes' }}
+          </span>
+        }
+      </div>
+
+      @if (cargando) {
+        <p class="estado" role="status">Cargando solicitudes pendientes...</p>
+      } @else if (errorCarga) {
+        <div class="estado error" role="alert">
+          <span>{{ errorCarga }}</span>
+          <button type="button" (click)="cargarSolicitudes()">Reintentar</button>
+        </div>
+      } @else if (solicitudes.length === 0) {
+        <div class="estado-vacio">
+          <div class="estado-vacio-icono">
+            <i class="pi pi-check" aria-hidden="true"></i>
+          </div>
+          <h2>No hay solicitudes esperando autorización</h2>
+          <p>Cuando alguien pida un horario fuera de la franja de un espacio, aparecerá aquí.</p>
+        </div>
+      } @else {
+        <ul class="lista">
+          @for (solicitud of solicitudes; track solicitud.id) {
+            <li class="tarjeta" [attr.aria-busy]="procesandoId === solicitud.id">
+              <header class="tarjeta-header">
+                <div class="identidad">
+                  <span class="sticker">Fuera de franja</span>
+                  <h2>{{ solicitud.espacio.nombre }}</h2>
+                  <span class="tipo">{{ solicitud.espacio.tipo }}</span>
+                </div>
+                <span class="solicitud-id">#{{ solicitud.id }}</span>
+              </header>
+
+              <dl class="datos">
+                <div>
+                  <dt>Fecha</dt>
+                  <dd>{{ fechaSolicitud(solicitud) }}</dd>
+                </div>
+                <div>
+                  <dt>Horario</dt>
+                  <dd>
+                    {{ horaSolicitud(solicitud.inicio) }} – {{ horaSolicitud(solicitud.fin) }}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Asistentes</dt>
+                  <dd>{{ solicitud.asistentes }} / {{ solicitud.espacio.capacidad }}</dd>
+                </div>
+                <div>
+                  <dt>Solicitante</dt>
+                  <dd>
+                    {{ nombreSolicitante(solicitud) }}
+                    <small>{{ solicitud.solicitante.rol_reserva }}</small>
+                  </dd>
+                </div>
+              </dl>
+
+              <div class="bloque">
+                <span class="etiqueta">PROPÓSITO</span>
+                <p>{{ solicitud.proposito }}</p>
+              </div>
+
+              @if (solicitud.motivo_urgencia) {
+                <div class="bloque urgencia">
+                  <span class="etiqueta">MOTIVO DE URGENCIA</span>
+                  <p>{{ solicitud.motivo_urgencia }}</p>
+                </div>
+              }
+
+              <footer class="acciones">
+                @if (confirmandoId === solicitud.id) {
+                  <div class="confirmacion" role="alert">
+                    <span>¿Autorizar esta solicitud? Volverá al flujo normal de aprobación.</span>
+                    <div class="botones">
+                      <button
+                        type="button"
+                        class="boton-principal"
+                        [disabled]="procesandoId === solicitud.id"
+                        (click)="confirmarAutorizacion(solicitud)"
+                      >
+                        {{ procesandoId === solicitud.id ? 'Autorizando…' : 'Sí, autorizar' }}
+                      </button>
+                      <button type="button" class="boton-secundario" (click)="cancelarConfirmacion()">
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                } @else if (negandoId === solicitud.id) {
+                  <div class="negacion">
+                    <label class="campo-motivo">
+                      <span class="etiqueta">MOTIVO DEL RECHAZO</span>
+                      <textarea
+                        rows="3"
+                        maxlength="500"
+                        placeholder="Explica por qué no se autoriza este horario"
+                        [(ngModel)]="motivoNegacion"
+                      ></textarea>
+                    </label>
+                    @if (errorMotivo) {
+                      <small class="error-campo">{{ errorMotivo }}</small>
+                    }
+                    <div class="botones">
+                      <button
+                        type="button"
+                        class="boton-principal peligro"
+                        [disabled]="procesandoId === solicitud.id"
+                        (click)="confirmarNegacion(solicitud)"
+                      >
+                        {{ procesandoId === solicitud.id ? 'Negando…' : 'Confirmar rechazo' }}
+                      </button>
+                      <button type="button" class="boton-secundario" (click)="cancelarNegacion()">
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                } @else {
+                  <button
+                    type="button"
+                    class="boton-principal"
+                    [disabled]="procesandoId !== null"
+                    (click)="pedirConfirmacion(solicitud)"
+                  >
+                    Autorizar
+                  </button>
+                  <button
+                    type="button"
+                    class="boton-secundario"
+                    [disabled]="procesandoId !== null"
+                    (click)="iniciarNegacion(solicitud)"
+                  >
+                    Negar
+                  </button>
+                }
+              </footer>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+  </main>
+</div>

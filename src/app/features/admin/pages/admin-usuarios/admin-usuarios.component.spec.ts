@@ -10,6 +10,8 @@ import { MessageService } from 'primeng/api';
 import type { ListaUsuariosResponse, UsuarioAdmin } from '../../../../core/models/usuarios.model';
 import { AuthService } from '../../../../core/services/auth.service';
 import { AdminUsuariosComponent } from './admin-usuarios.component';
+import { of } from 'rxjs';
+import { NotificacionesService } from '../../../../core/services/notificaciones.service';
 
 const USUARIOS_URL = 'http://localhost:8000/api/v1/usuarios/';
 const PASSWORD_DE_PRUEBA = ['clave', 'segura'].join('-');
@@ -90,7 +92,16 @@ describe('AdminUsuariosComponent', () => {
         provideHttpClientTesting(),
         provideNoopAnimations(),
         provideRouter([]),
-        { provide: MessageService, useValue: messageService }
+        { provide: MessageService, useValue: messageService },
+        {
+          provide: NotificacionesService,
+          useValue: {
+            resumen: () => of({ no_leidas: 0 }),
+            listar: () => of([]),
+            marcarTodasLeidas: () => of({ actualizadas: 0 }),
+            marcarLeida: () => of(null)
+          }
+        }
       ]
     }).compileComponents();
 

@@ -104,19 +104,35 @@ describe('ReservasService', () => {
     req.flush(mockDetalle);
   });
 
-  it('debe cancelar una reserva enviando POST /reservas/:id/cancelar con body null', () => {
+  it('debe cancelar una reserva enviando POST /reservas/:id/cancelar con el motivo', () => {
     const mockCancelada: ReservaResumen = {
       ...mockReservaResumen,
       estado: 'CANCELADA'
     };
 
-    service.cancelarReserva(5).subscribe(res => {
+    service.cancelarReserva(5, 'Ya no puedo asistir').subscribe(res => {
       expect(res).toEqual(mockCancelada);
     });
 
     const req = httpTesting.expectOne(`${API_BASE_URL}/reservas/5/cancelar`);
     expect(req.request.method).toBe('POST');
-    expect(req.request.body).toBeNull();
+    expect(req.request.body).toEqual({ motivo: 'Ya no puedo asistir' });
     req.flush(mockCancelada);
+  });
+
+  it('debe registrar asistencia con POST /reservas/:id/asistencia', () => {
+    service.registrarAsistencia(5).subscribe(res => {
+      expect(res.estado_asistencia).toBe('ASISTIO');
+    });
+
+    const req = httpTesting.expectOne(`${API_BASE_URL}/reservas/5/asistencia`);
+    expect(req.request.method).toBe('POST');
+    req.flush({
+      reserva_id: 5,
+      estado: 'ACTIVA',
+      estado_asistencia: 'ASISTIO',
+      inicio_efectivo: '2026-05-10T13:02:00',
+      mensaje: 'Asistencia registrada.'
+    });
   });
 });

@@ -20,12 +20,28 @@
       <i class="pi pi-building" aria-hidden="true"></i>
       <span>Espacios</span>
     </a>
-    <span class="menu-item inactivo">
+    <a routerLink="/notificaciones" routerLinkActive="activo" ariaCurrentWhenActive="page">
+      <i class="pi pi-bell" aria-hidden="true"></i>
+      <span>Notificaciones</span>
+    </a>
+    <a routerLink="/configuracion" routerLinkActive="activo" ariaCurrentWhenActive="page">
       <i class="pi pi-cog" aria-hidden="true"></i>
       <span>Configuración</span>
-    </span>
+    </a>
 
     <div class="separador"></div>
+
+    @if (usuarioActual?.puede_autorizar_especial) {
+      <a
+        routerLink="/autorizaciones"
+        routerLinkActive="activo"
+        ariaCurrentWhenActive="page"
+        class="menu-autorizaciones"
+      >
+        <i class="pi pi-inbox" aria-hidden="true"></i>
+        <span>Autorizaciones</span>
+      </a>
+    }
 
     @if (usuarioActual?.rol === 'APROBADOR' || usuarioActual?.rol === 'ADMIN') {
       <a routerLink="/admin/espacios">

@@ -1,5 +1,4 @@
 import { Component, inject } from '@angular/core';
-import { NgTemplateOutlet } from '@angular/common';
 import {
   AbstractControl,
   FormControl,
@@ -22,7 +21,7 @@ const passwordsMatchValidator = (control: AbstractControl): ValidationErrors | n
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [ReactiveFormsModule, NgTemplateOutlet],
+  imports: [ReactiveFormsModule],
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss'
 })

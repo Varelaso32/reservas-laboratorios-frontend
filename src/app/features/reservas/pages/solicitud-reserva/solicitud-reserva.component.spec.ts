@@ -7,8 +7,10 @@ import { MessageService } from 'primeng/api';
 import { InputNumber } from 'primeng/inputnumber';
 import { API_BASE_URL } from '../../../../core/config/api.config';
 import { AuthService } from '../../../../core/services/auth.service';
+import { Cargo } from '../../../../core/models/auth.models';
 import { SolicitudesService } from '../../../../core/services/solicitudes.service';
 import { Espacio } from '../../../../shared/models/espacio.model';
+import { ReglasEspacio } from '../../../../shared/models/configuracion.model';
 import { SolicitudCreada } from '../../../../shared/models/solicitud.model';
 
 import { SolicitudReservaComponent } from './solicitud-reserva.component';
@@ -24,7 +26,7 @@ describe('SolicitudReservaComponent', () => {
     nombre: string;
     email: string;
     rol: 'SOLICITANTE' | 'APROBADOR';
-    cargo: 'ESTUDIANTE';
+    cargo: Cargo;
   };
   const espacio: Espacio = {
     id: 17,
@@ -68,9 +70,36 @@ describe('SolicitudReservaComponent', () => {
     component = fixture.componentInstance;
     component.espacio = espacio;
     fixture.detectChanges();
+    responderReglas();
   });
 
   afterEach(() => httpTestingController.verify());
+
+  function responderReglas(extra: Partial<ReglasEspacio> = {}): void {
+    const reglas: ReglasEspacio = {
+      espacio_id: 17,
+      nombre: espacio.nombre,
+      tipo: 'LABORATORIO',
+      capacidad: 25,
+      activo: true,
+      hora_apertura: null,
+      hora_cierre: null,
+      dias_operacion: [1, 2, 3, 4, 5, 6, 7],
+      max_usos_dia: null,
+      duracion_maxima_min: null,
+      separacion_min: 0,
+      ocupacion_minima: null,
+      requiere_responsable: false,
+      admite_autorizacion_especial: false,
+      tipos_uso: [],
+      ...extra
+    };
+
+    httpTestingController
+      .expectOne(`${API_BASE_URL}/configuracion/espacios/17`)
+      .flush(reglas);
+    fixture.detectChanges();
+  }
 
   function completarFormulario(): void {
     component.formReserva.setValue({
@@ -78,7 +107,8 @@ describe('SolicitudReservaComponent', () => {
       horaInicio: '08:00',
       horaFin: '10:00',
       asistentes: 10,
-      proposito: 'Prueba de disponibilidad'
+      proposito: 'Prueba de disponibilidad',
+      motivoUrgencia: ''
     });
   }
 
@@ -284,7 +314,8 @@ describe('SolicitudReservaComponent', () => {
       horaInicio: '08:00',
       horaFin: '10:00',
       asistentes: 10,
-      proposito: 'Solicitud pasada'
+      proposito: 'Solicitud pasada',
+      motivoUrgencia: ''
     });
 
     component.confirmarReserva();
@@ -295,7 +326,6 @@ describe('SolicitudReservaComponent', () => {
 
   it('shows the pending success dialog only after the backend creates the request', () => {
     completarFormulario();
-    component.seleccionarActividad('Examen');
     const closeSpy = spyOn(component.cerrar, 'emit');
     expect(fixture.nativeElement.querySelector('.modal-exito')).toBeNull();
 
@@ -426,5 +456,206 @@ describe('SolicitudReservaComponent', () => {
     }
 
     expect(fixture.nativeElement.querySelector('p-inputnumber')).toBeTruthy();
+  });
+
+  it('renders the activities configured for the space and sends the selected one', () => {
+    component.tiposUso = [
+      { id: 5, nombre: 'Clase', activo: true },
+      { id: 6, nombre: 'Examen', activo: true }
+    ];
+    component.tipoUsoSeleccionadoId = 5;
+    component.tipoActividad = 'Clase';
+    fixture.detectChanges();
+
+    const botones = fixture.nativeElement.querySelectorAll(
+      '.actividades button'
+    ) as NodeListOf<HTMLButtonElement>;
+    expect(botones.length).toBe(2);
+    expect(botones[0].textContent).toContain('Clase');
+    expect(botones[0].classList.contains('activo')).toBeTrue();
+
+    component.seleccionarTipoUso({ id: 6, nombre: 'Examen', activo: true });
+    fixture.detectChanges();
+    expect(botones[1].classList.contains('activo')).toBeTrue();
+
+    completarFormulario();
+    component.confirmarReserva();
+    responderDisponibilidad(true);
+    const post = obtenerSolicitudPost();
+    expect(post.request.body.tipo_uso_id).toBe(6);
+    post.flush(respuestaCreada(), { status: 201, statusText: 'Created' });
+  });
+
+  it('shows the space rules summary before sending the request', () => {
+    component.reglas = {
+      espacio_id: 17,
+      nombre: espacio.nombre,
+      tipo: 'LABORATORIO',
+      capacidad: 25,
+      activo: true,
+      hora_apertura: '08:00:00',
+      hora_cierre: '18:00:00',
+      dias_operacion: [1, 2, 3, 4, 5],
+      max_usos_dia: 4,
+      duracion_maxima_min: 120,
+      separacion_min: 15,
+      ocupacion_minima: 5,
+      requiere_responsable: true,
+      admite_autorizacion_especial: true,
+      tipos_uso: []
+    };
+    fixture.detectChanges();
+
+    const panel = fixture.nativeElement.querySelector('.reglas-espacio') as HTMLElement;
+    expect(panel).toBeTruthy();
+    expect(panel.textContent).toContain('lunes, martes, miércoles, jueves, viernes');
+    expect(panel.textContent).toContain('08:00 a 18:00');
+    expect(panel.textContent).toContain('120 minutos');
+    expect(panel.textContent).toContain('15 minutos');
+    expect(panel.textContent).toContain('Mínimo 5 asistentes');
+    expect(panel.textContent).toContain('Máximo 4 usos por día');
+    expect(panel.textContent).toContain('responsable');
+    expect(panel.textContent).toContain('autorización especial');
+  });
+
+  it('requires a responsable when the space demands one', () => {
+    component.reglas = {
+      espacio_id: 17,
+      nombre: espacio.nombre,
+      tipo: 'LABORATORIO',
+      capacidad: 25,
+      activo: true,
+      hora_apertura: null,
+      hora_cierre: null,
+      dias_operacion: [1, 2, 3, 4, 5, 6, 7],
+      max_usos_dia: null,
+      duracion_maxima_min: null,
+      separacion_min: 0,
+      ocupacion_minima: null,
+      requiere_responsable: true,
+      admite_autorizacion_especial: false,
+      tipos_uso: []
+    };
+    component.responsables = [
+      { id: 9, nombre: 'Docente Responsable', cargo: 'DOCENTE', rol_reserva: 'DOCENTE' }
+    ];
+    fixture.detectChanges();
+    completarFormulario();
+
+    component.confirmarReserva();
+
+    httpTestingController.expectNone(() => true);
+    expect(component.mensajeDisponibilidad).toContain('responsable');
+    expect(fixture.nativeElement.querySelector('#responsable')).toBeTruthy();
+  });
+
+  it('explains that the request awaits special authorization when it goes out of schedule', () => {
+    completarFormulario();
+    component.confirmarReserva();
+    responderDisponibilidad(true);
+
+    obtenerSolicitudPost().flush(
+      {
+        ...respuestaCreada(),
+        estado: 'PENDIENTE_AUTORIZACION',
+        fuera_de_franja: true,
+        avisos: ['La solicitud queda pendiente de autorización especial.']
+      },
+      { status: 201, statusText: 'Created' }
+    );
+    fixture.detectChanges();
+
+    const dialogo = fixture.nativeElement.querySelector('.modal-exito') as HTMLElement;
+    expect(dialogo.textContent).toContain('autorización especial');
+    expect(dialogo.querySelector('.badge-autorizacion')?.textContent)
+      .toContain('Pendiente de autorización especial');
+    expect(dialogo.querySelector('.avisos-exito')?.textContent)
+      .toContain('queda pendiente de autorización especial');
+  });
+
+  it('shows the urgency reason field only when the slot is taken and the role can claim it', () => {
+    usuario.cargo = 'DOCENTE';
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('#motivoUrgencia')).toBeNull();
+
+    completarFormulario();
+    component.validarDisponibilidad();
+    responderDisponibilidad(false);
+    fixture.detectChanges();
+
+    const campo = fixture.nativeElement.querySelector('.campo-urgencia') as HTMLElement;
+    expect(campo).toBeTruthy();
+    expect(campo.textContent).toContain('MOTIVO DE URGENCIA');
+    expect(campo.textContent).toContain('Docente');
+  });
+
+  it('sends the urgency reason when a higher role claims an occupied slot', () => {
+    usuario.cargo = 'COORDINADOR_LABORATORIOS';
+    fixture.detectChanges();
+    completarFormulario();
+    component.formReserva.controls.motivoUrgencia.setValue('Consejo de facultad');
+
+    component.confirmarReserva();
+    responderDisponibilidad(false);
+
+    const post = obtenerSolicitudPost();
+    expect(post.request.body.motivo_urgencia).toBe('Consejo de facultad');
+
+    post.flush(
+      {
+        ...respuestaCreada(),
+        estado: 'EN_ESPERA_CESION',
+        titular: 'Usuario estudiante@reservas.test',
+        motivo_urgencia: 'Consejo de facultad',
+        avisos: ['Tu solicitud quedó en espera de que decida si cede el cupo.']
+      },
+      { status: 201, statusText: 'Created' }
+    );
+    fixture.detectChanges();
+
+    const dialogo = fixture.nativeElement.querySelector('.modal-exito') as HTMLElement;
+    expect(dialogo.textContent).toContain('quedó en espera');
+    expect(dialogo.textContent).toContain('Usuario estudiante@reservas.test');
+    expect(dialogo.querySelector('.badge-cesion')?.textContent)
+      .toContain('En espera de cesión del cupo');
+  });
+
+  it('does not send when the slot is taken and there is no urgency reason', () => {
+    usuario.cargo = 'DOCENTE';
+    fixture.detectChanges();
+    completarFormulario();
+
+    component.confirmarReserva();
+    responderDisponibilidad(false);
+
+    httpTestingController.expectNone(`${API_BASE_URL}/solicitudes/`);
+    expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({
+      severity: 'warn',
+      summary: 'Horario no disponible'
+    }));
+  });
+
+  it('explains the automatic rejection when the first requester has equal or higher hierarchy', () => {
+    completarFormulario();
+    component.confirmarReserva();
+    responderDisponibilidad(true);
+
+    obtenerSolicitudPost().flush(
+      {
+        ...respuestaCreada(),
+        estado: 'RECHAZADA',
+        titular: 'Usuario otro@reservas.test',
+        motivo_rechazo: 'El cupo lo pidió primero Usuario otro@reservas.test (Estudiante)'
+      },
+      { status: 201, statusText: 'Created' }
+    );
+    fixture.detectChanges();
+
+    const dialogo = fixture.nativeElement.querySelector('.modal-exito') as HTMLElement;
+    expect(dialogo.textContent).toContain('Usuario otro@reservas.test');
+    expect(dialogo.textContent).toContain('se rechazó automáticamente');
+    expect(dialogo.querySelector('.badge-rechazo')?.textContent)
+      .toContain('Rechazada por conflicto de cupo');
   });
 });
